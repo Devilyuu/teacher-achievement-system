@@ -1,4 +1,4 @@
-from app.models import Achievement, AchievementStatus
+from app.models import Achievement, AchievementStatus, ClaimNature
 
 
 def _missing_text(value: str | None) -> bool:
@@ -18,7 +18,10 @@ def calculate_status(achievement: Achievement) -> str:
     if achievement.claimed_score is None or achievement.claimed_score <= 0:
         return AchievementStatus.needs_info.value
 
-    if _missing_text(achievement.current_stage):
+    if (
+        achievement.claim_nature == ClaimNature.process.value
+        and _missing_text(achievement.current_stage)
+    ):
         return AchievementStatus.needs_info.value
 
     if not achievement.materials:

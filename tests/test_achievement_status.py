@@ -33,7 +33,40 @@ def test_process_record_without_current_stage_is_needs_info():
     assert calculate_status(achievement) == "待完善"
 
 
+def test_record_missing_required_text_is_needs_info():
+    field_names = ["category", "subcategory", "claim_nature", "title"]
+
+    for field_name in field_names:
+        achievement = _complete_achievement()
+        setattr(achievement, field_name, "")
+
+        assert calculate_status(achievement) == "待完善"
+
+
+def test_record_without_positive_claimed_score_is_needs_info():
+    for claimed_score in [None, 0, -1]:
+        achievement = _complete_achievement()
+        achievement.claimed_score = claimed_score
+
+        assert calculate_status(achievement) == "待完善"
+
+
+def test_record_without_materials_is_needs_info():
+    achievement = _complete_achievement()
+    achievement.materials = []
+
+    assert calculate_status(achievement) == "待完善"
+
+
 def test_complete_record_with_positive_score_and_material_is_ready():
     achievement = _complete_achievement()
+
+    assert calculate_status(achievement) == "可申报"
+
+
+def test_result_record_without_current_stage_can_be_ready():
+    achievement = _complete_achievement()
+    achievement.claim_nature = ClaimNature.result.value
+    achievement.current_stage = ""
 
     assert calculate_status(achievement) == "可申报"
