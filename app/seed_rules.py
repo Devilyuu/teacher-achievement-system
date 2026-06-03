@@ -69,6 +69,19 @@ INITIAL_RULES = [
         True,
         False,
     ),
+    (
+        "其他有价值工作（自定义）",
+        "自定义工作事项",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "用于记录现有绩效分类未覆盖但教师认为有必要申报的工作，例如省级职业技能大赛裁判、专家评审、专项支持等。需填写工作说明、价值说明和支撑材料，最终是否赋分以线下审核为准。",
+        False,
+        False,
+    ),
 ]
 
 
@@ -86,8 +99,13 @@ def seed_initial_data() -> None:
                 )
             )
 
-        if db.query(PerformanceRule).count() == 0:
-            for index, row in enumerate(INITIAL_RULES, start=1):
+        for index, row in enumerate(INITIAL_RULES, start=1):
+            exists = (
+                db.query(PerformanceRule)
+                .filter_by(category=row[0], subcategory=row[1])
+                .first()
+            )
+            if not exists:
                 db.add(
                     PerformanceRule(
                         category=row[0],

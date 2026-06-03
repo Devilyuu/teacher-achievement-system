@@ -17,6 +17,7 @@ This plan implements the first testable MVP:
 - Login/logout and role-based access.
 - Admin-created users.
 - Seeded performance categories and rules from the existing Excel workbook.
+- A controlled custom catch-all category for valuable work not covered by standard rules.
 - Teacher achievement CRUD.
 - Multiple support materials per achievement.
 - Annual status and missing-material indicators.
@@ -391,6 +392,7 @@ INITIAL_RULES = [
     ("教学", "精品在线开放课程建设（含虚拟仿真课程资源）", "2/门", "——", "10/门", "——", "3、2、1/门", "——", "个人申报，验收通过，如获校级资助则无分", False, False),
     ("科研与社会服务工作", "纵向课题（教科研）", "3/项", "25/项", "15/项", "10/项（市级）、5/项（区级）", "3/项", "——", "个人申报", False, False),
     ("教学", "教学成果奖申报及获奖", "10/项", "——", "——", "15、12、10/项", "10、8、6/项", "——", "团队项目，负责人赋分", True, False),
+    ("其他有价值工作（自定义）", "自定义工作事项", "", "", "", "", "", "", "用于记录现有绩效分类未覆盖但教师认为有必要申报的工作，例如省级职业技能大赛裁判、专家评审、专项支持等。需填写工作说明、价值说明和支撑材料，最终是否赋分以线下审核为准。", False, False),
 ]
 
 
@@ -405,8 +407,9 @@ def seed_initial_data() -> None:
                 role="admin",
                 password_hash=hash_password("admin123456"),
             ))
-        if db.query(PerformanceRule).count() == 0:
-            for index, row in enumerate(INITIAL_RULES, start=1):
+        for index, row in enumerate(INITIAL_RULES, start=1):
+            exists = db.query(PerformanceRule).filter_by(category=row[0], subcategory=row[1]).first()
+            if not exists:
                 db.add(PerformanceRule(
                     category=row[0], subcategory=row[1], base_rule=row[2],
                     national_rule=row[3], provincial_rule=row[4], city_rule=row[5],
@@ -854,6 +857,7 @@ from app.models import Achievement, Material, User
 CATEGORY_ORDER = [
     "师德师风及党建思政工作", "教师发展", "教学", "产教融合工作", "学生工作",
     "科研与社会服务工作", "国际交流与合作", "育人成效", "监管类工作",
+    "其他有价值工作（自定义）",
 ]
 
 
@@ -1132,7 +1136,7 @@ Spec coverage:
 
 - Multi-user login: Tasks 2, 3, 7.
 - Admin-created accounts: Task 7.
-- Existing 9-category rule foundation: Tasks 2 and 6 include category order; seed data starts with representative rules and leaves full-rule import as the next data-loading enhancement.
+- Existing 9-category rule foundation plus controlled custom catch-all: Tasks 2 and 6 include category order; seed data starts with representative rules and leaves full-rule import as the next data-loading enhancement.
 - Achievement records: Task 4.
 - Process/result nature: Tasks 2 and 4.
 - Manual claimed score with rule hints: Tasks 2 and 4.
