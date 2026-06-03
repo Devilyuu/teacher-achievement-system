@@ -1,0 +1,32 @@
+:root {
+    color-scheme: light;
+    font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    color: #1f2937;
+    background: #f6f7f9;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+}
+
+.site-header {
+    border-bottom: 1px solid #d8dde6;
+    background: #ffffff;
+    padding: 16px 24px;
+}
+
+.site-header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.page {
+    width: min(1120px, calc(100% - 32px));
+    margin: 24px auto;
+}
