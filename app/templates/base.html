@@ -9,6 +9,15 @@
 <body>
     <header class="site-header">
         <h1>教师成果管理系统</h1>
+        <nav>
+            <a href="/">Dashboard</a>
+            {% if user %}
+                <span>{{ user.full_name }} ({{ user.role }})</span>
+                <a href="/logout">Logout</a>
+            {% else %}
+                <a href="/login">Login</a>
+            {% endif %}
+        </nav>
     </header>
     <main class="page">
         {% block content %}{% endblock %}

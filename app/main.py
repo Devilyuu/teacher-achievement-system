@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import BASE_DIR, DATA_DIR
 from app.database import Base, engine
+from app.routers import auth, dashboard
 from app.seed_rules import seed_initial_data
 
 
@@ -25,6 +26,9 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    app.include_router(auth.router)
+    app.include_router(dashboard.router)
 
     return app
 
