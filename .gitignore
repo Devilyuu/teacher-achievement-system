@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+
+# Environment files
+.env
+.env.local
+
+# Runtime data
+data/uploads/
+data/exports/
+data/backups/
+*.db
+*.sqlite
+*.sqlite3
+
+# Build outputs
+dist/
+build/
+out/
+
+# Logs
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
