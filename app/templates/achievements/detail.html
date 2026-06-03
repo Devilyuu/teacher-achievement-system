@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Achievement detail{% endblock %}
+
+{% block content %}
+<section>
+    <h2>{{ achievement.title }}</h2>
+    <p>Status: {{ achievement.status }}</p>
+    <p>Year: {{ achievement.year }}</p>
+    <p>Category: {{ achievement.category }} / {{ achievement.subcategory }}</p>
+    <p>Claim nature: {{ achievement.claim_nature }}</p>
+    <p>Claimed score: {{ achievement.claimed_score }}</p>
+    <p>Current stage: {{ achievement.current_stage }}</p>
+    <p>Notes: {{ achievement.notes }}</p>
+
+    <p>
+        <a href="/achievements/{{ achievement.id }}/edit">Edit</a>
+        <a href="/achievements">Back to list</a>
+    </p>
+
+    <form method="post" action="/achievements/{{ achievement.id }}/delete">
+        <button type="submit">Delete</button>
+    </form>
+</section>
+{% endblock %}

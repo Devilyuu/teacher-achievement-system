@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{% if achievement %}Edit achievement{% else %}New achievement{% endif %}{% endblock %}
+
+{% block content %}
+<section>
+    <h2>{% if achievement %}Edit achievement{% else %}New achievement{% endif %}</h2>
+
+    <form method="post" action="{{ action }}">
+        <label>
+            Year
+            <input type="number" name="year" min="2000" max="2100" value="{{ achievement.year if achievement else 2026 }}" required>
+        </label>
+
+        <label>
+            Category
+            <input name="category" list="category-options" value="{{ achievement.category if achievement else '' }}" required>
+        </label>
+        <datalist id="category-options">
+            {% for rule in rules %}
+                <option value="{{ rule.category }}"></option>
+            {% endfor %}
+        </datalist>
+
+        <label>
+            Subcategory
+            <input name="subcategory" list="subcategory-options" value="{{ achievement.subcategory if achievement else '' }}" required>
+        </label>
+        <datalist id="subcategory-options">
+            {% for rule in rules %}
+                <option value="{{ rule.subcategory }}">{{ rule.category }}</option>
+            {% endfor %}
+        </datalist>
+
+        <label>
+            Claim nature
+            <select name="claim_nature" required>
+                {% for nature in claim_natures %}
+                    <option value="{{ nature }}" {% if achievement and achievement.claim_nature == nature %}selected{% endif %}>{{ nature }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>
+            Title
+            <input name="title" value="{{ achievement.title if achievement else '' }}" required>
+        </label>
+
+        <label>
+            Date range
+            <input name="date_range" value="{{ achievement.date_range if achievement else '' }}">
+        </label>
+
+        <label>
+            Level
+            <input name="level" value="{{ achievement.level if achievement else '' }}">
+        </label>
+
+        <label>
+            Personal role
+            <input name="personal_role" value="{{ achievement.personal_role if achievement else '' }}">
+        </label>
+
+        <label>
+            Current stage or value explanation
+            <textarea name="current_stage" rows="4">{{ achievement.current_stage if achievement else '' }}</textarea>
+        </label>
+
+        <label>
+            Base score
+            <input type="number" step="0.01" name="base_score" value="{{ achievement.base_score if achievement else 0 }}">
+        </label>
+
+        <label>
+            Performance score
+            <input type="number" step="0.01" name="performance_score" value="{{ achievement.performance_score if achievement else 0 }}">
+        </label>
+
+        <label>
+            Claimed score
+            <input type="number" step="0.01" name="claimed_score" value="{{ achievement.claimed_score if achievement else 0 }}">
+        </label>
+
+        <label>
+            Notes
+            <textarea name="notes" rows="4">{{ achievement.notes if achievement else '' }}</textarea>
+        </label>
+
+        <button type="submit">Save</button>
+        <a href="/achievements">Cancel</a>
+    </form>
+</section>
+{% endblock %}

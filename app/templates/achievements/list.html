@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Achievements{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Achievements</h2>
+    <p><a href="/achievements/new">Add achievement</a></p>
+
+    {% if achievements %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Claimed score</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for achievement in achievements %}
+                    <tr>
+                        <td>{{ achievement.year }}</td>
+                        <td><a href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a></td>
+                        <td>{{ achievement.category }} / {{ achievement.subcategory }}</td>
+                        <td>{{ achievement.claimed_score }}</td>
+                        <td>{{ achievement.status }}</td>
+                        <td><a href="/achievements/{{ achievement.id }}/edit">Edit</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No achievements yet.</p>
+    {% endif %}
+</section>
+{% endblock %}
