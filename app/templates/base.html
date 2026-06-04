@@ -12,6 +12,10 @@
         <nav>
             <a href="/">Dashboard</a>
             <a href="/achievements">Achievements</a>
+            {% if user and user.role == "admin" %}
+                <a href="/admin/users">Admin Users</a>
+                <a href="/admin/rules">Admin Rules</a>
+            {% endif %}
             {% if user %}
                 <span>{{ user.full_name }} ({{ user.role }})</span>
                 <a href="/logout">Logout</a>

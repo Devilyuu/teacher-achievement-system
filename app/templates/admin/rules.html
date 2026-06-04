@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Rules{% endblock %}
+
+{% block content %}
+<section>
+    <h2>Admin Rules</h2>
+
+    {% if rules %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Subcategory</th>
+                    <th>Base rule</th>
+                    <th>Level rule hints</th>
+                    <th>Remark</th>
+                    <th>Team</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule in rules %}
+                    <tr>
+                        <td>{{ rule.category }}</td>
+                        <td>{{ rule.subcategory }}</td>
+                        <td>{{ rule.base_rule }}</td>
+                        <td>
+                            <div>National: {{ rule.national_rule }}</div>
+                            <div>Provincial: {{ rule.provincial_rule }}</div>
+                            <div>City: {{ rule.city_rule }}</div>
+                            <div>School: {{ rule.school_rule }}</div>
+                            <div>College: {{ rule.college_rule }}</div>
+                        </td>
+                        <td>{{ rule.remark }}</td>
+                        <td>{{ "Yes" if rule.is_team else "No" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No rules yet.</p>
+    {% endif %}
+</section>
+{% endblock %}
