@@ -50,7 +50,7 @@ pip install -r requirements.txt
 本机访问：
 
 ```text
-http://127.0.0.1:8000
+http://127.0.0.1:8001
 ```
 
 局域网访问：
@@ -62,7 +62,7 @@ ipconfig
 找到主机 IPv4 地址后，同一局域网内访问：
 
 ```text
-http://主机IPv4:8000
+http://主机IPv4:8001
 ```
 
 默认管理员：

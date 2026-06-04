@@ -29,6 +29,7 @@ out/
 
 # Logs
 *.log
+*.pid
 
 # OS/editor files
 .DS_Store

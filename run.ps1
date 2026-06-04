@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 Set-Location $PSScriptRoot
 
+$port = 8001
 $python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path $python)) {
     Write-Host "Virtual environment not found."
@@ -27,11 +28,11 @@ $lanIp = Get-NetIPAddress -AddressFamily IPv4 |
 
 Write-Host ""
 Write-Host "Teacher Achievement System is starting..."
-Write-Host "Local URL: http://127.0.0.1:8000"
+Write-Host "Local URL: http://127.0.0.1:$port"
 if ($lanIp) {
-    Write-Host "LAN URL:   http://$lanIp`:8000"
+    Write-Host "LAN URL:   http://$lanIp`:$port"
 }
 Write-Host "Press Ctrl+C to stop."
 Write-Host ""
 
-& $python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+& $python -m uvicorn app.main:app --host 0.0.0.0 --port $port --reload

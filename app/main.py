@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -26,6 +28,17 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.exception_handler(HTTPException)
+    async def redirect_unauthenticated_pages(request: Request, exc: HTTPException):
+        if (
+            exc.status_code == status.HTTP_401_UNAUTHORIZED
+            and request.method == "GET"
+            and request.url.path != "/login"
+        ):
+            return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+
+        return await http_exception_handler(request, exc)
 
     app.include_router(auth.router)
     app.include_router(dashboard.router)

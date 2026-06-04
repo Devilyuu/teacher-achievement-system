@@ -44,9 +44,8 @@ def test_dashboard_requires_auth(app):
 
     response = client.get("/", follow_redirects=False)
 
-    assert response.status_code in {401, 303}
-    if response.status_code == 303:
-        assert response.headers["location"] == "/login"
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
 
 
 def test_dashboard_renders_for_authenticated_admin(app):

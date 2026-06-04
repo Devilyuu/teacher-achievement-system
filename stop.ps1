@@ -1,15 +1,16 @@
 $ErrorActionPreference = "SilentlyContinue"
 
-$connections = Get-NetTCPConnection -LocalPort 8000
+$port = 8001
+$connections = Get-NetTCPConnection -LocalPort $port
 if (-not $connections) {
-    Write-Host "No service is listening on port 8000."
+    Write-Host "No service is listening on port $port."
     exit 0
 }
 
 $processIds = @($connections | Select-Object -ExpandProperty OwningProcess -Unique)
 
 $uvicornProcesses = Get-CimInstance Win32_Process |
-    Where-Object { $_.CommandLine -like "*uvicorn app.main:app*" }
+    Where-Object { $_.CommandLine -like "*uvicorn app.main:app*" -and $_.CommandLine -like "*--port $port*" }
 
 $processIds += @($uvicornProcesses | Select-Object -ExpandProperty ProcessId)
 
@@ -24,7 +25,7 @@ $processIds = $processIds | Sort-Object -Unique -Descending
 foreach ($processId in $processIds) {
     $process = Get-Process -Id $processId
     if ($process) {
-        Write-Host "Stopping process $processId on port 8000..."
+        Write-Host "Stopping process $processId on port $port..."
         Stop-Process -Id $processId -Force
     }
 }
