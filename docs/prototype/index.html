@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>教师成果管理系统原型</title>
+    <link rel="stylesheet" href="prototype.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-mark">绩</div>
+            <div>
+                <strong>教师成果管理</strong>
+                <span>本机/局域网试用版</span>
+            </div>
+        </div>
+        <nav class="nav" aria-label="原型页面">
+            <button class="nav-item active" data-screen="dashboard">年度工作台</button>
+            <button class="nav-item" data-screen="records">成果库</button>
+            <button class="nav-item" data-screen="wizard">新增成果</button>
+            <button class="nav-item" data-screen="materials">材料详情</button>
+            <button class="nav-item" data-screen="export">导出中心</button>
+            <button class="nav-item" data-screen="admin">管理维护</button>
+        </nav>
+        <div class="sidebar-note">
+            <span class="dot"></span>
+            2026 年度材料整理中
+        </div>
+    </aside>
+
+    <main class="app-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">个人年度成果档案</p>
+                <h1 id="screen-title">年度工作台</h1>
+            </div>
+            <div class="topbar-actions">
+                <button class="icon-button" aria-label="提醒">!</button>
+                <button class="ghost-button">张老师</button>
+                <button class="primary-button" data-screen-link="wizard">新增成果</button>
+            </div>
+        </header>
+
+        <section class="screen active" id="dashboard">
+            <div class="status-grid">
+                <article class="hero-panel">
+                    <div>
+                        <p class="eyebrow">2026 年度准备度</p>
+                        <h2>23 条成果，17 条可申报</h2>
+                        <p class="muted">还有 4 条缺少支撑材料，2 条缺少申报分。完成后即可生成年度清单和分类材料包。</p>
+                    </div>
+                    <div class="progress-ring" aria-label="准备度 74%">
+                        <span>74%</span>
+                    </div>
+                </article>
+                <article class="metric">
+                    <span>申报积分</span>
+                    <strong>186.5</strong>
+                    <em>较上月 +28</em>
+                </article>
+                <article class="metric warn">
+                    <span>待完善</span>
+                    <strong>6</strong>
+                    <em>材料/分值缺失</em>
+                </article>
+                <article class="metric ok">
+                    <span>已上传材料</span>
+                    <strong>41</strong>
+                    <em>PDF、图片、Word</em>
+                </article>
+            </div>
+
+            <div class="two-column">
+                <section class="panel">
+                    <div class="panel-title">
+                        <h3>年度材料准备轨道</h3>
+                        <button class="text-button" data-screen-link="records">查看全部</button>
+                    </div>
+                    <div class="timeline">
+                        <div class="timeline-item done">
+                            <span></span>
+                            <div>
+                                <strong>师德师风及党建思政工作</strong>
+                                <p>3 条成果，材料完整，可纳入导出。</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item active">
+                            <span></span>
+                            <div>
+                                <strong>教学</strong>
+                                <p>8 条成果，其中 2 条缺少获奖证书或课程平台截图。</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <span></span>
+                            <div>
+                                <strong>科研与社会服务工作</strong>
+                                <p>5 条成果，1 条过程性工作需要补阶段说明。</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <span></span>
+                            <div>
+                                <strong>其他有价值工作（自定义）</strong>
+                                <p>1 条省赛裁判工作，等待补充聘书或通知文件。</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-title">
+                        <h3>今天建议先处理</h3>
+                    </div>
+                    <div class="task-list">
+                        <button class="task" data-screen-link="materials">
+                            <strong>补传“教学能力比赛获奖证书”</strong>
+                            <span>影响 12 分，当前状态：待完善</span>
+                        </button>
+                        <button class="task" data-screen-link="wizard">
+                            <strong>录入江苏省职业技能大赛裁判工作</strong>
+                            <span>建议归入“其他有价值工作（自定义）”</span>
+                        </button>
+                        <button class="task" data-screen-link="export">
+                            <strong>预览 2026 年度导出包</strong>
+                            <span>检查清单和材料目录是否符合提交习惯</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="screen" id="records">
+            <section class="panel">
+                <div class="panel-title">
+                    <div>
+                        <h3>成果库</h3>
+                        <p class="muted">按年度、类别、状态快速筛选，减少年底翻材料。</p>
+                    </div>
+                    <button class="primary-button" data-screen-link="wizard">新增成果</button>
+                </div>
+                <div class="filters">
+                    <label>年度<select><option>2026</option><option>2025</option></select></label>
+                    <label>大类<select><option>全部类别</option><option>教学</option><option>科研与社会服务工作</option></select></label>
+                    <label>状态<select><option>全部状态</option><option>待完善</option><option>可申报</option></select></label>
+                    <label class="search-field">搜索<input value="省赛 裁判"></label>
+                </div>
+                <div class="record-table" role="table" aria-label="成果库示例">
+                    <div class="row head" role="row">
+                        <span>成果名称</span><span>类别</span><span>性质</span><span>积分</span><span>状态</span><span>材料</span>
+                    </div>
+                    <button class="row" role="row" data-screen-link="materials">
+                        <span><strong>江苏省职业技能大赛裁判工作</strong><small>2026.04 / 校外专家服务</small></span>
+                        <span>其他有价值工作</span><span>过程性工作</span><span>8</span><span class="pill warn">待完善</span><span>1/2</span>
+                    </button>
+                    <button class="row" role="row" data-screen-link="materials">
+                        <span><strong>校级教学能力比赛一等奖</strong><small>2026.05 / 获奖证书</small></span>
+                        <span>教学</span><span>成果性工作</span><span>20</span><span class="pill ok">可申报</span><span>3/3</span>
+                    </button>
+                    <button class="row" role="row" data-screen-link="materials">
+                        <span><strong>精品在线开放课程建设</strong><small>2026.01-2026.06 / 平台截图</small></span>
+                        <span>教学</span><span>过程性工作</span><span>15</span><span class="pill">整理中</span><span>2/4</span>
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <section class="screen" id="wizard">
+            <div class="wizard-layout">
+                <section class="panel">
+                    <div class="stepper">
+                        <span class="active">1 基本信息</span>
+                        <span>2 类别与规则</span>
+                        <span>3 分值与材料</span>
+                        <span>4 确认</span>
+                    </div>
+                    <h3>新增成果</h3>
+                    <div class="form-grid">
+                        <label>年度<input value="2026"></label>
+                        <label>申报性质<select><option>过程性工作</option><option>成果性工作</option></select></label>
+                        <label class="wide">成果名称<input value="江苏省职业技能大赛裁判工作"></label>
+                        <label>成果日期/周期<input value="2026.04.12-2026.04.15"></label>
+                        <label>本人角色<input value="裁判 / 校外专家"></label>
+                        <label>大类<select><option>其他有价值工作（自定义）</option><option>教学</option><option>科研与社会服务工作</option></select></label>
+                        <label>小类<select><option>自定义工作事项</option></select></label>
+                        <label class="wide">价值说明<textarea>受赛事组委会邀请担任裁判，参与赛项评分、专家评议和现场技术指导。</textarea></label>
+                    </div>
+                    <div class="form-actions">
+                        <button class="ghost-button">保存草稿</button>
+                        <button class="primary-button" data-screen-link="materials">下一步：上传材料</button>
+                    </div>
+                </section>
+                <aside class="rule-panel">
+                    <p class="eyebrow">规则提示</p>
+                    <h3>自定义工作事项</h3>
+                    <p>用于记录现有 9 大类无法覆盖、但教师认为有价值且需要留痕的工作。系统不自动认定赋分，线下审核为准。</p>
+                    <ul>
+                        <li>必须填写工作类型、内容和价值说明。</li>
+                        <li>建议上传聘书、通知、现场照片、工作证明。</li>
+                        <li>导出时进入第 10 类材料目录。</li>
+                    </ul>
+                </aside>
+            </div>
+        </section>
+
+        <section class="screen" id="materials">
+            <div class="detail-header">
+                <div>
+                    <p class="eyebrow">成果详情</p>
+                    <h2>江苏省职业技能大赛裁判工作</h2>
+                    <p class="muted">其他有价值工作（自定义） / 过程性工作 / 2026 年</p>
+                </div>
+                <span class="pill warn">待完善</span>
+            </div>
+            <div class="two-column">
+                <section class="panel">
+                    <div class="panel-title">
+                        <h3>支撑材料</h3>
+                        <button class="primary-button">上传材料</button>
+                    </div>
+                    <div class="upload-zone">
+                        <strong>拖入文件或点击上传</strong>
+                        <span>支持 PDF、Word、Excel、图片、压缩包；建议一次上传多个材料。</span>
+                    </div>
+                    <div class="file-list">
+                        <div class="file-card ok">
+                            <span>PDF</span>
+                            <div><strong>赛事裁判邀请函.pdf</strong><small>材料 001 / 已纳入导出</small></div>
+                        </div>
+                        <div class="file-card missing">
+                            <span>缺</span>
+                            <div><strong>现场工作证明或聘书</strong><small>建议补传，提升线下审核可信度</small></div>
+                        </div>
+                    </div>
+                </section>
+                <section class="panel">
+                    <div class="panel-title">
+                        <h3>完整性检查</h3>
+                    </div>
+                    <div class="checklist">
+                        <label><input type="checkbox" checked> 基本信息完整</label>
+                        <label><input type="checkbox" checked> 已填写价值说明</label>
+                        <label><input type="checkbox"> 支撑材料不少于 2 份</label>
+                        <label><input type="checkbox"> 已填写申报积分</label>
+                    </div>
+                    <div class="score-card">
+                        <span>当前申报积分</span>
+                        <strong>8</strong>
+                        <button class="ghost-button">编辑分值</button>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="screen" id="export">
+            <section class="panel">
+                <div class="panel-title">
+                    <div>
+                        <h3>导出中心</h3>
+                        <p class="muted">一键生成年度清单和按类别整理好的材料包。</p>
+                    </div>
+                    <button class="primary-button">生成 2026 年度材料包</button>
+                </div>
+                <div class="export-preview">
+                    <div class="folder-tree">
+                        <strong>2026年度绩效申报材料_张老师.zip</strong>
+                        <span>01_个人项目申报表.xlsx</span>
+                        <span>04_材料目录.xlsx</span>
+                        <span>05_支撑材料/03_教学/</span>
+                        <span>05_支撑材料/10_其他有价值工作（自定义）/</span>
+                    </div>
+                    <div class="export-summary">
+                        <div><span>可导出成果</span><strong>17</strong></div>
+                        <div><span>待完善成果</span><strong>6</strong></div>
+                        <div><span>材料文件</span><strong>41</strong></div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <section class="screen" id="admin">
+            <section class="panel">
+                <div class="panel-title">
+                    <div>
+                        <h3>管理维护</h3>
+                        <p class="muted">管理员只做账号、规则和导出维护，不做线上审核。</p>
+                    </div>
+                </div>
+                <div class="admin-grid">
+                    <article><strong>教师账号</strong><span>新增、停用、重置密码、批量导入</span></article>
+                    <article><strong>绩效规则</strong><span>维护 9 大类、小类、说明和自定义兜底类</span></article>
+                    <article><strong>年度汇总</strong><span>按部门查看准备状态、缺材料和申报积分</span></article>
+                    <article><strong>批量导出</strong><span>按教师分包生成 ZIP，便于线下审核</span></article>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const titles = {
+            dashboard: "年度工作台",
+            records: "成果库",
+            wizard: "新增成果",
+            materials: "材料详情",
+            export: "导出中心",
+            admin: "管理维护"
+        };
+
+        function showScreen(id) {
+            document.querySelectorAll(".screen").forEach((screen) => {
+                screen.classList.toggle("active", screen.id === id);
+            });
+            document.querySelectorAll(".nav-item").forEach((item) => {
+                item.classList.toggle("active", item.dataset.screen === id);
+            });
+            document.getElementById("screen-title").textContent = titles[id];
+        }
+
+        document.querySelectorAll("[data-screen], [data-screen-link]").forEach((control) => {
+            control.addEventListener("click", () => {
+                showScreen(control.dataset.screen || control.dataset.screenLink);
+            });
+        });
+    </script>
+</body>
+</html>
