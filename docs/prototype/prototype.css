@@ -332,26 +332,6 @@ h3 {
     background: linear-gradient(90deg, transparent, #2f7cff, transparent);
 }
 
-.feature-strip {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-}
-
-.feature-card {
-    min-height: 150px;
-    display: grid;
-    align-content: end;
-    gap: 8px;
-    border: 0;
-    border-radius: 16px;
-    padding: 18px;
-    text-align: left;
-    color: var(--ink);
-    box-shadow: var(--shadow);
-}
-
-.feature-card span,
 .quick span {
     width: 44px;
     height: 44px;
@@ -362,35 +342,16 @@ h3 {
     font-weight: 800;
 }
 
-.feature-card small {
-    color: var(--muted);
-}
-
-.feature-card.blue {
-    background: linear-gradient(135deg, #d9ebff, #f8fbff);
-}
-
-.feature-card.blue span,
 .q1 span,
 .q4 span {
     background: linear-gradient(135deg, #1978ff, #4dabff);
 }
 
-.feature-card.violet {
-    background: linear-gradient(135deg, #ece6ff, #fbfaff);
-}
-
-.feature-card.violet span,
 .q2 span,
 .q5 span {
     background: linear-gradient(135deg, #725cff, #a184ff);
 }
 
-.feature-card.green {
-    background: linear-gradient(135deg, #dffbe9, #f8fffb);
-}
-
-.feature-card.green span,
 .q3 span {
     background: linear-gradient(135deg, #16c979, #34dda1);
 }
@@ -481,10 +442,14 @@ h3 {
 }
 
 .lower-grid,
-.wizard-layout,
 .export-preview {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(320px, .85fr);
+    gap: 16px;
+}
+
+.wizard-layout {
+    display: grid;
     gap: 16px;
 }
 
@@ -643,10 +608,16 @@ h3 {
     text-align: right;
 }
 
-.filters,
-.form-grid {
+.filters {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 18px;
 }
@@ -675,6 +646,14 @@ textarea {
 }
 
 .wide {
+    grid-column: span 3;
+}
+
+.full {
+    grid-column: 1 / -1;
+}
+
+.form-grid label:not(.wide):not(.full) {
     grid-column: span 2;
 }
 
@@ -766,10 +745,37 @@ textarea {
     background: linear-gradient(180deg, #fffaf0, #ffffff);
 }
 
+.rule-heading {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.rule-heading .badge {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
 .rule-card p,
 .rule-card li {
     color: #6a5a4a;
     line-height: 1.7;
+}
+
+.rule-card ul {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rule-card li {
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, .72);
 }
 
 .detail-banner {
@@ -938,7 +944,6 @@ textarea {
 
     .hero-card,
     .lower-grid,
-    .wizard-layout,
     .export-preview,
     .insight-rail {
         grid-template-columns: 1fr;
@@ -971,7 +976,6 @@ textarea {
         font-size: 26px;
     }
 
-    .feature-strip,
     .metric-grid,
     .mini-stat-grid,
     .quick-grid,
@@ -982,8 +986,15 @@ textarea {
         grid-template-columns: 1fr;
     }
 
-    .wide {
+    .wide,
+    .full,
+    .form-grid label:not(.wide):not(.full) {
         grid-column: span 1;
+    }
+
+    .rule-heading,
+    .rule-card ul {
+        grid-template-columns: 1fr;
     }
 
     .record-row,

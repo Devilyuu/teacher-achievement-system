@@ -62,24 +62,6 @@
                         </div>
                     </article>
 
-                    <section class="feature-strip" aria-label="常用操作">
-                        <button class="feature-card blue" data-screen-link="records">
-                            <span>库</span>
-                            <strong>成果库</strong>
-                            <small>按年度和类别检索</small>
-                        </button>
-                        <button class="feature-card violet" data-screen-link="wizard">
-                            <span>填</span>
-                            <strong>快速填报</strong>
-                            <small>规则提示跟随类别</small>
-                        </button>
-                        <button class="feature-card green" data-screen-link="materials">
-                            <span>材</span>
-                            <strong>补支撑材料</strong>
-                            <small>自动标记缺材料</small>
-                        </button>
-                    </section>
-
                     <section class="data-board card">
                         <div class="section-title">
                             <h3>数据看板</h3>
@@ -145,27 +127,31 @@
 
                 <section class="screen" id="wizard">
                     <div class="wizard-layout">
+                        <aside class="rule-card">
+                            <div class="rule-heading">
+                                <span class="badge">规则提示</span>
+                                <div>
+                                    <h3>自定义工作事项</h3>
+                                    <p>用于记录现有 9 大类无法覆盖、但教师认为有价值且需要留痕的工作。系统不自动认定赋分，线下审核为准。</p>
+                                </div>
+                            </div>
+                            <ul><li>必须填写工作类型、内容和价值说明。</li><li>建议上传聘书、通知、现场照片、工作证明。</li><li>导出时进入第 10 类材料目录。</li></ul>
+                        </aside>
                         <section class="card">
                             <div class="stepper"><span class="active">1 基本信息</span><span>2 类别与规则</span><span>3 分值与材料</span><span>4 确认</span></div>
                             <div class="section-title"><h3>新增成果</h3><p>按“先类别、再规则、后材料”的顺序填写。</p></div>
                             <div class="form-grid">
                                 <label>年度<input value="2026"></label>
                                 <label>申报性质<select><option>过程性工作</option><option>成果性工作</option></select></label>
-                                <label class="wide">成果名称<input value="江苏省职业技能大赛裁判工作"></label>
+                                <label class="full">成果名称<input value="江苏省职业技能大赛裁判工作"></label>
                                 <label>成果日期/周期<input value="2026.04.12-2026.04.15"></label>
                                 <label>本人角色<input value="裁判 / 校外专家"></label>
                                 <label>大类<select><option>其他有价值工作（自定义）</option><option>教学</option><option>科研与社会服务工作</option></select></label>
                                 <label>小类<select><option>自定义工作事项</option></select></label>
-                                <label class="wide">价值说明<textarea>受赛事组委会邀请担任裁判，参与赛项评分、专家评议和现场技术指导。</textarea></label>
+                                <label class="full">价值说明<textarea>受赛事组委会邀请担任裁判，参与赛项评分、专家评议和现场技术指导。</textarea></label>
                             </div>
                             <div class="form-actions"><button class="secondary-button">保存草稿</button><button class="primary-button" data-screen-link="materials">下一步：上传材料</button></div>
                         </section>
-                        <aside class="rule-card">
-                            <span class="badge">规则提示</span>
-                            <h3>自定义工作事项</h3>
-                            <p>用于记录现有 9 大类无法覆盖、但教师认为有价值且需要留痕的工作。系统不自动认定赋分，线下审核为准。</p>
-                            <ul><li>必须填写工作类型、内容和价值说明。</li><li>建议上传聘书、通知、现场照片、工作证明。</li><li>导出时进入第 10 类材料目录。</li></ul>
-                        </aside>
                     </div>
                 </section>
 
