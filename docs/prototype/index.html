@@ -33,6 +33,7 @@
                 <h1 id="screen-title">年度首页</h1>
             </div>
             <div class="topbar-actions">
+                <label class="year-switcher"><span>查看年度</span><select><option>2027 准备中</option><option selected>2026 整理中</option><option>2025 已归档</option></select></label>
                 <button class="link-button">进入管理端</button>
                 <button class="avatar-button" aria-label="当前用户">张</button>
             </div>
@@ -52,6 +53,17 @@
                             </div>
                         </div>
                     </article>
+
+                    <section class="year-archive-strip card">
+                        <div class="section-title">
+                            <div><h3>年度档案</h3><p>每年成果和支撑材料独立保存，切换年度即可回看和重新下载。</p></div>
+                        </div>
+                        <div class="year-state-grid">
+                            <article><b>2027</b><span class="pill">准备中</span><small>新年度填报，不覆盖历史材料。</small></article>
+                            <article class="active"><b>2026</b><span class="pill warn">整理中</span><small>当前查看年度，可继续补材料并导出。</small></article>
+                            <article><b>2025</b><span class="pill ok">已归档</span><small>限制编辑，但可查看清单和下载材料包。</small></article>
+                        </div>
+                    </section>
 
                     <section class="data-board card">
                         <div class="section-title">
@@ -100,7 +112,7 @@
                             <button class="primary-button" data-screen-link="wizard">新增成果</button>
                         </div>
                         <div class="filters">
-                            <label>年度<select><option>2026</option><option>2025</option></select></label>
+                            <label>年度<select><option>2027</option><option selected>2026</option><option>2025（已归档）</option></select></label>
                             <label>大类<select><option>全部类别</option><option>师德师风及党建思政工作</option><option>教师发展</option><option>教学</option><option>产教融合工作</option><option>学生工作</option><option>科研与社会服务工作</option><option>国际交流与合作</option><option>育人成效</option><option>监管类工作</option><option>其他有价值工作（自定义）</option></select></label>
                             <label>状态<select><option>全部状态</option><option>待完善</option><option>可申报</option></select></label>
                             <label>搜索<input value="省赛 裁判"></label>
@@ -189,10 +201,18 @@
 
                 <section class="screen" id="export">
                     <section class="card">
-                        <div class="section-title"><div><h3>导出中心</h3><p>一键生成年度清单和按类别整理好的材料包。</p></div><button class="primary-button">生成 2026 年度材料包</button></div>
+                        <div class="section-title"><div><h3>导出中心</h3><p>一键生成年度清单和按类别整理好的材料包；历史年度可重新下载。</p></div><button class="primary-button">生成 2026 年度材料包</button></div>
                         <div class="export-preview">
                             <div class="folder-tree"><strong>2026年度绩效申报材料_张老师.zip</strong><span>01_个人项目申报表.xlsx</span><span>04_材料目录.xlsx</span><span>05_支撑材料/03_教学/</span><span>05_支撑材料/10_其他有价值工作（自定义）/</span></div>
                             <div class="export-summary"><div><span>可导出成果</span><strong>17</strong></div><div><span>待完善成果</span><strong>6</strong></div><div><span>材料文件</span><strong>41</strong></div></div>
+                        </div>
+                    </section>
+                    <section class="card archive-downloads">
+                        <div class="section-title"><div><h3>历史年度材料包</h3><p>归档年度默认只读，仍支持查看清单、下载支撑材料和重新导出 ZIP。</p></div></div>
+                        <div class="archive-list">
+                            <article><div><strong>2026 年度</strong><span class="pill warn">整理中</span><small>23 条成果 / 41 份材料 / 最近导出 2026.12.28</small></div><button class="secondary-button">下载材料包</button></article>
+                            <article><div><strong>2025 年度</strong><span class="pill ok">已归档</span><small>19 条成果 / 36 份材料 / 已锁定编辑</small></div><button class="secondary-button">下载材料包</button></article>
+                            <article><div><strong>2024 年度</strong><span class="pill ok">已归档</span><small>16 条成果 / 29 份材料 / 可重新导出</small></div><button class="secondary-button">查看清单</button></article>
                         </div>
                     </section>
                 </section>

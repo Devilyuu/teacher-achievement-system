@@ -182,6 +182,31 @@ h3 {
     gap: 10px;
 }
 
+.year-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    border-radius: 12px;
+    padding: 0 10px;
+    color: #31506f;
+    background: #eef5ff;
+    font-weight: 800;
+}
+
+.year-switcher span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.year-switcher select {
+    min-height: 28px;
+    border: 0;
+    color: var(--blue-deep);
+    background: transparent;
+    font-weight: 800;
+}
+
 .link-button,
 .avatar-button,
 .primary-button,
@@ -339,6 +364,40 @@ h3 {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
+}
+
+.year-archive-strip {
+    margin-top: 16px;
+}
+
+.year-state-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.year-state-grid article {
+    display: grid;
+    gap: 8px;
+    border: 1px solid #e7eef8;
+    border-radius: 14px;
+    padding: 14px;
+    background: linear-gradient(180deg, #f8fbff, #ffffff);
+}
+
+.year-state-grid article.active {
+    border-color: rgba(47, 124, 255, .34);
+    background: linear-gradient(180deg, #eef6ff, #ffffff);
+    box-shadow: 0 10px 22px rgba(47, 124, 255, .1);
+}
+
+.year-state-grid b {
+    font-size: 22px;
+}
+
+.year-state-grid small {
+    color: var(--muted);
+    line-height: 1.5;
 }
 
 .mini-stat-grid div,
@@ -959,6 +1018,41 @@ textarea {
     gap: 12px;
 }
 
+.archive-downloads {
+    margin-top: 16px;
+}
+
+.archive-list {
+    display: grid;
+    gap: 12px;
+}
+
+.archive-list article {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 14px;
+    border-radius: 14px;
+    padding: 14px;
+    background: linear-gradient(180deg, #f8fbff, #ffffff);
+}
+
+.archive-list article > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+}
+
+.archive-list strong {
+    font-size: 16px;
+}
+
+.archive-list small {
+    flex-basis: 100%;
+    color: var(--muted);
+}
+
 .admin-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -975,6 +1069,10 @@ textarea {
 @media (max-width: 1220px) {
     .content-grid {
         grid-template-columns: 1fr;
+    }
+
+    .year-state-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .category-progress-grid {
@@ -1017,6 +1115,10 @@ textarea {
         grid-template-columns: 1fr;
     }
 
+    .year-state-grid {
+        grid-template-columns: 1fr;
+    }
+
     .category-progress-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1038,6 +1140,15 @@ textarea {
     .hero-actions,
     .form-actions {
         flex-wrap: wrap;
+    }
+
+    .year-switcher,
+    .archive-list article {
+        width: 100%;
+    }
+
+    .archive-list article {
+        grid-template-columns: 1fr;
     }
 
     .hero-card {
