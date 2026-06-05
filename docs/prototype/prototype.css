@@ -247,10 +247,8 @@ h3 {
 }
 
 .hero-card {
-    min-height: 260px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 22px;
+    min-height: 220px;
+    display: block;
     padding: 30px 38px;
     overflow: hidden;
     background:
@@ -273,63 +271,6 @@ h3 {
     color: #fff;
     background: linear-gradient(135deg, #096fff, #7b5cff);
     font-weight: 800;
-}
-
-.hero-visual {
-    position: relative;
-    display: grid;
-    place-items: center;
-}
-
-.doc-stack {
-    position: relative;
-    width: 190px;
-    height: 150px;
-    transform: rotate(-10deg);
-}
-
-.doc-stack span,
-.doc-stack strong {
-    position: absolute;
-    border-radius: 14px;
-    box-shadow: 0 18px 35px rgba(84, 113, 190, .22);
-}
-
-.doc-stack span:nth-child(1) {
-    inset: 30px 8px 8px 42px;
-    background: linear-gradient(135deg, #7ee8b6, #26d7a4);
-}
-
-.doc-stack span:nth-child(2) {
-    inset: 10px 34px 30px 16px;
-    background: linear-gradient(135deg, #79c6ff, #316cff);
-}
-
-.doc-stack span:nth-child(3) {
-    inset: 0 0 56px 82px;
-    background: linear-gradient(135deg, #c6b7ff, #725cff);
-}
-
-.doc-stack strong {
-    right: 30px;
-    bottom: 28px;
-    width: 76px;
-    height: 58px;
-    display: grid;
-    place-items: center;
-    color: #fff;
-    background: linear-gradient(135deg, #ffbd39, #ff7a45);
-    font-size: 20px;
-}
-
-.spark-line {
-    position: absolute;
-    right: 24px;
-    bottom: 42px;
-    width: 180px;
-    height: 4px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, transparent, #2f7cff, transparent);
 }
 
 .helper-list b {
@@ -368,13 +309,11 @@ h3 {
     margin-bottom: 18px;
 }
 
-.tabs,
 .rank-tabs {
     display: flex;
     gap: 6px;
 }
 
-.tabs button,
 .rank-tabs button {
     border: 0;
     border-radius: 999px;
@@ -384,7 +323,6 @@ h3 {
     background: transparent;
 }
 
-.tabs .active,
 .rank-tabs .active {
     color: var(--blue);
     background: #edf5ff;
@@ -438,71 +376,13 @@ h3 {
 .lower-grid,
 .export-preview {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, .85fr);
+    grid-template-columns: 1fr;
     gap: 16px;
 }
 
 .wizard-layout {
     display: grid;
     gap: 16px;
-}
-
-.donut-card {
-    display: flex;
-    align-items: center;
-    gap: 28px;
-}
-
-.donut {
-    width: 132px;
-    height: 132px;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background:
-        radial-gradient(circle at center, #fff 55%, transparent 56%),
-        conic-gradient(var(--blue) 0 74%, var(--orange) 74% 86%, var(--green) 86% 100%);
-}
-
-.donut strong,
-.donut span {
-    grid-area: 1 / 1;
-}
-
-.donut strong {
-    margin-top: -18px;
-    font-size: 28px;
-}
-
-.donut span {
-    margin-top: 34px;
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.legend {
-    display: grid;
-    gap: 10px;
-}
-
-.legend i {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin-right: 8px;
-    border-radius: 999px;
-}
-
-.blue-dot {
-    background: var(--blue);
-}
-
-.orange-dot {
-    background: var(--orange);
-}
-
-.green-dot {
-    background: var(--green);
 }
 
 .bar-list {
@@ -549,8 +429,7 @@ h3 {
     min-height: 520px;
 }
 
-.helper-list,
-.material-tips {
+.helper-list {
     display: grid;
     gap: 12px;
 }
@@ -568,15 +447,6 @@ h3 {
 .helper-list span {
     color: var(--muted);
     line-height: 1.55;
-}
-
-.material-tips span {
-    display: block;
-    border-radius: 12px;
-    padding: 12px;
-    color: #536071;
-    line-height: 1.6;
-    background: #f7faff;
 }
 
 .rank-list {
