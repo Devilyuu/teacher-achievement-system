@@ -238,8 +238,7 @@ h3 {
 
 .card,
 .side-card,
-.hero-card,
-.rule-card {
+.hero-card {
     border: 1px solid rgba(255, 255, 255, .78);
     border-radius: var(--radius);
     background: rgba(255, 255, 255, .92);
@@ -615,75 +614,32 @@ textarea {
     background: linear-gradient(135deg, var(--blue), var(--violet));
 }
 
-.rule-card {
-    align-self: start;
+.category-reference {
     padding: 22px;
     background: linear-gradient(180deg, #fffaf0, #ffffff);
 }
 
-.rule-heading {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-}
-
-.rule-heading .badge {
-    margin-bottom: 0;
-    white-space: nowrap;
-}
-
-.rule-card p,
-.rule-card li {
-    color: #6a5a4a;
-    line-height: 1.7;
-}
-
-.rule-card ul {
+.category-summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-    margin: 16px 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.category-reference {
-    padding: 22px;
-}
-
-.category-map {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
 }
 
-.category-map article {
+.category-summary article {
     display: grid;
     gap: 8px;
     border-radius: 14px;
     padding: 14px;
-    background: linear-gradient(180deg, #f6f9ff, #ffffff);
+    background: rgba(255, 255, 255, .78);
 }
 
-.category-map strong {
+.category-summary strong {
     color: #243145;
 }
 
-.category-map span,
-.category-map em {
+.category-summary span {
     color: var(--muted);
     line-height: 1.6;
-}
-
-.category-map em {
-    font-style: normal;
-}
-
-.rule-card li {
-    border-radius: 12px;
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, .72);
 }
 
 .detail-banner {
@@ -899,9 +855,7 @@ textarea {
         grid-column: span 1;
     }
 
-    .rule-heading,
-    .rule-card ul,
-    .category-map {
+    .category-summary {
         grid-template-columns: 1fr;
     }
 

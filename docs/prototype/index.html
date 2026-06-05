@@ -106,34 +106,6 @@
 
                 <section class="screen" id="wizard">
                     <div class="wizard-layout">
-                        <aside class="rule-card">
-                            <div class="rule-heading">
-                                <span class="badge">规则提示</span>
-                                <div>
-                                    <h3>自定义工作事项</h3>
-                                    <p>用于记录现有 9 大类无法覆盖、但教师认为有价值且需要留痕的工作。系统不自动认定赋分，线下审核为准。</p>
-                                </div>
-                            </div>
-                            <ul><li>必须填写工作类型、内容和价值说明。</li><li>建议上传聘书、通知、现场照片、工作证明。</li><li>导出时进入第 10 类材料目录。</li></ul>
-                        </aside>
-                        <section class="category-reference card">
-                            <div class="section-title">
-                                <div><h3>大类 / 小类参考</h3><p>选择大类后，系统展示常见小类、适用场景和推荐支撑材料，帮助老师减少归类犹豫。</p></div>
-                                <span class="pill">当前大类：其他有价值工作</span>
-                            </div>
-                            <div class="category-map">
-                                <article>
-                                    <strong>自定义工作事项</strong>
-                                    <span>省赛裁判、校外专家评审、临时专项支持、无法归入既有小类但具有工作价值的事项。</span>
-                                    <em>推荐材料：聘书、通知、工作证明、现场照片、会议纪要</em>
-                                </article>
-                                <article>
-                                    <strong>可转正式小类事项</strong>
-                                    <span>后续高频出现且审核口径稳定的事项，可由管理员沉淀为正式小类。</span>
-                                    <em>推荐材料：规则说明、部门认定意见、同类案例</em>
-                                </article>
-                            </div>
-                        </section>
                         <section class="card">
                             <div class="stepper"><span class="active">1 基本信息</span><span>2 类别与规则</span><span>3 分值与材料</span><span>4 确认</span></div>
                             <div class="section-title"><h3>新增成果</h3><p>按“先类别、再规则、后材料”的顺序填写。</p></div>
@@ -148,6 +120,17 @@
                                 <label class="full">价值说明<textarea>受赛事组委会邀请担任裁判，参与赛项评分、专家评议和现场技术指导。</textarea></label>
                             </div>
                             <div class="form-actions"><button class="secondary-button">保存草稿</button><button class="primary-button" data-screen-link="materials">下一步：上传材料</button></div>
+                        </section>
+                        <section class="category-reference card">
+                            <div class="section-title">
+                                <div><h3>当前分类说明</h3><p>根据上方选择的“大类”和“小类”自动更新，帮助判断这条成果是否放对位置。</p></div>
+                                <span class="pill">其他有价值工作 / 自定义工作事项</span>
+                            </div>
+                            <div class="category-summary">
+                                <article><strong>适用范围</strong><span>无法归入现有 9 大类小类，但确有工作价值并希望在年度材料中留痕的事项，例如省赛裁判、校外专家评审、临时专项支持。</span></article>
+                                <article><strong>填报重点</strong><span>写清工作来源、承担角色、工作内容和价值说明。系统仅纳入清单和材料包，最终是否认定与赋分仍由线下审核决定。</span></article>
+                                <article><strong>可选小类</strong><span>自定义工作事项；后续高频事项可由管理员沉淀为正式小类。</span></article>
+                            </div>
                         </section>
                     </div>
                 </section>
@@ -198,14 +181,6 @@
             </div>
 
             <aside class="insight-rail">
-                <section class="side-card">
-                    <div class="section-title"><h3>分类参考</h3></div>
-                    <div class="helper-list">
-                        <article><b>教学</b><span>课程建设、教学比赛、教材、教改项目等，通常需要证书、立项书、平台截图。</span></article>
-                        <article><b>科研与社会服务</b><span>论文、课题、专利、培训服务、技术服务等，通常需要成果证明或合同材料。</span></article>
-                        <article><b>其他有价值工作</b><span>省赛裁判、校外专家等无法归入既有小类的事项，需重点写明价值说明。</span></article>
-                    </div>
-                </section>
                 <section class="side-card grow">
                     <div class="section-title"><h3>待处理排行</h3></div>
                     <div class="rank-tabs"><button class="active">缺材料</button><button>缺分值</button><button>可导出</button></div>
@@ -214,6 +189,14 @@
                         <button data-screen-link="materials"><b>2</b><span>在线精品课程建设</span><em>缺 2 份</em></button>
                         <button data-screen-link="materials"><b>3</b><span>社会培训项目</span><em>缺分值</em></button>
                         <button data-screen-link="materials"><b>4</b><span>教研论文发表</span><em>待确认</em></button>
+                    </div>
+                </section>
+                <section class="side-card">
+                    <div class="section-title"><h3>分类参考</h3></div>
+                    <div class="helper-list">
+                        <article><b>教学</b><span>课程建设、教学比赛、教材、教改项目等，通常需要证书、立项书、平台截图。</span></article>
+                        <article><b>科研与社会服务</b><span>论文、课题、专利、培训服务、技术服务等，通常需要成果证明或合同材料。</span></article>
+                        <article><b>其他有价值工作</b><span>省赛裁判、校外专家等无法归入既有小类的事项，需重点写明价值说明。</span></article>
                     </div>
                 </section>
             </aside>
