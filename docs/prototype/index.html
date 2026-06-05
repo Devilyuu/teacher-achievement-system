@@ -73,11 +73,21 @@
 
                     <section class="lower-grid">
                         <article class="card">
-                            <div class="section-title"><h3>类别进度</h3><p>展示本年度各类成果的整理状态，帮助判断下一步应优先补哪类。</p></div>
-                            <div class="bar-list">
-                                <label>教学<span><i style="width: 78%"></i></span><em>8 条</em></label>
-                                <label>科研与社会服务<span><i style="width: 54%"></i></span><em>5 条</em></label>
-                                <label>其他有价值工作<span><i style="width: 18%"></i></span><em>1 条</em></label>
+                            <div class="section-title">
+                                <div><h3>类别进度</h3><p>按 9 个标准大类展示本年度整理状态，另保留自定义兜底类。</p></div>
+                                <button class="secondary-button compact">分类与积分规则</button>
+                            </div>
+                            <div class="category-progress-grid">
+                                <article><div><b>01</b><strong>师德师风及党建思政工作</strong></div><span>2 条 · 完整</span><i><em style="width: 86%"></em></i></article>
+                                <article><div><b>02</b><strong>教师发展</strong></div><span>3 条 · 缺 1 项</span><i><em style="width: 68%"></em></i></article>
+                                <article class="active"><div><b>03</b><strong>教学</strong></div><span>8 条 · 缺 2 项</span><i><em style="width: 78%"></em></i></article>
+                                <article><div><b>04</b><strong>产教融合工作</strong></div><span>2 条 · 整理中</span><i><em style="width: 52%"></em></i></article>
+                                <article><div><b>05</b><strong>学生工作</strong></div><span>1 条 · 完整</span><i><em style="width: 74%"></em></i></article>
+                                <article><div><b>06</b><strong>科研与社会服务工作</strong></div><span>5 条 · 缺分值</span><i><em style="width: 54%"></em></i></article>
+                                <article><div><b>07</b><strong>国际交流与合作</strong></div><span>0 条 · 暂无</span><i><em style="width: 8%"></em></i></article>
+                                <article><div><b>08</b><strong>育人成效</strong></div><span>3 条 · 完整</span><i><em style="width: 80%"></em></i></article>
+                                <article><div><b>09</b><strong>监管类工作</strong></div><span>1 条 · 待确认</span><i><em style="width: 36%"></em></i></article>
+                                <article class="custom"><div><b>自</b><strong>其他有价值工作</strong></div><span>1 条 · 待完善</span><i><em style="width: 28%"></em></i></article>
                             </div>
                         </article>
                     </section>
@@ -91,7 +101,7 @@
                         </div>
                         <div class="filters">
                             <label>年度<select><option>2026</option><option>2025</option></select></label>
-                            <label>大类<select><option>全部类别</option><option>教学</option><option>科研与社会服务工作</option></select></label>
+                            <label>大类<select><option>全部类别</option><option>师德师风及党建思政工作</option><option>教师发展</option><option>教学</option><option>产教融合工作</option><option>学生工作</option><option>科研与社会服务工作</option><option>国际交流与合作</option><option>育人成效</option><option>监管类工作</option><option>其他有价值工作（自定义）</option></select></label>
                             <label>状态<select><option>全部状态</option><option>待完善</option><option>可申报</option></select></label>
                             <label>搜索<input value="省赛 裁判"></label>
                         </div>
@@ -115,7 +125,7 @@
                                 <label class="full">成果名称<input value="江苏省职业技能大赛裁判工作"></label>
                                 <label>成果日期/周期<input value="2026.04.12-2026.04.15"></label>
                                 <label>本人角色<input value="裁判 / 校外专家"></label>
-                                <label>大类<select><option>其他有价值工作（自定义）</option><option>教学</option><option>科研与社会服务工作</option></select></label>
+                                <label>大类<select><option>其他有价值工作（自定义）</option><option>师德师风及党建思政工作</option><option>教师发展</option><option>教学</option><option>产教融合工作</option><option>学生工作</option><option>科研与社会服务工作</option><option>国际交流与合作</option><option>育人成效</option><option>监管类工作</option></select></label>
                                 <label>小类<select><option>自定义工作事项</option></select></label>
                                 <label class="full">价值说明<textarea>受赛事组委会邀请担任裁判，参与赛项评分、专家评议和现场技术指导。</textarea></label>
                             </div>
@@ -123,13 +133,14 @@
                         </section>
                         <section class="category-reference card">
                             <div class="section-title">
-                                <div><h3>当前分类说明</h3><p>根据上方选择的“大类”和“小类”自动更新，帮助判断这条成果是否放对位置。</p></div>
+                                <div><h3>当前分类说明</h3><p>跟随上方选择自动更新，用来判断是否放对类别、材料是否足够、过程性工作能否留痕。</p></div>
                                 <span class="pill">其他有价值工作 / 自定义工作事项</span>
                             </div>
                             <div class="category-summary">
-                                <article><strong>适用范围</strong><span>无法归入现有 9 大类小类，但确有工作价值并希望在年度材料中留痕的事项，例如省赛裁判、校外专家评审、临时专项支持。</span></article>
-                                <article><strong>填报重点</strong><span>写清工作来源、承担角色、工作内容和价值说明。系统仅纳入清单和材料包，最终是否认定与赋分仍由线下审核决定。</span></article>
-                                <article><strong>可选小类</strong><span>自定义工作事项；后续高频事项可由管理员沉淀为正式小类。</span></article>
+                                <article><strong>类别定位</strong><span>无法归入现有 9 大类小类，但确有工作价值并希望在年度材料中留痕的事项，例如省赛裁判、校外专家评审、临时专项支持。</span></article>
+                                <article><strong>过程材料</strong><span>短期内尚未形成正式成果时，可先上传邀请函、会议通知、过程照片、平台截图、阶段说明等材料。</span></article>
+                                <article><strong>常见支撑</strong><span>聘书、邀请函、工作证明、任务安排、成果截图、相关文件扫描件。材料越能证明本人角色越好。</span></article>
+                                <article><strong>审核提醒</strong><span>系统只负责纳入清单和材料包，最终是否认定与赋分仍由线下审核决定；高频事项可沉淀为正式小类。</span></article>
                             </div>
                         </section>
                     </div>
@@ -192,11 +203,25 @@
                     </div>
                 </section>
                 <section class="side-card">
-                    <div class="section-title"><h3>分类参考</h3></div>
-                    <div class="helper-list">
-                        <article><b>教学</b><span>课程建设、教学比赛、教材、教改项目等，通常需要证书、立项书、平台截图。</span></article>
-                        <article><b>科研与社会服务</b><span>论文、课题、专利、培训服务、技术服务等，通常需要成果证明或合同材料。</span></article>
-                        <article><b>其他有价值工作</b><span>省赛裁判、校外专家等无法归入既有小类的事项，需重点写明价值说明。</span></article>
+                    <div class="section-title">
+                        <div><h3>分类参考</h3><p>只做轻量提示，完整规则在配置中心维护。</p></div>
+                    </div>
+                    <div class="helper-focus">
+                        <span class="pill">当前示例</span>
+                        <strong>其他有价值工作（自定义）</strong>
+                        <p>用于暂时无法归入标准小类、但教师认为需要申报或留痕的工作。</p>
+                    </div>
+                    <div class="helper-list compact-list">
+                        <details><summary><b>01</b><span>师德师风及党建思政工作</span></summary><p>党建、思政、师德相关荣誉、项目、活动等。</p></details>
+                        <details><summary><b>02</b><span>教师发展</span></summary><p>培训进修、双师素质、能力提升、人才称号等。</p></details>
+                        <details><summary><b>03</b><span>教学</span></summary><p>课程建设、教学比赛、教材、教改项目等。</p></details>
+                        <details><summary><b>04</b><span>产教融合工作</span></summary><p>校企合作、产业学院、实训基地、企业实践等。</p></details>
+                        <details><summary><b>05</b><span>学生工作</span></summary><p>班主任、导师、竞赛指导、就业创业指导等。</p></details>
+                        <details><summary><b>06</b><span>科研与社会服务工作</span></summary><p>论文、课题、专利、培训服务、技术服务等。</p></details>
+                        <details><summary><b>07</b><span>国际交流与合作</span></summary><p>国际项目、境外交流、合作办学、外事活动等。</p></details>
+                        <details><summary><b>08</b><span>育人成效</span></summary><p>学生获奖、人才培养质量、毕业生发展成果等。</p></details>
+                        <details><summary><b>09</b><span>监管类工作</span></summary><p>质量管理、督导检查、制度执行、专项监管等。</p></details>
+                        <details open><summary><b>自</b><span>其他有价值工作</span></summary><p>省赛裁判、校外专家等无法归入既有小类的事项，需重点写明价值说明。</p></details>
                     </div>
                 </section>
             </aside>
