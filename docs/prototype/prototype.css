@@ -644,7 +644,7 @@ h3 {
 
 .filters {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 18px;
 }
@@ -700,7 +700,7 @@ textarea {
 .record-row {
     width: 100%;
     display: grid;
-    grid-template-columns: 2fr 1.25fr .9fr .55fr .75fr .55fr;
+    grid-template-columns: 2fr 1.15fr .85fr .8fr .55fr .75fr .55fr;
     gap: 12px;
     align-items: center;
     border: 0;
@@ -1072,6 +1072,10 @@ textarea {
     }
 
     .year-state-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .filters {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
