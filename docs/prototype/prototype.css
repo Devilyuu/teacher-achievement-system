@@ -691,6 +691,11 @@ textarea {
     background: #e9fbf1;
 }
 
+.pill.rule {
+    color: #4e40d8;
+    background: #f0efff;
+}
+
 .stepper {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -754,6 +759,13 @@ textarea {
     color: var(--muted);
 }
 
+.detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 .upload-zone {
     display: grid;
     place-items: center;
@@ -776,7 +788,7 @@ textarea {
 }
 
 .file-list,
-.checklist {
+.status-list {
     display: grid;
     gap: 12px;
 }
@@ -815,29 +827,117 @@ textarea {
     color: var(--muted);
 }
 
-.checklist label {
-    grid-template-columns: 20px 1fr;
-    align-items: center;
-    color: var(--ink);
-    font-size: 14px;
+.status-list {
+    margin-bottom: 16px;
+}
+
+.status-item {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 10px;
+    align-items: flex-start;
+    border-radius: 14px;
+    padding: 12px;
+    background: #f7faff;
+}
+
+.status-item b {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 900;
+}
+
+.status-item.ok b {
+    background: linear-gradient(135deg, #20c978, #28db9e);
+}
+
+.status-item.warn b {
+    background: linear-gradient(135deg, #ffb321, #ff7a45);
+}
+
+.status-item.pending b {
+    background: linear-gradient(135deg, #96a4b8, #6e7d92);
+}
+
+.status-item span {
+    display: grid;
+    gap: 4px;
+}
+
+.status-item small {
+    color: var(--muted);
+    line-height: 1.5;
 }
 
 .score-card {
-    margin-top: 18px;
+    display: grid;
+    gap: 14px;
     border-radius: 16px;
     padding: 18px;
     background: linear-gradient(135deg, #eef5ff, #ffffff);
 }
 
-.score-card span {
+.score-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.score-card span,
+.rule-box p {
     color: var(--muted);
 }
 
 .score-card strong {
-    display: block;
-    margin: 8px 0 14px;
     color: var(--blue-deep);
     font-size: 34px;
+}
+
+.rule-box {
+    display: grid;
+    gap: 12px;
+    border: 1px solid #e1ebf8;
+    border-radius: 14px;
+    padding: 14px;
+    background: rgba(255, 255, 255, .76);
+}
+
+.rule-box h4 {
+    margin: 0;
+    color: #243145;
+    font-size: 15px;
+}
+
+.rule-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.rule-grid span {
+    display: grid;
+    gap: 4px;
+    border-radius: 12px;
+    padding: 10px;
+    background: #f6f9ff;
+    font-size: 12px;
+}
+
+.rule-grid em {
+    color: var(--ink);
+    font-style: normal;
+    font-weight: 800;
+}
+
+.rule-box p {
+    margin: 0;
+    line-height: 1.6;
+    font-size: 13px;
 }
 
 .folder-tree {
@@ -954,7 +1054,8 @@ textarea {
     .form-grid,
     .stepper,
     .admin-grid,
-    .category-progress-grid {
+    .category-progress-grid,
+    .rule-grid {
         grid-template-columns: 1fr;
     }
 

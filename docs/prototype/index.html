@@ -138,6 +138,7 @@
                             </div>
                             <div class="category-summary">
                                 <article><strong>类别定位</strong><span>无法归入现有 9 大类小类，但确有工作价值并希望在年度材料中留痕的事项，例如省赛裁判、校外专家评审、临时专项支持。</span></article>
+                                <article><strong>申报方式</strong><span>当前示例为个人申报；若规则来源标注为黄色或蓝色，系统会改为“项目负责人赋分”或“团队负责人申报并分配”。</span></article>
                                 <article><strong>过程材料</strong><span>短期内尚未形成正式成果时，可先上传邀请函、会议通知、过程照片、平台截图、阶段说明等材料。</span></article>
                                 <article><strong>常见支撑</strong><span>聘书、邀请函、工作证明、任务安排、成果截图、相关文件扫描件。材料越能证明本人角色越好。</span></article>
                                 <article><strong>审核提醒</strong><span>系统只负责纳入清单和材料包，最终是否认定与赋分仍由线下审核决定；高频事项可沉淀为正式小类。</span></article>
@@ -149,7 +150,7 @@
                 <section class="screen" id="materials">
                     <div class="detail-banner card">
                         <div><span class="badge">成果详情</span><h2>江苏省职业技能大赛裁判工作</h2><p>其他有价值工作（自定义） / 过程性工作 / 2026 年</p></div>
-                        <span class="pill warn">待完善</span>
+                        <div class="detail-tags"><span class="pill warn">待完善</span><span class="pill rule">个人申报</span></div>
                     </div>
                     <div class="lower-grid">
                         <section class="card">
@@ -161,9 +162,27 @@
                             </div>
                         </section>
                         <section class="card">
-                            <div class="section-title"><h3>完整性检查</h3></div>
-                            <div class="checklist"><label><input type="checkbox" checked> 基本信息完整</label><label><input type="checkbox" checked> 已填写价值说明</label><label><input type="checkbox"> 支撑材料不少于 2 份</label><label><input type="checkbox"> 已填写申报积分</label></div>
-                            <div class="score-card"><span>当前申报积分</span><strong>8</strong><button class="secondary-button">编辑分值</button></div>
+                            <div class="section-title"><div><h3>导出前检查</h3><p>由系统自动判断，老师只需按提醒补充信息或材料。</p></div></div>
+                            <div class="status-list">
+                                <div class="status-item ok"><b>✓</b><span><strong>基本信息完整</strong><small>年度、类别、成果名称和本人角色已填写。</small></span></div>
+                                <div class="status-item ok"><b>✓</b><span><strong>已填写价值说明</strong><small>过程性工作已说明来源、角色和工作内容。</small></span></div>
+                                <div class="status-item warn"><b>!</b><span><strong>建议补充 1 份材料</strong><small>当前 1/2 份，建议补上传现场工作证明或聘书。</small></span></div>
+                                <div class="status-item pending"><b>?</b><span><strong>积分待线下确认</strong><small>自定义事项可先填写建议分，最终以线下审核口径为准。</small></span></div>
+                            </div>
+                            <div class="score-card">
+                                <div class="score-head"><span>当前申报积分</span><strong>8</strong></div>
+                                <div class="rule-box">
+                                    <h4>当前小类赋分规则</h4>
+                                    <div class="rule-grid">
+                                        <span>计分方式<em>人工确认建议分</em></span>
+                                        <span>分值上限<em>以当年规则为准</em></span>
+                                        <span>申报方式<em>个人申报</em></span>
+                                        <span>负责人分配<em>否</em></span>
+                                    </div>
+                                    <p>若小类规则为“0.5 分/万元（上限 10 分，分数负责人分配）”，此处会显示为“项目负责人赋分”，普通教师只记录材料和建议说明。</p>
+                                </div>
+                                <button class="secondary-button">编辑建议分</button>
+                            </div>
                         </section>
                     </div>
                 </section>
@@ -183,7 +202,8 @@
                         <div class="section-title"><div><h3>配置中心</h3><p>管理员只做账号、规则和导出维护，不做线上审核。</p></div></div>
                         <div class="admin-grid">
                             <article><strong>教师账号</strong><span>新增、停用、重置密码、批量导入</span></article>
-                            <article><strong>绩效规则</strong><span>维护 9 大类、小类、说明和自定义兜底类</span></article>
+                            <article><strong>绩效规则</strong><span>维护 9 大类、小类、计分公式、上限、材料要求和申报方式。</span></article>
+                            <article><strong>赋分方式</strong><span>把 Excel 颜色转成文字规则：个人申报、项目负责人赋分、团队负责人申报并分配。</span></article>
                             <article><strong>年度汇总</strong><span>按部门查看准备状态、缺材料和申报积分</span></article>
                             <article><strong>批量导出</strong><span>按教师分包生成 ZIP，便于线下审核</span></article>
                         </div>
