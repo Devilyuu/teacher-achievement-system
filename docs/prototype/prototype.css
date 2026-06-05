@@ -332,7 +332,7 @@ h3 {
     background: linear-gradient(90deg, transparent, #2f7cff, transparent);
 }
 
-.quick span {
+.helper-list b {
     width: 44px;
     height: 44px;
     display: grid;
@@ -342,22 +342,16 @@ h3 {
     font-weight: 800;
 }
 
-.q1 span,
-.q4 span {
+.helper-list article:nth-child(1) b {
     background: linear-gradient(135deg, #1978ff, #4dabff);
 }
 
-.q2 span,
-.q5 span {
+.helper-list article:nth-child(2) b {
     background: linear-gradient(135deg, #725cff, #a184ff);
 }
 
-.q3 span {
+.helper-list article:nth-child(3) b {
     background: linear-gradient(135deg, #16c979, #34dda1);
-}
-
-.q6 span {
-    background: linear-gradient(135deg, #ffb321, #ff7a45);
 }
 
 .data-board,
@@ -555,22 +549,34 @@ h3 {
     min-height: 520px;
 }
 
-.quick-grid {
+.helper-list,
+.material-tips {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 12px;
 }
 
-.quick {
+.helper-list article {
     display: grid;
-    justify-items: center;
-    gap: 8px;
-    border: 0;
+    grid-template-columns: 44px 1fr;
+    gap: 10px;
+    align-items: center;
     border-radius: 14px;
-    padding: 8px 4px;
-    color: #475364;
-    background: transparent;
-    text-align: center;
+    padding: 12px;
+    background: linear-gradient(180deg, #f6f9ff, #ffffff);
+}
+
+.helper-list span {
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.material-tips span {
+    display: block;
+    border-radius: 12px;
+    padding: 12px;
+    color: #536071;
+    line-height: 1.6;
+    background: #f7faff;
 }
 
 .rank-list {
@@ -770,6 +776,38 @@ textarea {
     margin: 16px 0 0;
     padding: 0;
     list-style: none;
+}
+
+.category-reference {
+    padding: 22px;
+}
+
+.category-map {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.category-map article {
+    display: grid;
+    gap: 8px;
+    border-radius: 14px;
+    padding: 14px;
+    background: linear-gradient(180deg, #f6f9ff, #ffffff);
+}
+
+.category-map strong {
+    color: #243145;
+}
+
+.category-map span,
+.category-map em {
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.category-map em {
+    font-style: normal;
 }
 
 .rule-card li {
@@ -978,7 +1016,6 @@ textarea {
 
     .metric-grid,
     .mini-stat-grid,
-    .quick-grid,
     .filters,
     .form-grid,
     .stepper,
@@ -993,7 +1030,8 @@ textarea {
     }
 
     .rule-heading,
-    .rule-card ul {
+    .rule-card ul,
+    .category-map {
         grid-template-columns: 1fr;
     }
 
