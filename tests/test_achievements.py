@@ -1,5 +1,8 @@
 from fastapi.testclient import TestClient
 
+from app.database import SessionLocal
+from app.models import Achievement, ClaimNature, User
+
 
 def test_authenticated_admin_can_create_achievement_and_see_it_in_list(app):
     client = TestClient(app)
@@ -47,3 +50,101 @@ def test_achievements_requires_authentication(app):
     assert response.status_code in {401, 303}
     if response.status_code == 303:
         assert response.headers["location"] == "/login"
+
+
+def test_new_achievement_form_shows_level_and_offline_review_guidance(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/achievements/new")
+
+    assert response.status_code == 200
+    assert 'option value="国家级"' in response.text
+    assert 'option value="学院级"' in response.text
+    assert "最终以线下审核认定为准" in response.text
+
+
+def test_achievement_detail_shows_matching_rule_and_assignment_mode(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = Achievement(
+            user_id=admin.id,
+            year=2026,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="江苏省职业技能竞赛数字艺术赛项二等奖",
+            level="省级",
+            personal_role="团队成员",
+            claimed_score=5,
+        )
+        db.add(achievement)
+        db.commit()
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.get(f"/achievements/{achievement_id}")
+
+    assert response.status_code == 200
+    assert "团队负责人申报并分配" in response.text
+    assert "申报级别" in response.text
+    assert "省级" in response.text
+    assert "线下审核" in response.text
+
+
+def test_achievement_list_can_filter_and_export_by_year(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        db.add_all(
+            [
+                Achievement(
+                    user_id=admin.id,
+                    year=2026,
+                    category="教学",
+                    subcategory="教学成果奖申报及获奖",
+                    claim_nature=ClaimNature.result.value,
+                    title="2026年度成果",
+                    claimed_score=3,
+                ),
+                Achievement(
+                    user_id=admin.id,
+                    year=2027,
+                    category="教学",
+                    subcategory="教学成果奖申报及获奖",
+                    claim_nature=ClaimNature.result.value,
+                    title="2027年度成果",
+                    claimed_score=4,
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/achievements?year=2026")
+
+    assert response.status_code == 200
+    assert "2026年度成果" in response.text
+    assert "2027年度成果" not in response.text
+    assert 'href="/exports/2026/personal"' in response.text

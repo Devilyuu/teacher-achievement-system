@@ -1,39 +1,76 @@
 {% extends "base.html" %}
 
-{% block title %}Achievements{% endblock %}
+{% block title %}成果管理{% endblock %}
 
 {% block content %}
-<section>
-    <h2>Achievements</h2>
-    <p><a href="/achievements/new">Add achievement</a></p>
+<header class="page-header">
+    <div>
+        <p class="eyebrow">个人成果库</p>
+        <h1>{{ selected_year }} 年度成果</h1>
+        <p class="muted">按年度沉淀成果与过程材料，历史年度可随时查看和重新下载。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button secondary" href="/exports/{{ selected_year }}/personal">
+            <i data-lucide="archive-restore"></i>导出年度材料
+        </a>
+        <a class="button primary" href="/achievements/new">
+            <i data-lucide="plus"></i>新增成果
+        </a>
+    </div>
+</header>
 
+<section class="toolbar">
+    <form method="get" action="/achievements" class="year-filter">
+        <label for="year">查看年度</label>
+        <select id="year" name="year" onchange="this.form.submit()">
+            {% for year in available_years %}
+            <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }} 年</option>
+            {% endfor %}
+        </select>
+    </form>
+    <span class="record-count">共 {{ achievements|length }} 条记录</span>
+</section>
+
+<section class="panel table-panel">
     {% if achievements %}
+    <div class="table-scroll">
         <table>
             <thead>
                 <tr>
-                    <th>Year</th>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Claimed score</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>成果名称</th>
+                    <th>分类</th>
+                    <th>申报级别</th>
+                    <th>申报积分</th>
+                    <th>材料</th>
+                    <th>状态</th>
+                    <th aria-label="操作"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for achievement in achievements %}
-                    <tr>
-                        <td>{{ achievement.year }}</td>
-                        <td><a href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a></td>
-                        <td>{{ achievement.category }} / {{ achievement.subcategory }}</td>
-                        <td>{{ achievement.claimed_score }}</td>
-                        <td>{{ achievement.status }}</td>
-                        <td><a href="/achievements/{{ achievement.id }}/edit">Edit</a></td>
-                    </tr>
+                <tr>
+                    <td>
+                        <a class="record-title" href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a>
+                        <small>{{ achievement.claim_nature }}</small>
+                    </td>
+                    <td>{{ achievement.category }}<small>{{ achievement.subcategory }}</small></td>
+                    <td>{{ achievement.level or "未选择" }}</td>
+                    <td><strong>{{ achievement.claimed_score }}</strong></td>
+                    <td>{{ achievement.materials|length }} 份</td>
+                    <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
+                    <td><a class="icon-button" href="/achievements/{{ achievement.id }}/edit" title="编辑"><i data-lucide="pencil"></i></a></td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
     {% else %}
-        <p>No achievements yet.</p>
+    <div class="empty-state">
+        <span class="empty-icon"><i data-lucide="folder-open"></i></span>
+        <h2>该年度还没有成果记录</h2>
+        <p>成果和过程性工作都可以先记录，支撑材料可以稍后补充。</p>
+        <a class="button primary" href="/achievements/new"><i data-lucide="plus"></i>新增成果</a>
+    </div>
     {% endif %}
 </section>
 {% endblock %}

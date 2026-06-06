@@ -1,72 +1,82 @@
 {% extends "base.html" %}
 
-{% block title %}Achievement detail{% endblock %}
+{% block title %}{{ achievement.title }}{% endblock %}
 
 {% block content %}
-<section>
-    <h2>{{ achievement.title }}</h2>
-    <p>Status: {{ achievement.status }}</p>
-    <p>Year: {{ achievement.year }}</p>
-    <p>Category: {{ achievement.category }} / {{ achievement.subcategory }}</p>
-    <p>Claim nature: {{ achievement.claim_nature }}</p>
-    <p>Claimed score: {{ achievement.claimed_score }}</p>
-    <p>Current stage: {{ achievement.current_stage }}</p>
-    <p>Notes: {{ achievement.notes }}</p>
+<header class="page-header">
+    <div>
+        <a class="back-link" href="/achievements?year={{ achievement.year }}"><i data-lucide="arrow-left"></i>返回 {{ achievement.year }} 年成果</a>
+        <h1>{{ achievement.title }}</h1>
+        <div class="title-meta">
+            <span class="status status-{{ achievement.status }}">{{ achievement.status }}</span>
+            <span>{{ achievement.category }} / {{ achievement.subcategory }}</span>
+        </div>
+    </div>
+    <a class="button secondary" href="/achievements/{{ achievement.id }}/edit"><i data-lucide="pencil"></i>编辑</a>
+</header>
 
-    <p>
-        <a href="/achievements/{{ achievement.id }}/edit">Edit</a>
-        <a href="/achievements">Back to list</a>
-    </p>
+<div class="detail-layout">
+    <div class="detail-main">
+        <section class="panel detail-panel">
+            <div class="section-heading">
+                <span class="section-icon blue"><i data-lucide="clipboard-list"></i></span>
+                <div><h2>申报信息</h2><p>教师填报内容</p></div>
+            </div>
+            <dl class="detail-grid">
+                <div><dt>年度</dt><dd>{{ achievement.year }}</dd></div>
+                <div><dt>申报性质</dt><dd>{{ achievement.claim_nature }}</dd></div>
+                <div><dt>申报级别</dt><dd>{{ achievement.level or "不适用或待确认" }}</dd></div>
+                <div><dt>本人角色</dt><dd>{{ achievement.personal_role or "未填写" }}</dd></div>
+                <div><dt>申报积分</dt><dd class="score">{{ achievement.claimed_score }}</dd></div>
+                <div><dt>时间范围</dt><dd>{{ achievement.date_range or "未填写" }}</dd></div>
+                <div class="span-2"><dt>当前进展或价值说明</dt><dd>{{ achievement.current_stage or "未填写" }}</dd></div>
+                <div class="span-2"><dt>备注</dt><dd>{{ achievement.notes or "无" }}</dd></div>
+            </dl>
+        </section>
 
-    <form method="post" action="/achievements/{{ achievement.id }}/delete">
-        <button type="submit">Delete</button>
-    </form>
-</section>
-
-<section>
-    <h3>Materials</h3>
-    {% if achievement.materials %}
-        <table>
-            <thead>
-                <tr>
-                    <th>No.</th>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>File</th>
-                    <th>Size</th>
-                </tr>
-            </thead>
-            <tbody>
+        <section class="panel material-panel">
+            <div class="section-heading">
+                <span class="section-icon violet"><i data-lucide="paperclip"></i></span>
+                <div><h2>支撑材料</h2><p>系统根据已上传文件自动判断是否缺少材料，无需手动勾选。</p></div>
+            </div>
+            {% if achievement.materials %}
+            <div class="material-list">
                 {% for material in achievement.materials %}
-                    <tr>
-                        <td>{{ material.material_no }}</td>
-                        <td>{{ material.display_name }}</td>
-                        <td>{{ material.description }}</td>
-                        <td>{{ material.original_filename }}</td>
-                        <td>{{ material.file_size }}</td>
-                    </tr>
+                <div class="material-item">
+                    <span class="file-icon"><i data-lucide="file-text"></i></span>
+                    <div><strong>{{ material.display_name }}</strong><small>{{ material.original_filename }} · {{ material.file_size }} B</small></div>
+                    <span class="material-no">{{ material.material_no }}</span>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No materials yet.</p>
-    {% endif %}
+            </div>
+            {% else %}
+            <div class="inline-empty"><i data-lucide="file-warning"></i><span>尚未上传支撑材料，当前状态将显示为“待完善”。</span></div>
+            {% endif %}
 
-    <form method="post" action="/materials/upload" enctype="multipart/form-data">
-        <input type="hidden" name="achievement_id" value="{{ achievement.id }}">
-        <label>
-            Display name
-            <input type="text" name="display_name" required>
-        </label>
-        <label>
-            Description
-            <input type="text" name="description">
-        </label>
-        <label>
-            File
-            <input type="file" name="file" required>
-        </label>
-        <button type="submit">Upload material</button>
-    </form>
-</section>
+            <form class="upload-form" method="post" action="/materials/upload" enctype="multipart/form-data">
+                <input type="hidden" name="achievement_id" value="{{ achievement.id }}">
+                <label><span>材料名称</span><input type="text" name="display_name" placeholder="例如：获奖证书、立项文件" required></label>
+                <label><span>材料说明</span><input type="text" name="description" placeholder="可选"></label>
+                <label class="file-field"><span>选择文件</span><input type="file" name="file" required></label>
+                <button class="button secondary" type="submit"><i data-lucide="upload"></i>上传材料</button>
+            </form>
+        </section>
+    </div>
+
+    <aside class="detail-side">
+        <section class="panel rule-card">
+            <div class="section-heading">
+                <span class="section-icon green"><i data-lucide="scale"></i></span>
+                <div><h2>规则参考</h2><p>不替代线下审核</p></div>
+            </div>
+            <div class="rule-row"><span>对应规则</span><strong>{{ level_rule or "未设置明确分值" }}</strong></div>
+            <div class="rule-row"><span>赋分方式</span><strong>{{ assignment_mode }}</strong></div>
+            {% if rule and rule.remark %}<p class="rule-remark">{{ rule.remark }}</p>{% endif %}
+            <div class="review-note"><i data-lucide="info"></i><span>申报级别和积分为教师填写，最终认定结果以线下审核为准。</span></div>
+        </section>
+        <form method="post" action="/achievements/{{ achievement.id }}/delete" onsubmit="return confirm('确认删除这条成果及其全部材料吗？')">
+            <button class="danger-link" type="submit"><i data-lucide="trash-2"></i>删除成果</button>
+        </form>
+    </aside>
+</div>
 {% endblock %}

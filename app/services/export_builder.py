@@ -5,7 +5,8 @@ from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from app.config import EXPORT_DIR
-from app.models import Achievement, Material, User
+from app.models import Achievement, Material, PerformanceRule, User
+from app.services.performance_rule_guidance import assignment_mode
 
 
 CATEGORY_ORDER = [
@@ -27,9 +28,12 @@ APPLICATION_HEADERS = [
     "项目小类",
     "申报性质",
     "项目具体名称",
-    "级别",
+    "申报级别",
+    "审核认定级别",
     "本人角色",
+    "赋分方式",
     "申报积分",
+    "最终认定积分",
     "支撑材料编号+名称",
     "材料状态",
     "备注",
@@ -64,13 +68,24 @@ def build_personal_export(db: Session, user: User, year: int) -> Path:
         .all()
     )
 
-    _write_application_workbook(application_path, achievements)
+    rule_lookup = {
+        (rule.category, rule.subcategory): rule
+        for rule in db.query(PerformanceRule)
+        .filter(PerformanceRule.is_active.is_(True))
+        .all()
+    }
+
+    _write_application_workbook(application_path, achievements, rule_lookup)
     _write_material_catalog(catalog_path, achievements)
     _write_zip(zip_path, application_path, catalog_path, achievements)
     return zip_path
 
 
-def _write_application_workbook(path: Path, achievements: list[Achievement]) -> None:
+def _write_application_workbook(
+    path: Path,
+    achievements: list[Achievement],
+    rule_lookup: dict[tuple[str, str], PerformanceRule],
+) -> None:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "个人项目申报表"
@@ -89,8 +104,13 @@ def _write_application_workbook(path: Path, achievements: list[Achievement]) -> 
                 achievement.claim_nature,
                 achievement.title,
                 achievement.level,
+                "",
                 achievement.personal_role,
+                assignment_mode(
+                    rule_lookup.get((achievement.category, achievement.subcategory))
+                ),
                 achievement.claimed_score,
+                "",
                 materials,
                 "完整" if achievement.materials else "缺少材料",
                 achievement.notes,

@@ -1,93 +1,151 @@
 {% extends "base.html" %}
 
-{% block title %}{% if achievement %}Edit achievement{% else %}New achievement{% endif %}{% endblock %}
+{% block title %}{% if achievement %}编辑成果{% else %}新增成果{% endif %}{% endblock %}
 
 {% block content %}
-<section>
-    <h2>{% if achievement %}Edit achievement{% else %}New achievement{% endif %}</h2>
+<header class="page-header compact">
+    <div>
+        <a class="back-link" href="/achievements"><i data-lucide="arrow-left"></i>返回成果库</a>
+        <h1>{% if achievement %}编辑成果{% else %}新增成果{% endif %}</h1>
+        <p class="muted">先选择分类与等级，系统会给出对应的规则参考。</p>
+    </div>
+</header>
 
-    <form method="post" action="{{ action }}">
-        <label>
-            Year
-            <input type="number" name="year" min="2000" max="2100" value="{{ achievement.year if achievement else 2026 }}" required>
-        </label>
-
-        <label>
-            Category
-            <input name="category" list="category-options" value="{{ achievement.category if achievement else '' }}" required>
-        </label>
-        <datalist id="category-options">
-            {% for rule in rules %}
-                <option value="{{ rule.category }}"></option>
-            {% endfor %}
-        </datalist>
-
-        <label>
-            Subcategory
-            <input name="subcategory" list="subcategory-options" value="{{ achievement.subcategory if achievement else '' }}" required>
-        </label>
-        <datalist id="subcategory-options">
-            {% for rule in rules %}
-                <option value="{{ rule.subcategory }}">{{ rule.category }}</option>
-            {% endfor %}
-        </datalist>
-
-        <label>
-            Claim nature
-            <select name="claim_nature" required>
-                {% for nature in claim_natures %}
+<form method="post" action="{{ action }}" class="achievement-form">
+    <section class="panel form-panel">
+        <div class="section-heading">
+            <span class="section-icon blue"><i data-lucide="file-pen-line"></i></span>
+            <div><h2>成果信息</h2><p>填写工作或成果的基本情况</p></div>
+        </div>
+        <div class="form-grid">
+            <label>
+                <span>年度</span>
+                <input type="number" name="year" min="2000" max="2100" value="{{ achievement.year if achievement else current_year }}" required>
+            </label>
+            <label>
+                <span>申报性质</span>
+                <select name="claim_nature" required>
+                    {% for nature in claim_natures %}
                     <option value="{{ nature }}" {% if achievement and achievement.claim_nature == nature %}selected{% endif %}>{{ nature }}</option>
-                {% endfor %}
-            </select>
-        </label>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>大类</span>
+                <select id="category" name="category" required></select>
+            </label>
+            <label>
+                <span>小类</span>
+                <select id="subcategory" name="subcategory" required></select>
+            </label>
+            <label class="span-2">
+                <span>成果或工作名称</span>
+                <input name="title" value="{{ achievement.title if achievement else '' }}" placeholder="例如：江苏省职业技能竞赛数字艺术赛项二等奖" required>
+            </label>
+            <label>
+                <span>时间范围</span>
+                <input name="date_range" value="{{ achievement.date_range if achievement else '' }}" placeholder="例如：2026年3月至5月">
+            </label>
+            <label>
+                <span>申报级别</span>
+                <select id="level" name="level">
+                    <option value="">不适用或待确认</option>
+                    {% for option in level_options %}
+                    <option value="{{ option.value }}" {% if achievement and achievement.level == option.value %}selected{% endif %}>{{ option.value }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>本人角色</span>
+                <input name="personal_role" value="{{ achievement.personal_role if achievement else '' }}" placeholder="例如：负责人、团队成员">
+            </label>
+            <label>
+                <span>申报积分</span>
+                <input type="number" step="0.01" min="0" name="claimed_score" value="{{ achievement.claimed_score if achievement else 0 }}">
+            </label>
+            <input type="hidden" name="base_score" value="{{ achievement.base_score if achievement else 0 }}">
+            <input type="hidden" name="performance_score" value="{{ achievement.performance_score if achievement else 0 }}">
+            <label class="span-2">
+                <span>当前进展或价值说明</span>
+                <textarea name="current_stage" rows="4" placeholder="过程性工作请说明当前阶段、已完成内容及后续计划">{{ achievement.current_stage if achievement else '' }}</textarea>
+            </label>
+            <label class="span-2">
+                <span>备注</span>
+                <textarea name="notes" rows="3">{{ achievement.notes if achievement else '' }}</textarea>
+            </label>
+        </div>
+    </section>
 
-        <label>
-            Title
-            <input name="title" value="{{ achievement.title if achievement else '' }}" required>
-        </label>
+    <section class="panel guidance-panel">
+        <div class="section-heading">
+            <span class="section-icon green"><i data-lucide="book-open-check"></i></span>
+            <div><h2>规则参考</h2><p>随所选分类和级别自动更新</p></div>
+        </div>
+        <div class="guidance-grid">
+            <div><span>对应规则</span><strong id="rule-text">请选择大类、小类和级别</strong></div>
+            <div><span>赋分方式</span><strong id="assignment-text">个人申报</strong></div>
+            <div class="span-2"><span>补充说明</span><p id="remark-text">系统仅提供申报参考，级别和积分最终以线下审核认定为准。</p></div>
+        </div>
+    </section>
 
-        <label>
-            Date range
-            <input name="date_range" value="{{ achievement.date_range if achievement else '' }}">
-        </label>
+    <div class="form-actions">
+        <a class="button ghost" href="/achievements">取消</a>
+        <button class="button primary" type="submit"><i data-lucide="save"></i>保存成果</button>
+    </div>
+</form>
+{% endblock %}
 
-        <label>
-            Level
-            <input name="level" value="{{ achievement.level if achievement else '' }}">
-        </label>
+{% block scripts %}
+<script>
+    const rules = {{ rules | tojson }};
+    const selectedCategory = {{ (achievement.category if achievement else "") | tojson }};
+    const selectedSubcategory = {{ (achievement.subcategory if achievement else "") | tojson }};
+    const categorySelect = document.getElementById("category");
+    const subcategorySelect = document.getElementById("subcategory");
+    const levelSelect = document.getElementById("level");
 
-        <label>
-            Personal role
-            <input name="personal_role" value="{{ achievement.personal_role if achievement else '' }}">
-        </label>
+    function unique(values) {
+        return [...new Set(values)];
+    }
 
-        <label>
-            Current stage or value explanation
-            <textarea name="current_stage" rows="4">{{ achievement.current_stage if achievement else '' }}</textarea>
-        </label>
+    function setOptions(select, values, selectedValue) {
+        select.innerHTML = "";
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            option.selected = value === selectedValue;
+            select.appendChild(option);
+        });
+    }
 
-        <label>
-            Base score
-            <input type="number" step="0.01" name="base_score" value="{{ achievement.base_score if achievement else 0 }}">
-        </label>
+    function updateSubcategories(preferred = "") {
+        const values = rules.filter((rule) => rule.category === categorySelect.value).map((rule) => rule.subcategory);
+        setOptions(subcategorySelect, values, values.includes(preferred) ? preferred : values[0]);
+        updateGuidance();
+    }
 
-        <label>
-            Performance score
-            <input type="number" step="0.01" name="performance_score" value="{{ achievement.performance_score if achievement else 0 }}">
-        </label>
+    function assignmentMode(rule) {
+        if (!rule) return "线下审核认定";
+        if (rule.is_team) return "团队负责人申报并分配";
+        if (rule.is_department_assigned) return "项目负责人统一赋分";
+        return "个人申报";
+    }
 
-        <label>
-            Claimed score
-            <input type="number" step="0.01" name="claimed_score" value="{{ achievement.claimed_score if achievement else 0 }}">
-        </label>
+    function updateGuidance() {
+        const rule = rules.find((item) => item.category === categorySelect.value && item.subcategory === subcategorySelect.value);
+        const fields = {"国家级": "national_rule", "省级": "provincial_rule", "市级": "city_rule", "校级": "school_rule", "学院级": "college_rule"};
+        const levelRule = rule ? (rule[fields[levelSelect.value]] || rule.base_rule || "未设置明确分值") : "请选择大类和小类";
+        document.getElementById("rule-text").textContent = levelRule;
+        document.getElementById("assignment-text").textContent = assignmentMode(rule);
+        document.getElementById("remark-text").textContent = (rule && rule.remark) || "系统仅提供申报参考，级别和积分最终以线下审核认定为准。";
+    }
 
-        <label>
-            Notes
-            <textarea name="notes" rows="4">{{ achievement.notes if achievement else '' }}</textarea>
-        </label>
-
-        <button type="submit">Save</button>
-        <a href="/achievements">Cancel</a>
-    </form>
-</section>
+    const categories = unique(rules.map((rule) => rule.category));
+    setOptions(categorySelect, categories, categories.includes(selectedCategory) ? selectedCategory : categories[0]);
+    updateSubcategories(selectedSubcategory);
+    categorySelect.addEventListener("change", () => updateSubcategories());
+    subcategorySelect.addEventListener("change", updateGuidance);
+    levelSelect.addEventListener("change", updateGuidance);
+</script>
 {% endblock %}

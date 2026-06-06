@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -10,6 +10,12 @@ from app.database import get_db
 from app.models import Achievement, ClaimNature, PerformanceRule, User
 from app.security import get_current_user
 from app.services.achievement_status import calculate_status
+from app.services.performance_rule_guidance import (
+    LEVEL_OPTIONS,
+    assignment_mode,
+    find_rule,
+    rule_for_level,
+)
 
 
 router = APIRouter(prefix="/achievements", tags=["achievements"])
@@ -23,6 +29,22 @@ def _active_rules(db: Session) -> list[PerformanceRule]:
         .order_by(PerformanceRule.sort_order, PerformanceRule.id)
         .all()
     )
+
+
+def _rule_data(rule: PerformanceRule) -> dict[str, str | bool]:
+    return {
+        "category": rule.category,
+        "subcategory": rule.subcategory,
+        "base_rule": rule.base_rule,
+        "national_rule": rule.national_rule,
+        "provincial_rule": rule.provincial_rule,
+        "city_rule": rule.city_rule,
+        "school_rule": rule.school_rule,
+        "college_rule": rule.college_rule,
+        "remark": rule.remark,
+        "is_team": rule.is_team,
+        "is_department_assigned": rule.is_department_assigned,
+    }
 
 
 def _achievement_for_user(db: Session, achievement_id: int, user: User) -> Achievement:
@@ -50,8 +72,10 @@ def _form_context(
         "request": request,
         "user": user,
         "achievement": achievement,
-        "rules": _active_rules(db),
+        "rules": [_rule_data(rule) for rule in _active_rules(db)],
         "claim_natures": [nature.value for nature in ClaimNature],
+        "level_options": LEVEL_OPTIONS,
+        "current_year": datetime.now().year,
         "action": action,
     }
 
@@ -92,19 +116,42 @@ def _assign_form_values(
 @router.get("")
 def list_achievements(
     request: Request,
+    year: int | None = Query(default=None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    available_years = [
+        row[0]
+        for row in (
+            db.query(Achievement.year)
+            .filter(Achievement.user_id == user.id)
+            .distinct()
+            .order_by(Achievement.year.desc())
+            .all()
+        )
+    ]
+    selected_year = year or datetime.now().year
     achievements = (
         db.query(Achievement)
-        .filter(Achievement.user_id == user.id)
+        .filter(
+            Achievement.user_id == user.id,
+            Achievement.year == selected_year,
+        )
         .order_by(Achievement.updated_at.desc(), Achievement.id.desc())
         .all()
     )
     return templates.TemplateResponse(
         request,
         "achievements/list.html",
-        {"user": user, "achievements": achievements},
+        {
+            "user": user,
+            "achievements": achievements,
+            "available_years": sorted(
+                set([selected_year, datetime.now().year, *available_years]),
+                reverse=True,
+            ),
+            "selected_year": selected_year,
+        },
     )
 
 
@@ -169,10 +216,17 @@ def achievement_detail(
     db: Session = Depends(get_db),
 ):
     achievement = _achievement_for_user(db, achievement_id, user)
+    rule = find_rule(db, achievement.category, achievement.subcategory)
     return templates.TemplateResponse(
         request,
         "achievements/detail.html",
-        {"user": user, "achievement": achievement},
+        {
+            "user": user,
+            "achievement": achievement,
+            "rule": rule,
+            "level_rule": rule_for_level(rule, achievement.level),
+            "assignment_mode": assignment_mode(rule),
+        },
     )
 
 
