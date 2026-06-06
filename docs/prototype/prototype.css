@@ -22,6 +22,23 @@
     box-sizing: border-box;
 }
 
+.icon-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+.ui-icon {
+    width: 1em;
+    height: 1em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 body {
     margin: 0;
     min-height: 100vh;
@@ -67,7 +84,11 @@ button {
     border-radius: 8px;
     color: #fff;
     background: linear-gradient(135deg, #0d6efd, #25a6ff);
-    font-weight: 800;
+}
+
+.brand-mark .ui-icon {
+    width: 17px;
+    height: 17px;
 }
 
 .brand strong {
@@ -102,7 +123,11 @@ button {
     border-radius: 7px;
     color: #fff;
     background: #758292;
-    font-size: 12px;
+}
+
+.nav-item span .ui-icon {
+    width: 14px;
+    height: 14px;
 }
 
 .nav-item.active {
@@ -335,7 +360,11 @@ h3 {
     color: #fff;
     background: linear-gradient(135deg, var(--blue), #60b7ff);
     box-shadow: 0 16px 26px rgba(47, 124, 255, .22);
-    font-weight: 900;
+}
+
+.float-icon .ui-icon {
+    width: 24px;
+    height: 24px;
 }
 
 .float-icon.main {
@@ -345,7 +374,11 @@ h3 {
     height: 76px;
     border-radius: 24px;
     background: linear-gradient(135deg, var(--violet), #30d0ff);
-    font-size: 26px;
+}
+
+.float-icon.main .ui-icon {
+    width: 34px;
+    height: 34px;
 }
 
 .float-icon:not(.main):nth-child(2) {
@@ -401,8 +434,11 @@ h3 {
     color: #fff;
     background: linear-gradient(135deg, var(--blue), #56a9ff);
     box-shadow: 0 10px 18px rgba(47, 124, 255, .18);
-    font-size: 13px;
-    font-weight: 900;
+}
+
+.icon-chip .ui-icon {
+    width: 18px;
+    height: 18px;
 }
 
 .icon-chip.green {
@@ -459,8 +495,7 @@ h3 {
     overflow: hidden;
 }
 
-.metric-grid article::after {
-    content: attr(data-icon);
+.metric-icon {
     position: absolute;
     right: 14px;
     top: 14px;
@@ -471,8 +506,11 @@ h3 {
     border-radius: 12px;
     color: rgba(47, 124, 255, .82);
     background: #edf5ff;
-    font-size: 13px;
-    font-weight: 900;
+}
+
+.metric-icon .ui-icon {
+    width: 17px;
+    height: 17px;
 }
 
 .metric-grid span,
@@ -511,8 +549,7 @@ h3 {
     background: linear-gradient(180deg, #f8fbff, #ffffff);
 }
 
-.year-state-grid article::before {
-    content: "年";
+.year-icon {
     width: 30px;
     height: 30px;
     display: grid;
@@ -520,8 +557,11 @@ h3 {
     border-radius: 10px;
     color: #fff;
     background: linear-gradient(135deg, var(--blue), #60b7ff);
-    font-size: 12px;
-    font-weight: 900;
+}
+
+.year-icon .ui-icon {
+    width: 16px;
+    height: 16px;
 }
 
 .year-state-grid article.active {
@@ -1179,16 +1219,17 @@ textarea {
 
 .archive-list article::before,
 .admin-grid article::before {
-    content: "档";
+    content: "";
     width: 30px;
     height: 30px;
     display: grid;
     place-items: center;
     border-radius: 10px;
     color: #fff;
-    background: linear-gradient(135deg, var(--blue), #60b7ff);
-    font-size: 12px;
-    font-weight: 900;
+    background:
+        linear-gradient(#fff, #fff) 9px 8px / 12px 2px no-repeat,
+        linear-gradient(#fff, #fff) 9px 14px / 12px 2px no-repeat,
+        linear-gradient(135deg, var(--blue), #60b7ff);
 }
 
 .archive-list article::before {
@@ -1228,27 +1269,44 @@ textarea {
 }
 
 .admin-grid article:nth-child(2)::before {
-    content: "规";
-    background: linear-gradient(135deg, var(--violet), #4ba3ff);
+    background:
+        radial-gradient(circle at 10px 10px, #fff 0 2px, transparent 2.5px),
+        linear-gradient(#fff, #fff) 14px 9px / 8px 2px no-repeat,
+        radial-gradient(circle at 10px 18px, #fff 0 2px, transparent 2.5px),
+        linear-gradient(#fff, #fff) 14px 17px / 8px 2px no-repeat,
+        linear-gradient(135deg, var(--violet), #4ba3ff);
 }
 
 .admin-grid article:nth-child(3)::before {
-    content: "级";
-    background: linear-gradient(135deg, var(--orange), #ff7d4d);
+    background:
+        linear-gradient(#fff, #fff) 8px 8px / 14px 2px no-repeat,
+        linear-gradient(#fff, #fff) 8px 15px / 10px 2px no-repeat,
+        linear-gradient(#fff, #fff) 8px 22px / 14px 2px no-repeat,
+        linear-gradient(135deg, var(--orange), #ff7d4d);
 }
 
 .admin-grid article:nth-child(4)::before {
-    content: "分";
-    background: linear-gradient(135deg, var(--green), #30d9a0);
+    background:
+        linear-gradient(#fff, #fff) 8px 20px / 4px 6px no-repeat,
+        linear-gradient(#fff, #fff) 14px 14px / 4px 12px no-repeat,
+        linear-gradient(#fff, #fff) 20px 9px / 4px 17px no-repeat,
+        linear-gradient(135deg, var(--green), #30d9a0);
 }
 
 .admin-grid article:nth-child(5)::before {
-    content: "年";
+    background:
+        linear-gradient(#fff, #fff) 8px 8px / 14px 2px no-repeat,
+        linear-gradient(#fff, #fff) 8px 14px / 14px 2px no-repeat,
+        linear-gradient(#fff, #fff) 8px 20px / 14px 2px no-repeat,
+        linear-gradient(135deg, var(--blue), #60b7ff);
 }
 
 .admin-grid article:nth-child(6)::before {
-    content: "导";
-    background: linear-gradient(135deg, var(--violet), #4ba3ff);
+    background:
+        linear-gradient(#fff, #fff) 14px 7px / 2px 13px no-repeat,
+        linear-gradient(135deg, transparent 45%, #fff 45% 56%, transparent 56%) 9px 14px / 12px 12px no-repeat,
+        linear-gradient(#fff, #fff) 8px 23px / 14px 2px no-repeat,
+        linear-gradient(135deg, var(--violet), #4ba3ff);
 }
 
 .admin-grid article strong,

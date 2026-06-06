@@ -7,18 +7,34 @@
     <link rel="stylesheet" href="prototype.css">
 </head>
 <body>
+    <svg class="icon-sprite" aria-hidden="true">
+        <symbol id="icon-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h5v-5h3v5h5v-9.5"/></symbol>
+        <symbol id="icon-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></symbol>
+        <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M4 20h4l11-11a2.6 2.6 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></symbol>
+        <symbol id="icon-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M9.5 13h5"/><path d="M9.5 17h5"/></symbol>
+        <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 4v10"/><path d="m8 10 4 4 4-4"/><path d="M5 20h14"/></symbol>
+        <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.8-1L12.4 3h-4l-.4 3a8 8 0 0 0-1.8 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a8 8 0 0 0 1.8 1l.4 3h4l.4-3a8 8 0 0 0 1.8-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1Z"/></symbol>
+        <symbol id="icon-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="m9 13-2 8 5-3 5 3-2-8"/><path d="m10 8 1.4 1.4L15 6.8"/></symbol>
+        <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M5 5h14v16H5z"/><path d="M8 3v4"/><path d="M16 3v4"/><path d="M5 10h14"/></symbol>
+        <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M7 16V9"/><path d="M12 16V5"/><path d="M17 16v-7"/></symbol>
+        <symbol id="icon-grid" viewBox="0 0 24 24"><path d="M4 4h7v7H4z"/><path d="M13 4h7v7h-7z"/><path d="M4 13h7v7H4z"/><path d="M13 13h7v7h-7z"/></symbol>
+        <symbol id="icon-rule" viewBox="0 0 24 24"><path d="M5 5h14"/><path d="M5 12h14"/><path d="M5 19h10"/><path d="m16 17 2 2 4-4"/></symbol>
+        <symbol id="icon-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+        <symbol id="icon-archive" viewBox="0 0 24 24"><path d="M4 5h16v4H4z"/><path d="M6 9h12v12H6z"/><path d="M10 13h4"/></symbol>
+        <symbol id="icon-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></symbol>
+    </svg>
     <aside class="sidebar">
         <div class="brand">
-            <div class="brand-mark">绩</div>
+            <div class="brand-mark"><svg class="ui-icon"><use href="#icon-award"></use></svg></div>
             <strong>成果助手</strong>
         </div>
         <nav class="nav" aria-label="原型页面">
-            <button class="nav-item active" data-screen="dashboard"><span>首</span>年度首页</button>
-            <button class="nav-item" data-screen="records"><span>库</span>成果库</button>
-            <button class="nav-item" data-screen="wizard"><span>填</span>新增填报</button>
-            <button class="nav-item" data-screen="materials"><span>材</span>材料管理</button>
-            <button class="nav-item" data-screen="export"><span>导</span>导出中心</button>
-            <button class="nav-item" data-screen="admin"><span>管</span>配置中心</button>
+            <button class="nav-item active" data-screen="dashboard"><span><svg class="ui-icon"><use href="#icon-home"></use></svg></span>年度首页</button>
+            <button class="nav-item" data-screen="records"><span><svg class="ui-icon"><use href="#icon-database"></use></svg></span>成果库</button>
+            <button class="nav-item" data-screen="wizard"><span><svg class="ui-icon"><use href="#icon-edit"></use></svg></span>新增填报</button>
+            <button class="nav-item" data-screen="materials"><span><svg class="ui-icon"><use href="#icon-file"></use></svg></span>材料管理</button>
+            <button class="nav-item" data-screen="export"><span><svg class="ui-icon"><use href="#icon-download"></use></svg></span>导出中心</button>
+            <button class="nav-item" data-screen="admin"><span><svg class="ui-icon"><use href="#icon-settings"></use></svg></span>配置中心</button>
         </nav>
         <div class="version-card">
             <span>本机试用版</span>
@@ -53,33 +69,33 @@
                             </div>
                         </div>
                         <div class="hero-visual" aria-hidden="true">
-                            <span class="float-icon main">奖</span>
-                            <span class="float-icon">材</span>
-                            <span class="float-icon">导</span>
+                            <span class="float-icon main"><svg class="ui-icon"><use href="#icon-award"></use></svg></span>
+                            <span class="float-icon"><svg class="ui-icon"><use href="#icon-file"></use></svg></span>
+                            <span class="float-icon"><svg class="ui-icon"><use href="#icon-download"></use></svg></span>
                             <i></i>
                         </div>
                     </article>
 
                     <section class="year-archive-strip card">
                         <div class="section-title">
-                            <div class="title-with-icon"><span class="icon-chip blue">年</span><div><h3>年度档案</h3><p>每年成果和支撑材料独立保存，切换年度即可回看和重新下载。</p></div></div>
+                            <div class="title-with-icon"><span class="icon-chip blue"><svg class="ui-icon"><use href="#icon-calendar"></use></svg></span><div><h3>年度档案</h3><p>每年成果和支撑材料独立保存，切换年度即可回看和重新下载。</p></div></div>
                         </div>
                         <div class="year-state-grid">
-                            <article><b>2027</b><span class="pill">准备中</span><small>新年度填报，不覆盖历史材料。</small></article>
-                            <article class="active"><b>2026</b><span class="pill warn">整理中</span><small>当前查看年度，可继续补材料并导出。</small></article>
-                            <article><b>2025</b><span class="pill ok">已归档</span><small>限制编辑，但可查看清单和下载材料包。</small></article>
+                            <article><span class="year-icon"><svg class="ui-icon"><use href="#icon-calendar"></use></svg></span><b>2027</b><span class="pill">准备中</span><small>新年度填报，不覆盖历史材料。</small></article>
+                            <article class="active"><span class="year-icon"><svg class="ui-icon"><use href="#icon-calendar"></use></svg></span><b>2026</b><span class="pill warn">整理中</span><small>当前查看年度，可继续补材料并导出。</small></article>
+                            <article><span class="year-icon"><svg class="ui-icon"><use href="#icon-archive"></use></svg></span><b>2025</b><span class="pill ok">已归档</span><small>限制编辑，但可查看清单和下载材料包。</small></article>
                         </div>
                     </section>
 
                     <section class="data-board card">
                         <div class="section-title">
-                            <div class="title-with-icon"><span class="icon-chip green">数</span><div><h3>数据看板</h3></div></div>
+                            <div class="title-with-icon"><span class="icon-chip green"><svg class="ui-icon"><use href="#icon-chart"></use></svg></span><div><h3>数据看板</h3></div></div>
                         </div>
                         <div class="metric-grid">
-                            <article data-icon="档"><span>成果记录</span><strong>23</strong><small>较上月 +5</small></article>
-                            <article data-icon="申"><span>可申报成果</span><strong>17</strong><small>完整率 73.9%</small></article>
-                            <article data-icon="分"><span>申报积分</span><strong>186.5</strong><small>待线下审核</small></article>
-                            <article data-icon="材"><span>材料文件</span><strong>41</strong><small>PDF / 图片 / Word</small></article>
+                            <article><span class="metric-icon"><svg class="ui-icon"><use href="#icon-archive"></use></svg></span><span>成果记录</span><strong>23</strong><small>较上月 +5</small></article>
+                            <article><span class="metric-icon"><svg class="ui-icon"><use href="#icon-check"></use></svg></span><span>可申报成果</span><strong>17</strong><small>完整率 73.9%</small></article>
+                            <article><span class="metric-icon"><svg class="ui-icon"><use href="#icon-chart"></use></svg></span><span>申报积分</span><strong>186.5</strong><small>待线下审核</small></article>
+                            <article><span class="metric-icon"><svg class="ui-icon"><use href="#icon-file"></use></svg></span><span>材料文件</span><strong>41</strong><small>PDF / 图片 / Word</small></article>
                         </div>
                         <div class="mini-stat-grid">
                             <div><span>缺材料</span><strong>4</strong></div>
@@ -92,7 +108,7 @@
                     <section class="lower-grid">
                         <article class="card">
                             <div class="section-title">
-                                <div class="title-with-icon"><span class="icon-chip violet">类</span><div><h3>类别进度</h3><p>按 9 个标准大类展示本年度整理状态，另保留自定义兜底类。</p></div></div>
+                                <div class="title-with-icon"><span class="icon-chip violet"><svg class="ui-icon"><use href="#icon-grid"></use></svg></span><div><h3>类别进度</h3><p>按 9 个标准大类展示本年度整理状态，另保留自定义兜底类。</p></div></div>
                                 <button class="secondary-button compact">分类与积分规则</button>
                             </div>
                             <div class="category-progress-grid">
@@ -114,7 +130,7 @@
                 <section class="screen" id="records">
                     <section class="card">
                         <div class="section-title">
-                            <div class="title-with-icon"><span class="icon-chip blue">库</span><div><h3>成果库</h3><p>像资料库一样检索、筛选、补材料。</p></div></div>
+                            <div class="title-with-icon"><span class="icon-chip blue"><svg class="ui-icon"><use href="#icon-database"></use></svg></span><div><h3>成果库</h3><p>像资料库一样检索、筛选、补材料。</p></div></div>
                             <button class="primary-button" data-screen-link="wizard">新增成果</button>
                         </div>
                         <div class="filters">
@@ -137,7 +153,7 @@
                     <div class="wizard-layout">
                         <section class="card">
                             <div class="stepper"><span class="active">1 基本信息</span><span>2 类别与规则</span><span>3 分值与材料</span><span>4 确认</span></div>
-                            <div class="section-title"><div class="title-with-icon"><span class="icon-chip blue">填</span><div><h3>新增成果</h3><p>按“先类别、再规则、后材料”的顺序填写。</p></div></div></div>
+                            <div class="section-title"><div class="title-with-icon"><span class="icon-chip blue"><svg class="ui-icon"><use href="#icon-edit"></use></svg></span><div><h3>新增成果</h3><p>按“先类别、再规则、后材料”的顺序填写。</p></div></div></div>
                             <div class="form-grid">
                                 <label>年度<input value="2026"></label>
                                 <label>申报性质<select><option>过程性工作</option><option>成果性工作</option></select></label>
@@ -154,7 +170,7 @@
                         </section>
                         <section class="category-reference card">
                             <div class="section-title">
-                                <div class="title-with-icon"><span class="icon-chip orange">规</span><div><h3>当前分类说明</h3><p>跟随上方选择自动更新，用来判断是否放对类别、材料是否足够、过程性工作能否留痕。</p></div></div>
+                                <div class="title-with-icon"><span class="icon-chip orange"><svg class="ui-icon"><use href="#icon-rule"></use></svg></span><div><h3>当前分类说明</h3><p>跟随上方选择自动更新，用来判断是否放对类别、材料是否足够、过程性工作能否留痕。</p></div></div>
                                 <span class="pill">育人成效 / 学生技能竞赛获奖</span>
                             </div>
                             <div class="category-summary">
@@ -176,7 +192,7 @@
                     </div>
                     <div class="lower-grid">
                         <section class="card">
-                            <div class="section-title"><div class="title-with-icon"><span class="icon-chip green">材</span><div><h3>支撑材料</h3></div></div><button class="primary-button">上传材料</button></div>
+                            <div class="section-title"><div class="title-with-icon"><span class="icon-chip green"><svg class="ui-icon"><use href="#icon-file"></use></svg></span><div><h3>支撑材料</h3></div></div><button class="primary-button">上传材料</button></div>
                             <div class="upload-zone"><strong>拖入文件或点击上传</strong><span>支持 PDF、Word、Excel、图片、压缩包；建议一次上传多个材料。</span></div>
                             <div class="file-list">
                                 <div class="file-card ok"><span>PDF</span><div><strong>数字艺术赛项获奖证书.pdf</strong><small>材料 001 / 已纳入导出</small></div></div>
@@ -185,7 +201,7 @@
                             </div>
                         </section>
                         <section class="card">
-                            <div class="section-title"><div class="title-with-icon"><span class="icon-chip orange">检</span><div><h3>导出前检查</h3><p>由系统自动判断，老师只需按提醒补充信息或材料。</p></div></div></div>
+                            <div class="section-title"><div class="title-with-icon"><span class="icon-chip orange"><svg class="ui-icon"><use href="#icon-check"></use></svg></span><div><h3>导出前检查</h3><p>由系统自动判断，老师只需按提醒补充信息或材料。</p></div></div></div>
                             <div class="status-list">
                                 <div class="status-item ok"><b>✓</b><span><strong>基本信息完整</strong><small>年度、类别、成果名称和本人角色已填写。</small></span></div>
                                 <div class="status-item ok"><b>✓</b><span><strong>已选择申报级别</strong><small>当前申报为“省级”，导出后保留给线下确认。</small></span></div>
@@ -215,14 +231,14 @@
 
                 <section class="screen" id="export">
                     <section class="card">
-                        <div class="section-title"><div class="title-with-icon"><span class="icon-chip violet">导</span><div><h3>导出中心</h3><p>一键生成年度清单和按类别整理好的材料包；历史年度可重新下载。</p></div></div><button class="primary-button">生成 2026 年度材料包</button></div>
+                        <div class="section-title"><div class="title-with-icon"><span class="icon-chip violet"><svg class="ui-icon"><use href="#icon-download"></use></svg></span><div><h3>导出中心</h3><p>一键生成年度清单和按类别整理好的材料包；历史年度可重新下载。</p></div></div><button class="primary-button">生成 2026 年度材料包</button></div>
                         <div class="export-preview">
                             <div class="folder-tree"><strong>2026年度绩效申报材料_张老师.zip</strong><span>01_个人项目申报表.xlsx（含申报级别/审核认定级别）</span><span>04_材料目录.xlsx</span><span>05_支撑材料/03_教学/</span><span>05_支撑材料/08_育人成效/</span></div>
                             <div class="export-summary"><div><span>可导出成果</span><strong>17</strong></div><div><span>待完善成果</span><strong>6</strong></div><div><span>材料文件</span><strong>41</strong></div></div>
                         </div>
                     </section>
                     <section class="card archive-downloads">
-                        <div class="section-title"><div class="title-with-icon"><span class="icon-chip blue">档</span><div><h3>历史年度材料包</h3><p>归档年度默认只读，仍支持查看清单、下载支撑材料和重新导出 ZIP。</p></div></div></div>
+                        <div class="section-title"><div class="title-with-icon"><span class="icon-chip blue"><svg class="ui-icon"><use href="#icon-archive"></use></svg></span><div><h3>历史年度材料包</h3><p>归档年度默认只读，仍支持查看清单、下载支撑材料和重新导出 ZIP。</p></div></div></div>
                         <div class="archive-list">
                             <article><div><strong>2026 年度</strong><span class="pill warn">整理中</span><small>23 条成果 / 41 份材料 / 最近导出 2026.12.28</small></div><button class="secondary-button">下载材料包</button></article>
                             <article><div><strong>2025 年度</strong><span class="pill ok">已归档</span><small>19 条成果 / 36 份材料 / 已锁定编辑</small></div><button class="secondary-button">下载材料包</button></article>
@@ -233,7 +249,7 @@
 
                 <section class="screen" id="admin">
                     <section class="card">
-                        <div class="section-title"><div class="title-with-icon"><span class="icon-chip violet">管</span><div><h3>配置中心</h3><p>管理员只做账号、规则和导出维护，不做线上审核。</p></div></div></div>
+                        <div class="section-title"><div class="title-with-icon"><span class="icon-chip violet"><svg class="ui-icon"><use href="#icon-settings"></use></svg></span><div><h3>配置中心</h3><p>管理员只做账号、规则和导出维护，不做线上审核。</p></div></div></div>
                         <div class="admin-grid">
                             <article><strong>教师账号</strong><span>新增、停用、重置密码、批量导入</span></article>
                             <article><strong>绩效规则</strong><span>维护 9 大类、小类、计分公式、上限、材料要求和申报方式。</span></article>
