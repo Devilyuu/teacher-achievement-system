@@ -278,7 +278,11 @@ h3 {
 
 .hero-card {
     min-height: 220px;
-    display: block;
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 230px;
+    align-items: center;
+    gap: 20px;
     padding: 30px 38px;
     overflow: hidden;
     background:
@@ -303,6 +307,70 @@ h3 {
     font-weight: 800;
 }
 
+.hero-visual {
+    position: relative;
+    min-height: 160px;
+}
+
+.hero-visual::before {
+    content: "";
+    position: absolute;
+    inset: 18px 16px 8px 26px;
+    border-radius: 42px;
+    background:
+        radial-gradient(circle at 30% 30%, rgba(47, 124, 255, .24), transparent 34%),
+        radial-gradient(circle at 72% 46%, rgba(114, 92, 255, .22), transparent 32%),
+        linear-gradient(135deg, rgba(255, 255, 255, .86), rgba(238, 246, 255, .54));
+    transform: rotate(-8deg);
+}
+
+.float-icon {
+    position: absolute;
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .76);
+    border-radius: 18px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--blue), #60b7ff);
+    box-shadow: 0 16px 26px rgba(47, 124, 255, .22);
+    font-weight: 900;
+}
+
+.float-icon.main {
+    right: 76px;
+    top: 20px;
+    width: 76px;
+    height: 76px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--violet), #30d0ff);
+    font-size: 26px;
+}
+
+.float-icon:not(.main):nth-child(2) {
+    right: 18px;
+    top: 92px;
+    background: linear-gradient(135deg, var(--green), #33d69b);
+}
+
+.float-icon:not(.main):nth-child(3) {
+    right: 144px;
+    top: 104px;
+    background: linear-gradient(135deg, var(--orange), #ff8d3a);
+}
+
+.hero-visual i {
+    position: absolute;
+    right: 126px;
+    top: 82px;
+    width: 34px;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--green), var(--blue));
+    transform: rotate(-18deg);
+}
+
 .data-board,
 .card,
 .side-card {
@@ -315,6 +383,41 @@ h3 {
     justify-content: space-between;
     gap: 14px;
     margin-bottom: 18px;
+}
+
+.title-with-icon {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.icon-chip {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--blue), #56a9ff);
+    box-shadow: 0 10px 18px rgba(47, 124, 255, .18);
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.icon-chip.green {
+    background: linear-gradient(135deg, var(--green), #30d9a0);
+    box-shadow: 0 10px 18px rgba(32, 201, 120, .18);
+}
+
+.icon-chip.violet {
+    background: linear-gradient(135deg, var(--violet), #4ba3ff);
+    box-shadow: 0 10px 18px rgba(114, 92, 255, .18);
+}
+
+.icon-chip.orange {
+    background: linear-gradient(135deg, var(--orange), #ff7d4d);
+    box-shadow: 0 10px 18px rgba(255, 179, 33, .18);
 }
 
 .rank-tabs {
@@ -345,8 +448,31 @@ h3 {
 }
 
 .metric-grid article {
+    position: relative;
     display: grid;
     gap: 8px;
+    min-height: 112px;
+    border: 1px solid #e8eef7;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(180deg, #f8fbff, #ffffff);
+    overflow: hidden;
+}
+
+.metric-grid article::after {
+    content: attr(data-icon);
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    color: rgba(47, 124, 255, .82);
+    background: #edf5ff;
+    font-size: 13px;
+    font-weight: 900;
 }
 
 .metric-grid span,
@@ -383,6 +509,19 @@ h3 {
     border-radius: 14px;
     padding: 14px;
     background: linear-gradient(180deg, #f8fbff, #ffffff);
+}
+
+.year-state-grid article::before {
+    content: "年";
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--blue), #60b7ff);
+    font-size: 12px;
+    font-weight: 900;
 }
 
 .year-state-grid article.active {
@@ -1028,6 +1167,7 @@ textarea {
 }
 
 .archive-list article {
+    position: relative;
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
@@ -1035,6 +1175,27 @@ textarea {
     border-radius: 14px;
     padding: 14px;
     background: linear-gradient(180deg, #f8fbff, #ffffff);
+}
+
+.archive-list article::before,
+.admin-grid article::before {
+    content: "档";
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--blue), #60b7ff);
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.archive-list article::before {
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    opacity: .18;
 }
 
 .archive-list article > div {
@@ -1057,6 +1218,42 @@ textarea {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
+}
+
+.admin-grid article {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.admin-grid article:nth-child(2)::before {
+    content: "规";
+    background: linear-gradient(135deg, var(--violet), #4ba3ff);
+}
+
+.admin-grid article:nth-child(3)::before {
+    content: "级";
+    background: linear-gradient(135deg, var(--orange), #ff7d4d);
+}
+
+.admin-grid article:nth-child(4)::before {
+    content: "分";
+    background: linear-gradient(135deg, var(--green), #30d9a0);
+}
+
+.admin-grid article:nth-child(5)::before {
+    content: "年";
+}
+
+.admin-grid article:nth-child(6)::before {
+    content: "导";
+    background: linear-gradient(135deg, var(--violet), #4ba3ff);
+}
+
+.admin-grid article strong,
+.admin-grid article span {
+    grid-column: 2;
 }
 
 .admin-grid span {
