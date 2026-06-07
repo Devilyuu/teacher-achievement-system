@@ -36,7 +36,7 @@ def login(
             "login.html",
             {
                 "user": None,
-                "error": "Invalid username or password",
+                "error": "用户名或密码错误",
                 "username": username,
             },
             status_code=status.HTTP_401_UNAUTHORIZED,

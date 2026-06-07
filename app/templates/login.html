@@ -1,21 +1,83 @@
 {% extends "base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}登录 · 教师成果管理系统{% endblock %}
 
 {% block content %}
-<section>
-    <h2>Login</h2>
-    {% if error %}
-        <p role="alert">{{ error }}</p>
-    {% endif %}
-    <form method="post" action="/login">
-        <label for="username">Username</label>
-        <input id="username" name="username" type="text" value="{{ username or '' }}" required autofocus>
+<div class="login-shell">
+    <section class="login-visual">
+        <a class="login-brand" href="/login">
+            <span class="brand-mark"><i data-lucide="layers-3"></i></span>
+            <span>教师成果管理系统</span>
+        </a>
+        <div class="login-message">
+            <p class="eyebrow">TEACHER ACHIEVEMENT ARCHIVE</p>
+            <h1>成果有序沉淀，材料随时导出</h1>
+            <p>日常记录教学、科研、育人与过程性工作，年度申报时不再反复整理散落材料。</p>
+        </div>
+        <div class="archive-scene" aria-hidden="true">
+            <div class="scene-sheet sheet-back"><i data-lucide="award"></i></div>
+            <div class="scene-sheet sheet-middle"><i data-lucide="file-check-2"></i></div>
+            <div class="scene-sheet sheet-front">
+                <span><i data-lucide="folder-kanban"></i></span>
+                <div class="scene-lines"><i></i><i></i><i></i></div>
+            </div>
+            <div class="scene-export"><i data-lucide="archive-restore"></i></div>
+        </div>
+        <p class="login-footnote"><i data-lucide="shield-check"></i>本机与局域网试用版</p>
+    </section>
 
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" required>
+    <section class="login-form-side">
+        <div class="login-form-wrap">
+            <div class="login-form-heading">
+                <div class="mobile-login-brand">
+                    <span class="mobile-brand-mark"><i data-lucide="layers-3"></i></span>
+                    <strong>教师成果管理系统</strong>
+                </div>
+                <h2>登录系统</h2>
+                <p>使用管理员分配的账号进入个人成果库</p>
+            </div>
+            {% if error %}
+            <div class="login-error" role="alert"><i data-lucide="circle-alert"></i><span>{{ error }}</span></div>
+            {% endif %}
+            <form method="post" action="/login" class="login-form">
+                <label for="username">
+                    <span>用户名</span>
+                    <span class="input-with-icon">
+                        <i data-lucide="user-round"></i>
+                        <input id="username" name="username" type="text" value="{{ username or '' }}" placeholder="请输入用户名" autocomplete="username" required autofocus>
+                    </span>
+                </label>
+                <label for="password">
+                    <span>密码</span>
+                    <span class="input-with-icon password-field">
+                        <i data-lucide="lock-keyhole"></i>
+                        <input id="password" name="password" type="password" placeholder="请输入密码" autocomplete="current-password" required>
+                        <button type="button" class="password-toggle" aria-label="显示密码" title="显示密码">
+                            <i data-lucide="eye"></i>
+                        </button>
+                    </span>
+                </label>
+                <button class="button primary login-submit" type="submit">
+                    登录<i data-lucide="arrow-right"></i>
+                </button>
+            </form>
+            <p class="login-help">忘记密码请联系系统管理员重置。</p>
+        </div>
+    </section>
+</div>
+{% endblock %}
 
-        <button type="submit">Login</button>
-    </form>
-</section>
+{% block scripts %}
+<script>
+    const passwordToggle = document.querySelector(".password-toggle");
+    const passwordInput = document.getElementById("password");
+    passwordToggle.addEventListener("click", () => {
+        const showing = passwordInput.type === "text";
+        passwordInput.type = showing ? "password" : "text";
+        passwordToggle.setAttribute("aria-label", showing ? "显示密码" : "隐藏密码");
+        passwordToggle.setAttribute("title", showing ? "显示密码" : "隐藏密码");
+        passwordToggle.innerHTML = `<i data-lucide="${showing ? "eye" : "eye-off"}"></i>`;
+        window.lucide.createIcons();
+    });
+</script>
 {% endblock %}

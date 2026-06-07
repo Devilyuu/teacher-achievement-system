@@ -47,6 +47,34 @@ def _rule_data(rule: PerformanceRule) -> dict[str, str | bool]:
     }
 
 
+def _group_achievements(
+    achievements: list[Achievement],
+    rules: list[PerformanceRule],
+) -> list[dict]:
+    category_order = list(dict.fromkeys(rule.category for rule in rules))
+    by_category: dict[str, list[Achievement]] = {}
+    for achievement in achievements:
+        by_category.setdefault(achievement.category, []).append(achievement)
+
+    ordered_categories = [
+        category
+        for category in category_order
+        if category in by_category
+    ]
+    ordered_categories.extend(
+        category
+        for category in by_category
+        if category not in category_order
+    )
+    return [
+        {
+            "category": category,
+            "achievements": by_category[category],
+        }
+        for category in ordered_categories
+    ]
+
+
 def _achievement_for_user(db: Session, achievement_id: int, user: User) -> Achievement:
     achievement = (
         db.query(Achievement)
@@ -140,12 +168,14 @@ def list_achievements(
         .order_by(Achievement.updated_at.desc(), Achievement.id.desc())
         .all()
     )
+    active_rules = _active_rules(db)
     return templates.TemplateResponse(
         request,
         "achievements/list.html",
         {
             "user": user,
             "achievements": achievements,
+            "achievement_groups": _group_achievements(achievements, active_rules),
             "available_years": sorted(
                 set([selected_year, datetime.now().year, *available_years]),
                 reverse=True,

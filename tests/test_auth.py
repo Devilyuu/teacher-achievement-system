@@ -9,6 +9,11 @@ def test_login_page_opens(app):
     assert response.status_code == 200
     assert "name=\"username\"" in response.text
     assert "name=\"password\"" in response.text
+    assert "教师成果管理系统" in response.text
+    assert "成果有序沉淀，材料随时导出" in response.text
+    assert 'data-lucide="eye"' in response.text
+    assert "login-shell" in response.text
+    assert 'class="mobile-login-brand"' in response.text
 
 
 def test_invalid_login_does_not_authenticate(app):
@@ -21,7 +26,7 @@ def test_invalid_login_does_not_authenticate(app):
 
     assert response.status_code == 401
     assert "user_id" not in client.cookies
-    assert "Invalid username or password" in response.text
+    assert "用户名或密码错误" in response.text
 
 
 def test_valid_admin_login_redirects_and_sets_cookie(app):

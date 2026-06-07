@@ -148,3 +148,75 @@ def test_achievement_list_can_filter_and_export_by_year(app):
     assert "2026年度成果" in response.text
     assert "2027年度成果" not in response.text
     assert 'href="/exports/2026/personal"' in response.text
+
+
+def test_achievement_list_groups_records_in_performance_category_order(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        db.add_all(
+            [
+                Achievement(
+                    user_id=admin.id,
+                    year=2026,
+                    category="科研与社会服务工作",
+                    subcategory="横向课题及项目",
+                    claim_nature=ClaimNature.result.value,
+                    title="科研成果甲",
+                    claimed_score=3,
+                ),
+                Achievement(
+                    user_id=admin.id,
+                    year=2026,
+                    category="教学",
+                    subcategory="教学成果奖申报及获奖",
+                    claim_nature=ClaimNature.result.value,
+                    title="教学成果甲",
+                    claimed_score=4,
+                ),
+                Achievement(
+                    user_id=admin.id,
+                    year=2026,
+                    category="教学",
+                    subcategory="新开课程",
+                    claim_nature=ClaimNature.result.value,
+                    title="教学成果乙",
+                    claimed_score=2,
+                ),
+                Achievement(
+                    user_id=admin.id,
+                    year=2026,
+                    category="其他有价值工作（自定义）",
+                    subcategory="自定义工作事项",
+                    claim_nature=ClaimNature.process.value,
+                    title="自定义成果甲",
+                    current_stage="进行中",
+                    claimed_score=1,
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/achievements?year=2026")
+
+    assert response.status_code == 200
+    assert response.text.count('class="category-section"') >= 3
+    assert response.text.count(">教学<") == 1
+    assert response.text.index(">教学<") < response.text.index(">科研与社会服务工作<")
+    assert response.text.index(">科研与社会服务工作<") < response.text.index(
+        ">其他有价值工作（自定义）<"
+    )
+    teaching_section = response.text.split(">教学<", 1)[1].split(
+        'class="category-section"', 1
+    )[0]
+    assert "教学成果甲" in teaching_section
+    assert "教学成果乙" in teaching_section

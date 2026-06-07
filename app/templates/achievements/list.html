@@ -7,7 +7,7 @@
     <div>
         <p class="eyebrow">个人成果库</p>
         <h1>{{ selected_year }} 年度成果</h1>
-        <p class="muted">按年度沉淀成果与过程材料，历史年度可随时查看和重新下载。</p>
+        <p class="muted">成果按绩效大类顺序归集，同类记录集中查看。</p>
     </div>
     <div class="header-actions">
         <a class="button secondary" href="/exports/{{ selected_year }}/personal">
@@ -28,49 +28,64 @@
             {% endfor %}
         </select>
     </form>
-    <span class="record-count">共 {{ achievements|length }} 条记录</span>
+    <span class="record-count">共 {{ achievements|length }} 条记录，{{ achievement_groups|length }} 个大类</span>
 </section>
 
+{% if achievement_groups %}
+<div class="category-sections">
+    {% for group in achievement_groups %}
+    <section class="category-section">
+        <div class="panel table-panel category-section-panel">
+        <header class="category-section-header">
+            <span class="category-section-icon"><i data-lucide="folder-kanban"></i></span>
+            <div>
+                <h2>{{ group.category }}</h2>
+                <p>{{ group.achievements|length }} 条成果记录</p>
+            </div>
+        </header>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>成果名称</th>
+                        <th>小类</th>
+                        <th>申报级别</th>
+                        <th>申报积分</th>
+                        <th>材料</th>
+                        <th>状态</th>
+                        <th aria-label="操作"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for achievement in group.achievements %}
+                    <tr>
+                        <td>
+                            <a class="record-title" href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a>
+                            <small>{{ achievement.claim_nature }}</small>
+                        </td>
+                        <td>{{ achievement.subcategory }}</td>
+                        <td>{{ achievement.level or "未选择" }}</td>
+                        <td><strong>{{ achievement.claimed_score }}</strong></td>
+                        <td>{{ achievement.materials|length }} 份</td>
+                        <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
+                        <td><a class="icon-button" href="/achievements/{{ achievement.id }}/edit" title="编辑"><i data-lucide="pencil"></i></a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% else %}
 <section class="panel table-panel">
-    {% if achievements %}
-    <div class="table-scroll">
-        <table>
-            <thead>
-                <tr>
-                    <th>成果名称</th>
-                    <th>分类</th>
-                    <th>申报级别</th>
-                    <th>申报积分</th>
-                    <th>材料</th>
-                    <th>状态</th>
-                    <th aria-label="操作"></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for achievement in achievements %}
-                <tr>
-                    <td>
-                        <a class="record-title" href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a>
-                        <small>{{ achievement.claim_nature }}</small>
-                    </td>
-                    <td>{{ achievement.category }}<small>{{ achievement.subcategory }}</small></td>
-                    <td>{{ achievement.level or "未选择" }}</td>
-                    <td><strong>{{ achievement.claimed_score }}</strong></td>
-                    <td>{{ achievement.materials|length }} 份</td>
-                    <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
-                    <td><a class="icon-button" href="/achievements/{{ achievement.id }}/edit" title="编辑"><i data-lucide="pencil"></i></a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
     <div class="empty-state">
         <span class="empty-icon"><i data-lucide="folder-open"></i></span>
         <h2>该年度还没有成果记录</h2>
         <p>成果和过程性工作都可以先记录，支撑材料可以稍后补充。</p>
         <a class="button primary" href="/achievements/new"><i data-lucide="plus"></i>新增成果</a>
     </div>
-    {% endif %}
 </section>
+{% endif %}
 {% endblock %}
