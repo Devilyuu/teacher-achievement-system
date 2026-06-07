@@ -7,6 +7,7 @@ from app.config import BASE_DIR
 from app.database import get_db
 from app.models import PerformanceRule, Role, User
 from app.security import hash_password, require_admin
+from app.services.performance_rule_guidance import assignment_mode
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -56,9 +57,14 @@ def list_rules(
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    rules = db.query(PerformanceRule).order_by(PerformanceRule.sort_order, PerformanceRule.id).all()
+    rules = (
+        db.query(PerformanceRule)
+        .filter(PerformanceRule.is_active.is_(True))
+        .order_by(PerformanceRule.sort_order, PerformanceRule.id)
+        .all()
+    )
     return templates.TemplateResponse(
         request,
         "admin/rules.html",
-        {"user": user, "rules": rules},
+        {"user": user, "rules": rules, "assignment_mode": assignment_mode},
     )

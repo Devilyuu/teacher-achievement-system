@@ -75,6 +75,11 @@ td small { display: block; max-width: 360px; margin-top: 4px; color: #8a94a5; wh
 .status { display: inline-flex; padding: 4px 8px; border-radius: 4px; background: #f1f5f9; color: #526071; font-size: 12px; white-space: nowrap; }
 .status-可申报 { color: #087a55; background: #e8f8f1; }
 .status-待完善 { color: #a15c05; background: #fff5df; }
+.mode-badge { display: inline-flex; max-width: 150px; padding: 4px 7px; border-radius: 4px; font-size: 11px; line-height: 1.45; }
+.mode-personal { color: #31527f; background: #edf4ff; }
+.mode-team { color: #066747; background: #e7f8f1; }
+.mode-assigned { color: #8a5600; background: #fff2cf; }
+.rule-note { min-width: 180px; max-width: 280px; color: #667085; line-height: 1.6; }
 .empty-state { display: flex; min-height: 330px; align-items: center; justify-content: center; flex-direction: column; padding: 48px 24px; text-align: center; }
 .empty-icon { width: 52px; height: 52px; color: var(--blue); background: #eaf2ff; border-radius: 50%; }
 .empty-icon svg { width: 25px; height: 25px; }

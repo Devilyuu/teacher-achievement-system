@@ -1,44 +1,48 @@
 {% extends "base.html" %}
 
-{% block title %}Admin Rules{% endblock %}
+{% block title %}绩效规则{% endblock %}
 
 {% block content %}
-<section>
-    <h2>Admin Rules</h2>
+<header class="page-header">
+    <div>
+        <p class="eyebrow">系统管理</p>
+        <h1>绩效规则</h1>
+        <p class="muted">已导入 {{ rules|length }} 条填报规则，来源为《浮动绩效积分统计.xlsx》。</p>
+    </div>
+</header>
 
-    {% if rules %}
+<section class="panel table-panel">
+    <div class="table-scroll">
         <table>
             <thead>
                 <tr>
-                    <th>Category</th>
-                    <th>Subcategory</th>
-                    <th>Base rule</th>
-                    <th>Level rule hints</th>
-                    <th>Remark</th>
-                    <th>Team</th>
+                    <th>大类 / 小类</th>
+                    <th>基本分</th>
+                    <th>国家级</th>
+                    <th>省级</th>
+                    <th>市级</th>
+                    <th>校级</th>
+                    <th>学院级</th>
+                    <th>赋分方式</th>
+                    <th>备注</th>
                 </tr>
             </thead>
             <tbody>
                 {% for rule in rules %}
-                    <tr>
-                        <td>{{ rule.category }}</td>
-                        <td>{{ rule.subcategory }}</td>
-                        <td>{{ rule.base_rule }}</td>
-                        <td>
-                            <div>National: {{ rule.national_rule }}</div>
-                            <div>Provincial: {{ rule.provincial_rule }}</div>
-                            <div>City: {{ rule.city_rule }}</div>
-                            <div>School: {{ rule.school_rule }}</div>
-                            <div>College: {{ rule.college_rule }}</div>
-                        </td>
-                        <td>{{ rule.remark }}</td>
-                        <td>{{ "Yes" if rule.is_team else "No" }}</td>
-                    </tr>
+                <tr>
+                    <td><strong>{{ rule.category }}</strong><small>{{ rule.subcategory }}</small></td>
+                    <td>{{ rule.base_rule or "——" }}</td>
+                    <td>{{ rule.national_rule or "——" }}</td>
+                    <td>{{ rule.provincial_rule or "——" }}</td>
+                    <td>{{ rule.city_rule or "——" }}</td>
+                    <td>{{ rule.school_rule or "——" }}</td>
+                    <td>{{ rule.college_rule or "——" }}</td>
+                    <td><span class="mode-badge mode-{{ 'team' if rule.is_team else 'assigned' if rule.is_department_assigned else 'personal' }}">{{ assignment_mode(rule) }}</span></td>
+                    <td class="rule-note">{{ rule.remark or "—" }}</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
-    {% else %}
-        <p>No rules yet.</p>
-    {% endif %}
+    </div>
 </section>
 {% endblock %}

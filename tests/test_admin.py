@@ -3,7 +3,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
-from app.models import Role, User
+from app.models import PerformanceRule, Role, User
 from app.security import hash_password
 
 
@@ -104,3 +104,28 @@ def test_admin_rules_page_includes_custom_category(app):
 
     assert response.status_code == 200
     assert "其他有价值工作（自定义）" in response.text
+
+
+def test_admin_rules_page_only_lists_active_rules_and_shows_assignment_mode(app):
+    db = SessionLocal()
+    try:
+        db.add(
+            PerformanceRule(
+                category="停用测试类别",
+                subcategory="不应显示的停用规则",
+                is_active=False,
+                sort_order=999,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    _login_admin(client)
+    response = client.get("/admin/rules")
+
+    assert response.status_code == 200
+    assert "不应显示的停用规则" not in response.text
+    assert "团队负责人申报并分配" in response.text
+    assert "项目负责人统一赋分" in response.text
