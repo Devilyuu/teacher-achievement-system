@@ -34,6 +34,7 @@
             <div class="sidebar-user">
                 <span class="avatar">{{ user.full_name[:1] }}</span>
                 <span class="user-copy"><strong>{{ user.full_name }}</strong><small>{{ user.department or "未设置部门" }}</small></span>
+                <a class="icon-button" href="/change-password" title="修改密码"><i data-lucide="key-round"></i></a>
                 <a class="icon-button" href="/logout" title="退出登录"><i data-lucide="log-out"></i></a>
             </div>
         </aside>

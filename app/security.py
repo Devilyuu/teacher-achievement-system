@@ -1,4 +1,4 @@
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
@@ -18,17 +18,18 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def get_current_user(
-    user_id: str | None = Cookie(default=None),
+    request: Request,
+    auth_user_id: str | None = Cookie(default=None, alias="user_id"),
     db: Session = Depends(get_db),
 ) -> User:
-    if not user_id:
+    if not auth_user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
         )
 
     try:
-        parsed_user_id = int(user_id)
+        parsed_user_id = int(auth_user_id)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -40,6 +41,15 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
+        )
+
+    if (
+        user.must_change_password
+        and request.url.path not in {"/change-password", "/logout"}
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/change-password"},
         )
 
     return user

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import BASE_DIR
 from app.database import get_db
 from app.models import User
-from app.security import verify_password
+from app.security import get_current_user, hash_password, verify_password
 
 
 router = APIRouter()
@@ -42,7 +42,8 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
-    response = RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
+    destination = "/change-password" if user.must_change_password else "/"
+    response = RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         "user_id",
         str(user.id),
@@ -50,6 +51,49 @@ def login(
         samesite="lax",
     )
     return response
+
+
+@router.get("/change-password")
+def change_password_page(
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    return templates.TemplateResponse(
+        request,
+        "change_password.html",
+        {"user": user, "error": None},
+    )
+
+
+@router.post("/change-password")
+def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    error = None
+    if not verify_password(current_password, user.password_hash):
+        error = "当前密码不正确"
+    elif len(new_password) < 8:
+        error = "新密码至少需要 8 个字符"
+    elif new_password != confirm_password:
+        error = "两次输入的新密码不一致"
+
+    if error:
+        return templates.TemplateResponse(
+            request,
+            "change_password.html",
+            {"user": user, "error": error},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user.password_hash = hash_password(new_password)
+    user.must_change_password = False
+    db.commit()
+    return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/logout")

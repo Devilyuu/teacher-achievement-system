@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
 from app.models import PerformanceRule, Role, User
-from app.security import hash_password
+from app.security import hash_password, verify_password
 
 
 def _login_admin(client: TestClient) -> None:
@@ -76,7 +76,7 @@ def test_admin_can_create_teacher_user_and_teacher_can_log_in(app):
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/admin/users"
+    assert response.headers["location"].startswith("/admin/users?")
 
     list_response = admin_client.get("/admin/users")
     assert list_response.status_code == 200
@@ -92,8 +92,127 @@ def test_admin_can_create_teacher_user_and_teacher_can_log_in(app):
     )
 
     assert login_response.status_code == 303
-    assert login_response.headers["location"] == "/"
+    assert login_response.headers["location"] == "/change-password"
     assert teacher_client.cookies.get("user_id")
+
+    db = SessionLocal()
+    try:
+        created_user = db.query(User).filter_by(username=username).one()
+        assert created_user.must_change_password is True
+    finally:
+        db.close()
+
+
+def test_admin_can_deactivate_and_reactivate_teacher(app):
+    username = f"toggle-teacher-{uuid4().hex}"
+    _create_teacher(username)
+    db = SessionLocal()
+    try:
+        teacher = db.query(User).filter_by(username=username).one()
+        teacher_id = teacher.id
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    _login_admin(client)
+
+    deactivate = client.post(
+        f"/admin/users/{teacher_id}/toggle-active",
+        follow_redirects=False,
+    )
+    assert deactivate.status_code == 303
+
+    blocked_login = TestClient(app).post(
+        "/login",
+        data={"username": username, "password": "teacher-pass-123"},
+        follow_redirects=False,
+    )
+    assert blocked_login.status_code == 401
+
+    reactivate = client.post(
+        f"/admin/users/{teacher_id}/toggle-active",
+        follow_redirects=False,
+    )
+    assert reactivate.status_code == 303
+
+    allowed_login = TestClient(app).post(
+        "/login",
+        data={"username": username, "password": "teacher-pass-123"},
+        follow_redirects=False,
+    )
+    assert allowed_login.status_code == 303
+
+
+def test_admin_cannot_deactivate_own_account(app):
+    client = TestClient(app)
+    _login_admin(client)
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        admin_id = admin.id
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/admin/users/{admin_id}/toggle-active",
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "error=" in response.headers["location"]
+    db = SessionLocal()
+    try:
+        assert db.get(User, admin_id).is_active is True
+    finally:
+        db.close()
+
+
+def test_admin_can_reset_teacher_password_and_require_change(app):
+    username = f"reset-teacher-{uuid4().hex}"
+    _create_teacher(username)
+    db = SessionLocal()
+    try:
+        teacher = db.query(User).filter_by(username=username).one()
+        teacher_id = teacher.id
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    _login_admin(client)
+    response = client.post(
+        f"/admin/users/{teacher_id}/reset-password",
+        data={"new_password": "reset-pass-456"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    db = SessionLocal()
+    try:
+        teacher = db.get(User, teacher_id)
+        assert verify_password("reset-pass-456", teacher.password_hash)
+        assert teacher.must_change_password is True
+    finally:
+        db.close()
+
+
+def test_duplicate_username_returns_page_error(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.post(
+        "/admin/users",
+        data={
+            "username": "admin",
+            "full_name": "重复用户",
+            "department": "测试",
+            "role": Role.teacher.value,
+            "password": "password123",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "error=" in response.headers["location"]
 
 
 def test_admin_rules_page_includes_custom_category(app):
