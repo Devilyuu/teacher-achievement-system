@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}教师成果管理系统{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260615-3">
-    <script src="{{ url_for('static', path='vendor/lucide.min.js') }}" defer></script>
+    <script src="{{ url_for('static', path='vendor/lucide.min.js') }}"></script>
 </head>
 <body>
     <div class="app-shell">
@@ -19,10 +19,10 @@
                 <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
                     <i data-lucide="layout-dashboard"></i><span>年度首页</span>
                 </a>
-                <a href="/achievements" class="{% if request.url.path.startswith('/achievements') %}active{% endif %}">
+                <a href="/achievements" class="{% if request.url.path.startswith('/achievements') and request.url.path != '/achievements/new' %}active{% endif %}">
                     <i data-lucide="library-big"></i><span>成果管理</span>
                 </a>
-                <a href="/achievements/new">
+                <a href="/achievements/new" class="{% if request.url.path == '/achievements/new' %}active{% endif %}">
                     <i data-lucide="square-plus"></i><span>新增填报</span>
                 </a>
                 {% if user.role == "admin" %}
@@ -46,9 +46,7 @@
         </main>
     </div>
     <script>
-        window.addEventListener("DOMContentLoaded", () => {
-            if (window.lucide) window.lucide.createIcons();
-        });
+        if (window.lucide) window.lucide.createIcons();
     </script>
     {% block scripts %}{% endblock %}
 </body>

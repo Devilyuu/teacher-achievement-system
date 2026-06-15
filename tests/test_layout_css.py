@@ -1,4 +1,7 @@
 from pathlib import Path
+import re
+
+from fastapi.testclient import TestClient
 
 
 CSS_PATH = Path(__file__).resolve().parents[1] / "app" / "static" / "app.css"
@@ -31,3 +34,36 @@ def test_base_template_versions_application_stylesheet():
     template = BASE_TEMPLATE_PATH.read_text(encoding="utf-8")
 
     assert "url_for('static', path='app.css') }}?v=" in template
+
+
+def test_lucide_icons_are_initialized_without_deferred_dom_event():
+    template = BASE_TEMPLATE_PATH.read_text(encoding="utf-8")
+
+    assert "lucide.min.js') }}\" defer" not in template
+    assert 'if (window.lucide) window.lucide.createIcons();' in template
+    assert 'window.addEventListener("DOMContentLoaded"' not in template
+
+
+def test_new_achievement_page_activates_only_new_entry_navigation(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/achievements/new")
+
+    assert response.status_code == 200
+    management_link = re.search(
+        r'<a href="/achievements" class="([^"]*)">',
+        response.text,
+    )
+    new_entry_link = re.search(
+        r'<a href="/achievements/new" class="([^"]*)">',
+        response.text,
+    )
+    assert management_link is not None
+    assert new_entry_link is not None
+    assert "active" not in management_link.group(1).split()
+    assert "active" in new_entry_link.group(1).split()
