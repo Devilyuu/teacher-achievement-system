@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlencode
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -44,51 +46,89 @@ def _material_for_user(db: Session, material_id: int, user: User) -> Material:
     return material
 
 
+def _filename_display_name(filename: str | None) -> str:
+    stem = Path(filename or "").stem.strip()
+    return stem or "支撑材料"
+
+
+def _next_material_index(achievement: Achievement) -> int:
+    prefix = f"{achievement.id}-"
+    numbers: list[int] = []
+    for material in achievement.materials:
+        if material.material_no.startswith(prefix):
+            suffix = material.material_no.removeprefix(prefix)
+            if suffix.isdigit():
+                numbers.append(int(suffix))
+    return (max(numbers) if numbers else 0) + 1
+
+
 @router.post("/upload")
 def upload_material(
     achievement_id: int = Form(...),
-    display_name: str = Form(...),
+    display_name: str = Form(""),
     description: str = Form(""),
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(..., alias="file"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     achievement = _achievement_for_user(db, achievement_id, user)
-    try:
-        stored_path, size, ext = save_material_file(
-            achievement.year,
-            user.id,
-            achievement.id,
-            file,
+    next_index = _next_material_index(achievement)
+    saved_paths: list[str] = []
+    uploaded_count = 0
+    failed_messages: list[str] = []
+
+    for file in files:
+        try:
+            stored_path, size, ext = save_material_file(
+                achievement.year,
+                user.id,
+                achievement.id,
+                file,
+            )
+        except ValueError as exc:
+            failed_messages.append(f"{file.filename or '未命名文件'}：{exc}")
+            continue
+
+        material_name = (
+            display_name.strip()
+            if len(files) == 1 and display_name.strip()
+            else _filename_display_name(file.filename)
         )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        material = Material(
+            material_no=f"{achievement.id}-{next_index}",
+            display_name=material_name,
+            description=description.strip(),
+            original_filename=file.filename or "",
+            stored_path=stored_path,
+            file_ext=ext,
+            file_size=size,
+        )
+        next_index += 1
+        uploaded_count += 1
+        saved_paths.append(stored_path)
+        achievement.materials.append(material)
+        db.add(material)
 
-    next_index = (
-        db.query(Material)
-        .filter(Material.achievement_id == achievement.id)
-        .count()
-        + 1
-    )
-    material = Material(
-        material_no=f"{achievement.id}-{next_index}",
-        display_name=display_name.strip() or file.filename or "Uploaded material",
-        description=description.strip(),
-        original_filename=file.filename or "",
-        stored_path=stored_path,
-        file_ext=ext,
-        file_size=size,
-    )
-    achievement.materials.append(material)
-    achievement.status = calculate_status(achievement)
+    if uploaded_count:
+        achievement.status = calculate_status(achievement)
 
-    db.add(material)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        for stored_path in saved_paths:
+            delete_material_file(stored_path)
+        raise
+
+    query = urlencode(
+        {
+            "uploaded": uploaded_count,
+            "failed": len(failed_messages),
+            "errors": "；".join(failed_messages),
+        }
+    )
     return RedirectResponse(
-        f"/achievements/{achievement.id}",
+        f"/achievements/{achievement.id}?{query}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -130,10 +170,11 @@ def replace_material(
             file,
         )
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        query = urlencode({"replace_error": f"{file.filename or '未命名文件'}：{exc}"})
+        return RedirectResponse(
+            f"/achievements/{achievement.id}?{query}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     old_path = material.stored_path
     material.original_filename = file.filename or ""

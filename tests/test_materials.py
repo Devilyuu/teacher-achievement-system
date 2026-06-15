@@ -132,7 +132,8 @@ def test_authenticated_user_can_upload_material_to_owned_achievement(app):
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == f"/achievements/{achievement_id}"
+    assert response.headers["location"].startswith(f"/achievements/{achievement_id}")
+    assert "uploaded=1" in response.headers["location"]
 
     db = SessionLocal()
     try:
@@ -147,6 +148,171 @@ def test_authenticated_user_can_upload_material_to_owned_achievement(app):
         assert Path(material.stored_path).exists()
         assert Path(material.stored_path).is_relative_to(UPLOAD_DIR)
         assert achievement.status == AchievementStatus.ready.value
+    finally:
+        db.close()
+
+
+def test_authenticated_user_can_upload_multiple_materials_with_filename_names(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = _complete_process_achievement(admin.id, "Batch upload proofs")
+        db.add(achievement)
+        db.commit()
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.post(
+        "/materials/upload",
+        data={
+            "achievement_id": str(achievement_id),
+            "display_name": "",
+            "description": "batch upload",
+        },
+        files=[
+            ("file", ("award-certificate.pdf", BytesIO(b"award"), "application/pdf")),
+            ("file", ("platform screenshot.PNG", BytesIO(b"image"), "image/png")),
+        ],
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith(f"/achievements/{achievement_id}")
+    assert "uploaded=2" in response.headers["location"]
+
+    db = SessionLocal()
+    try:
+        materials = (
+            db.query(Material)
+            .filter_by(achievement_id=achievement_id)
+            .order_by(Material.material_no)
+            .all()
+        )
+        achievement = db.get(Achievement, achievement_id)
+
+        assert [material.material_no for material in materials] == [
+            f"{achievement_id}-1",
+            f"{achievement_id}-2",
+        ]
+        assert [material.display_name for material in materials] == [
+            "award-certificate",
+            "platform screenshot",
+        ]
+        assert [material.original_filename for material in materials] == [
+            "award-certificate.pdf",
+            "platform screenshot.PNG",
+        ]
+        assert achievement.status == AchievementStatus.ready.value
+    finally:
+        db.close()
+
+
+def test_batch_upload_keeps_valid_files_and_reports_invalid_files(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = _complete_process_achievement(admin.id, "Partial batch upload")
+        db.add(achievement)
+        db.commit()
+        admin_id = admin.id
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.post(
+        "/materials/upload",
+        data={"achievement_id": str(achievement_id)},
+        files=[
+            ("file", ("valid-proof.pdf", BytesIO(b"valid"), "application/pdf")),
+            ("file", ("unsafe.exe", BytesIO(b"nope"), "application/octet-stream")),
+        ],
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith(f"/achievements/{achievement_id}")
+    assert "uploaded=1" in response.headers["location"]
+    assert "failed=1" in response.headers["location"]
+    assert "unsafe.exe" in response.headers["location"]
+
+    db = SessionLocal()
+    try:
+        material = db.query(Material).filter_by(achievement_id=achievement_id).one()
+        assert material.display_name == "valid-proof"
+        assert material.original_filename == "valid-proof.pdf"
+        assert Path(material.stored_path).exists()
+        assert not list((UPLOAD_DIR / "2026" / str(admin_id) / str(achievement_id)).glob("*.exe"))
+    finally:
+        db.close()
+
+
+def test_batch_upload_continues_from_highest_existing_material_number(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    first_path = _create_material_file("first.pdf", b"first")
+    third_path = _create_material_file("third.pdf", b"third")
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = _complete_process_achievement(admin.id, "Continue material number")
+        db.add(achievement)
+        db.flush()
+        first = Material(
+            achievement_id=achievement.id,
+            material_no=f"{achievement.id}-1",
+            display_name="First",
+            original_filename=first_path.name,
+            stored_path=str(first_path),
+            file_ext=first_path.suffix,
+            file_size=first_path.stat().st_size,
+        )
+        third = Material(
+            achievement_id=achievement.id,
+            material_no=f"{achievement.id}-3",
+            display_name="Third",
+            original_filename=third_path.name,
+            stored_path=str(third_path),
+            file_ext=third_path.suffix,
+            file_size=third_path.stat().st_size,
+        )
+        achievement.materials.extend([first, third])
+        db.add_all([first, third])
+        db.commit()
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.post(
+        "/materials/upload",
+        data={"achievement_id": str(achievement_id)},
+        files={"file": ("new-proof.pdf", BytesIO(b"new"), "application/pdf")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+
+    db = SessionLocal()
+    try:
+        numbers = [
+            material.material_no
+            for material in db.query(Material)
+            .filter_by(achievement_id=achievement_id)
+            .order_by(Material.material_no)
+            .all()
+        ]
+        assert numbers == [
+            f"{achievement_id}-1",
+            f"{achievement_id}-3",
+            f"{achievement_id}-4",
+        ]
     finally:
         db.close()
 
@@ -282,6 +448,39 @@ def test_owner_can_replace_material_without_changing_material_number(app):
         assert material.file_ext == ".docx"
         assert Path(material.stored_path).read_bytes() == b"new proof"
         assert not source_path.exists()
+    finally:
+        db.close()
+
+
+def test_invalid_replacement_keeps_original_material_file(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("keep-original.pdf", b"original")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement_id, material_id = _create_owned_material(db, admin.id, source_path)
+        original_stored_path = db.get(Material, material_id).stored_path
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/materials/{material_id}/replace",
+        files={"file": ("bad.exe", BytesIO(b"bad"), "application/octet-stream")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith(f"/achievements/{achievement_id}")
+    assert "replace_error=" in response.headers["location"]
+
+    db = SessionLocal()
+    try:
+        material = db.get(Material, material_id)
+        assert material.original_filename == "keep-original.pdf"
+        assert material.stored_path == original_stored_path
+        assert Path(material.stored_path).read_bytes() == b"original"
     finally:
         db.close()
 
