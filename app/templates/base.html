@@ -40,6 +40,9 @@
                 <a class="icon-button" href="/logout" title="退出登录"><i data-lucide="log-out"></i></a>
             </div>
         </aside>
+        <script>
+            if (window.lucide) window.lucide.createIcons();
+        </script>
         {% endif %}
         <main class="{% if user %}workspace{% else %}login-workspace{% endif %}">
             {% block content %}{% endblock %}

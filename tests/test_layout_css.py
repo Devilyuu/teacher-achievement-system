@@ -42,6 +42,12 @@ def test_lucide_icons_are_initialized_without_deferred_dom_event():
     assert "lucide.min.js') }}\" defer" not in template
     assert 'if (window.lucide) window.lucide.createIcons();' in template
     assert 'window.addEventListener("DOMContentLoaded"' not in template
+    sidebar_end = template.index("</aside>")
+    workspace_start = template.index("<main ")
+    icon_initialization = template.index(
+        "if (window.lucide) window.lucide.createIcons();"
+    )
+    assert sidebar_end < icon_initialization < workspace_start
 
 
 def test_new_achievement_page_activates_only_new_entry_navigation(app):
