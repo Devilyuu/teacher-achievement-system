@@ -1,10 +1,13 @@
-import shutil
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import UploadFile
 
-from app.config import ALLOWED_EXTENSIONS, UPLOAD_DIR
+from app.config import ALLOWED_EXTENSIONS, MAX_UPLOAD_MB, UPLOAD_DIR
+
+
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+CHUNK_SIZE = 1024 * 1024
 
 
 def safe_extension(filename: str) -> str:
@@ -25,11 +28,28 @@ def save_material_file(
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     stored_path = upload_dir / f"{uuid4().hex}{ext}"
+    size = 0
     upload.file.seek(0)
-    with stored_path.open("wb") as output:
-        shutil.copyfileobj(upload.file, output)
+    try:
+        with stored_path.open("wb") as output:
+            while True:
+                chunk = upload.file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > MAX_UPLOAD_BYTES:
+                    raise ValueError(
+                        f"File exceeds {MAX_UPLOAD_MB}MB upload limit"
+                    )
+                output.write(chunk)
+    except Exception:
+        if stored_path.exists():
+            stored_path.unlink()
+        raise
 
-    size = stored_path.stat().st_size
+    if size == 0:
+        stored_path.unlink()
+        raise ValueError("File is empty")
     return str(stored_path), size, ext
 
 

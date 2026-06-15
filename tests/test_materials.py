@@ -8,7 +8,7 @@ from app.config import UPLOAD_DIR
 from app.database import SessionLocal
 from app.models import Achievement, AchievementStatus, ClaimNature, Material, Role, User
 from app.security import hash_password
-from app.services.storage import safe_extension
+from app.services.storage import safe_extension, save_material_file
 
 
 def _login_admin(client: TestClient) -> None:
@@ -57,6 +57,53 @@ def test_safe_extension_rejects_unsupported_extension():
         assert "Unsupported file extension" in str(exc)
     else:
         raise AssertionError("safe_extension should reject .exe files")
+
+
+def test_save_material_file_rejects_empty_file_without_creating_file(app):
+    user_id = int(uuid4().hex[:8], 16)
+    achievement_id = int(uuid4().hex[:8], 16)
+    upload = type(
+        "Upload",
+        (),
+        {
+            "filename": "empty.pdf",
+            "file": BytesIO(b""),
+        },
+    )()
+
+    try:
+        save_material_file(2026, user_id, achievement_id, upload)
+    except ValueError as exc:
+        assert "empty" in str(exc).lower()
+    else:
+        raise AssertionError("empty material files should be rejected")
+
+    upload_dir = UPLOAD_DIR / "2026" / str(user_id) / str(achievement_id)
+    assert not upload_dir.exists() or list(upload_dir.iterdir()) == []
+
+
+def test_save_material_file_rejects_file_above_configured_limit_without_leftover(app, monkeypatch):
+    user_id = int(uuid4().hex[:8], 16)
+    achievement_id = int(uuid4().hex[:8], 16)
+    monkeypatch.setattr("app.services.storage.MAX_UPLOAD_BYTES", 4)
+    upload = type(
+        "Upload",
+        (),
+        {
+            "filename": "too-large.pdf",
+            "file": BytesIO(b"12345"),
+        },
+    )()
+
+    try:
+        save_material_file(2026, user_id, achievement_id, upload)
+    except ValueError as exc:
+        assert "exceeds" in str(exc).lower()
+    else:
+        raise AssertionError("oversized material files should be rejected")
+
+    upload_dir = UPLOAD_DIR / "2026" / str(user_id) / str(achievement_id)
+    assert not upload_dir.exists() or list(upload_dir.iterdir()) == []
 
 
 def test_authenticated_user_can_upload_material_to_owned_achievement(app):
