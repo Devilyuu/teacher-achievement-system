@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}用户导入预检{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <a class="back-link" href="/admin/users"><i data-lucide="arrow-left"></i>返回用户管理</a>
+        <p class="eyebrow">系统管理</p>
+        <h1>用户导入预检</h1>
+        <p class="muted">系统不会覆盖已有账号；全部数据通过校验后才可确认导入。</p>
+    </div>
+</header>
+
+{% if file_error %}
+<div class="page-message error"><i data-lucide="circle-alert"></i>{{ file_error }}</div>
+{% endif %}
+
+{% if result %}
+<section class="panel table-panel import-preview-panel">
+    <div class="panel-heading import-preview-heading">
+        <div>
+            <h2>{{ "预检存在问题" if result.has_errors else "预检通过" }}</h2>
+            <p>共读取 {{ result.rows|length }} 个账号</p>
+        </div>
+        <span class="status {{ 'status-待完善' if result.has_errors else 'status-可申报' }}">
+            {{ "请修改后重新上传" if result.has_errors else "可以导入" }}
+        </span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead><tr><th>Excel 行</th><th>用户名</th><th>姓名</th><th>部门</th><th>角色</th><th>校验结果</th></tr></thead>
+            <tbody>
+            {% for row in result.rows %}
+                <tr>
+                    <td>{{ row.row_number }}</td>
+                    <td>{{ row.username or "—" }}</td>
+                    <td>{{ row.full_name or "—" }}</td>
+                    <td>{{ row.department or "—" }}</td>
+                    <td>{{ "管理员" if row.role == "admin" else "教师" if row.role == "teacher" else "—" }}</td>
+                    <td>
+                        {% if row.errors %}
+                        <span class="import-errors">{{ row.errors|join("；") }}</span>
+                        {% else %}
+                        <span class="account-state active">通过</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="import-preview-actions">
+    <a class="button secondary" href="/admin/users">取消</a>
+    {% if batch_token %}
+    <form method="post" action="/admin/users/import-confirm">
+        <input type="hidden" name="batch_token" value="{{ batch_token }}">
+        <button class="button primary" type="submit"><i data-lucide="users-round"></i>确认导入</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

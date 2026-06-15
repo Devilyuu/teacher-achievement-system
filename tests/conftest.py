@@ -11,6 +11,7 @@ from app.database import SessionLocal
 @pytest.fixture
 def app(tmp_path: Path, monkeypatch):
     database_path = tmp_path / "database" / "app.sqlite3"
+    user_import_dir = tmp_path / "imports" / "users"
     database_path.parent.mkdir(parents=True)
 
     test_engine = create_engine(
@@ -26,6 +27,7 @@ def app(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(main, "engine", test_engine)
     monkeypatch.setattr(schema_updates, "engine", test_engine)
     monkeypatch.setattr(admin, "DATABASE_PATH", database_path)
+    monkeypatch.setattr(admin, "USER_IMPORT_DIR", user_import_dir)
 
     try:
         yield main.create_app()

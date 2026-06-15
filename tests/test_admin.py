@@ -1,7 +1,9 @@
 import json
+from io import BytesIO
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from openpyxl import Workbook, load_workbook
 
 from app.database import SessionLocal
 from app.models import PerformanceRule, Role, User
@@ -265,6 +267,138 @@ def _rule_form_data(category: str, subcategory: str) -> dict[str, str]:
         "remark": "测试规则",
         "sort_order": "880",
     }
+
+
+def _user_import_workbook(rows: list[list[str]]) -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "用户导入"
+    sheet.append(["用户名", "姓名", "部门", "角色", "初始密码"])
+    for row in rows:
+        sheet.append(row)
+    stream = BytesIO()
+    workbook.save(stream)
+    return stream.getvalue()
+
+
+def test_admin_can_download_user_import_template(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.get("/admin/users/import-template.xlsx")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument"
+    )
+    workbook = load_workbook(BytesIO(response.content))
+    assert [cell.value for cell in workbook["用户导入"][1]] == [
+        "用户名",
+        "姓名",
+        "部门",
+        "角色",
+        "初始密码",
+    ]
+
+
+def test_non_admin_cannot_preview_user_import(app):
+    username = f"import-teacher-{uuid4().hex}"
+    _create_teacher(username)
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": username, "password": "teacher-pass-123"},
+        follow_redirects=False,
+    )
+
+    response = client.post(
+        "/admin/users/import-preview",
+        files={
+            "file": (
+                "users.xlsx",
+                _user_import_workbook([]),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 403
+
+
+def test_user_import_preview_blocks_rows_with_errors(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.post(
+        "/admin/users/import-preview",
+        files={
+            "file": (
+                "users.xlsx",
+                _user_import_workbook(
+                    [["admin", "重复管理员", "管理", "管理员", "password123"]]
+                ),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    assert "用户名已存在" in response.text
+    assert 'action="/admin/users/import-confirm"' not in response.text
+
+
+def test_admin_can_preview_and_confirm_user_import(app):
+    suffix = uuid4().hex
+    username = f"excel-teacher-{suffix}"
+    client = TestClient(app)
+    _login_admin(client)
+
+    preview = client.post(
+        "/admin/users/import-preview",
+        files={
+            "file": (
+                "users.xlsx",
+                _user_import_workbook(
+                    [
+                        [
+                            username,
+                            "批量导入教师",
+                            "数字艺术学院",
+                            "教师",
+                            "teacher123",
+                        ]
+                    ]
+                ),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
+
+    assert preview.status_code == 200
+    assert "预检通过" in preview.text
+    token_marker = 'name="batch_token" value="'
+    token_start = preview.text.index(token_marker) + len(token_marker)
+    token_end = preview.text.index('"', token_start)
+    token = preview.text[token_start:token_end]
+
+    confirmed = client.post(
+        "/admin/users/import-confirm",
+        data={"batch_token": token},
+        follow_redirects=False,
+    )
+
+    assert confirmed.status_code == 303
+    assert "success=" in confirmed.headers["location"]
+    db = SessionLocal()
+    try:
+        imported = db.query(User).filter_by(username=username).one()
+        assert imported.full_name == "批量导入教师"
+        assert imported.department == "数字艺术学院"
+        assert imported.role == Role.teacher.value
+        assert imported.must_change_password is True
+        assert verify_password("teacher123", imported.password_hash)
+    finally:
+        db.close()
 
 
 def test_non_admin_user_cannot_open_rule_create_page(app):

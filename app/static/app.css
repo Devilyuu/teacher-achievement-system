@@ -237,6 +237,14 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .user-create-form { display: grid; grid-template-columns: 1fr 1fr 1.2fr .8fr 1.1fr auto; align-items: end; gap: 12px; }
 .user-create-form .button { margin-bottom: 0; white-space: nowrap; }
 .user-table-panel { margin-top: 17px; }
+.user-import-panel { margin-top: 17px; padding: 22px; }
+.user-import-form { display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: end; gap: 12px; }
+.user-import-form .button { white-space: nowrap; }
+.import-preview-panel { overflow: hidden; }
+.import-preview-heading { padding: 19px 20px 0; }
+.import-errors { color: #b42318; font-size: 12px; line-height: 1.6; }
+.import-preview-actions { display: flex; max-width: 1240px; justify-content: flex-end; gap: 10px; margin: 16px auto 0; }
+.import-preview-actions form { margin: 0; }
 .user-table-heading { padding: 18px 20px 0; }
 .account-state { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
 .account-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
@@ -295,6 +303,7 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .mobile-login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; color: #28466f; font-size: 15px; }
     .mobile-brand-mark { display: grid; place-items: center; width: 40px; height: 40px; color: white; background: linear-gradient(145deg, #1677ff, #5b5cf6); border-radius: 8px; }
     .user-create-form { grid-template-columns: 1fr 1fr; }.user-create-form .button { align-self: end; }
+    .user-import-form { grid-template-columns: 1fr auto; }
     .summary-filter-form { grid-template-columns: 1fr 1fr; }
     .summary-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .achievement-filter-form { grid-template-columns: 1fr 1fr; }
@@ -311,6 +320,7 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .form-grid, .guidance-grid, .detail-grid, .upload-form { grid-template-columns: 1fr; }.span-2, .file-field { grid-column: auto; }
     .stat-grid { grid-template-columns: 1fr 1fr; }.stat-item { min-height: 88px; padding: 13px; }
     .user-create-form { grid-template-columns: 1fr; }
+    .user-import-form { grid-template-columns: 1fr; }
     .summary-filter-form { grid-template-columns: 1fr; }
     .summary-stat-grid { grid-template-columns: 1fr 1fr; }
     .summary-stat-grid .stat-item:last-child { grid-column: 1 / -1; }

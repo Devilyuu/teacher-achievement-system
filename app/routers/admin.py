@@ -1,13 +1,30 @@
 from datetime import datetime
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.config import BASE_DIR, DATABASE_PATH, EXPORT_DIR, UPLOAD_DIR
+from app.config import (
+    BASE_DIR,
+    DATABASE_PATH,
+    EXPORT_DIR,
+    SECRET_KEY,
+    UPLOAD_DIR,
+    USER_IMPORT_DIR,
+)
 from app.database import get_db
 from app.models import Achievement, AchievementStatus, PerformanceRule, Role, User
 from app.security import hash_password, require_admin
@@ -21,6 +38,12 @@ from app.services.performance_rule_guidance import (
     assignment_mode,
     find_rule,
     rule_for_level,
+)
+from app.services.user_import import (
+    build_user_import_template,
+    consume_import_batch,
+    parse_user_import_workbook,
+    store_import_batch,
 )
 
 
@@ -289,6 +312,130 @@ def create_user(
     query = urlencode({"success": "教师账号已创建"})
     return RedirectResponse(
         f"/admin/users?{query}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/users/import-template.xlsx")
+def download_user_import_template(
+    user: User = Depends(require_admin),
+):
+    return Response(
+        content=build_user_import_template(),
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="teacher_user_import_template.xlsx"'
+            )
+        },
+    )
+
+
+@router.post("/users/import-preview")
+async def preview_user_import(
+    request: Request,
+    file: UploadFile = File(...),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if not file.filename or not file.filename.lower().endswith(".xlsx"):
+        return templates.TemplateResponse(
+            request,
+            "admin/user_import_preview.html",
+            {
+                "user": user,
+                "result": None,
+                "batch_token": "",
+                "file_error": "请上传 .xlsx 格式的 Excel 文件",
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        result = parse_user_import_workbook(
+            await file.read(),
+            {
+                row[0]
+                for row in db.query(User.username).all()
+            },
+        )
+    except ValueError as exc:
+        return templates.TemplateResponse(
+            request,
+            "admin/user_import_preview.html",
+            {
+                "user": user,
+                "result": None,
+                "batch_token": "",
+                "file_error": str(exc),
+            },
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    file_error = "" if result.rows else "Excel 中没有可导入的账号"
+    batch_token = ""
+    if not result.has_errors and result.rows:
+        batch_token = store_import_batch(
+            result.rows,
+            USER_IMPORT_DIR,
+            SECRET_KEY,
+        )
+    return templates.TemplateResponse(
+        request,
+        "admin/user_import_preview.html",
+        {
+            "user": user,
+            "result": result,
+            "batch_token": batch_token,
+            "file_error": file_error,
+        },
+    )
+
+
+@router.post("/users/import-confirm")
+def confirm_user_import(
+    batch_token: str = Form(...),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    try:
+        rows = consume_import_batch(
+            batch_token,
+            USER_IMPORT_DIR,
+            SECRET_KEY,
+        )
+    except ValueError as exc:
+        return RedirectResponse(
+            f"/admin/users?{urlencode({'error': str(exc)})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    usernames = [row["username"] for row in rows]
+    duplicate = (
+        db.query(User.username)
+        .filter(User.username.in_(usernames))
+        .first()
+    )
+    if duplicate:
+        return RedirectResponse(
+            f"/admin/users?{urlencode({'error': f'账号 {duplicate[0]} 已存在，请重新预检'})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    db.add_all(
+        [
+            User(
+                username=row["username"],
+                full_name=row["full_name"],
+                department=row["department"],
+                role=row["role"],
+                password_hash=row["password_hash"],
+                must_change_password=True,
+            )
+            for row in rows
+        ]
+    )
+    db.commit()
+    return RedirectResponse(
+        f"/admin/users?{urlencode({'success': f'已批量导入 {len(rows)} 个账号'})}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

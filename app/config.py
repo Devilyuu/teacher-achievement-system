@@ -6,6 +6,7 @@ DATA_DIR = BASE_DIR / "data"
 DATABASE_PATH = DATA_DIR / "database" / "app.sqlite3"
 UPLOAD_DIR = DATA_DIR / "uploads"
 EXPORT_DIR = DATA_DIR / "exports"
+USER_IMPORT_DIR = DATA_DIR / "imports" / "users"
 SECRET_KEY = "change-this-local-dev-secret"
 MAX_UPLOAD_MB = 50
 ALLOWED_EXTENSIONS = {
