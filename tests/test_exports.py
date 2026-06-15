@@ -8,8 +8,16 @@ from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
 from app.config import EXPORT_DIR
-from app.database import SessionLocal
-from app.models import Achievement, ClaimNature, Material, Role, User
+from app.database import Base, SessionLocal
+from app.models import (
+    Achievement,
+    AchievementStatus,
+    ClaimNature,
+    ExportRecord,
+    Material,
+    Role,
+    User,
+)
 from app.security import hash_password
 from app.services.export_builder import build_personal_export
 
@@ -43,6 +51,18 @@ CATALOG_HEADERS = [
     "文件类型",
     "上传时间",
 ]
+
+
+def test_export_record_table_has_one_latest_record_per_user_and_year():
+    table = Base.metadata.tables["export_records"]
+
+    unique_columns = {
+        tuple(column.name for column in constraint.columns)
+        for constraint in table.constraints
+        if constraint.__class__.__name__ == "UniqueConstraint"
+    }
+
+    assert ("user_id", "year") in unique_columns
 
 
 def _create_user(db, username: str) -> User:
@@ -195,3 +215,215 @@ def test_export_route_requires_auth_and_authenticated_user_can_download(app, tmp
     assert response.headers["content-disposition"].endswith(".zip")
     with ZipFile(BytesIO(response.content)) as archive:
         assert "01_个人项目申报表.xlsx" in archive.namelist()
+
+    db = SessionLocal()
+    try:
+        record = db.query(ExportRecord).one()
+        achievement = db.query(Achievement).filter(Achievement.user_id == user_id).one()
+
+        assert record.user_id == user_id
+        assert record.year == 2026
+        assert record.achievement_count == 1
+        assert record.material_count == 1
+        assert record.file_size == len(response.content)
+        assert Path(record.file_path).exists()
+        assert achievement.status == AchievementStatus.exported.value
+    finally:
+        db.close()
+
+
+def test_regenerating_same_year_updates_one_latest_record(app, tmp_path):
+    client = TestClient(app)
+    first_source = tmp_path / "first-proof.pdf"
+    second_source = tmp_path / "second-proof.pdf"
+    first_source.write_bytes(b"%PDF-1.4 first proof")
+    second_source.write_bytes(b"%PDF-1.4 second proof")
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, f"export-latest-{uuid4().hex}")
+        _add_achievement_with_material(
+            db,
+            user,
+            2026,
+            "教学",
+            "在线精品课程",
+            first_source,
+            "1-1",
+        )
+        db.commit()
+        user_id = user.id
+    finally:
+        db.close()
+
+    client.cookies.set("user_id", str(user_id))
+    first_response = client.get("/exports/2026/personal")
+    assert first_response.status_code == 200
+
+    db = SessionLocal()
+    try:
+        first_record_id = db.query(ExportRecord).one().id
+        user = db.get(User, user_id)
+        _add_achievement_with_material(
+            db,
+            user,
+            2026,
+            "科研与社会服务工作",
+            "横向项目",
+            second_source,
+            "2-1",
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    second_response = client.get("/exports/2026/personal")
+    assert second_response.status_code == 200
+
+    db = SessionLocal()
+    try:
+        records = db.query(ExportRecord).all()
+        assert len(records) == 1
+        assert records[0].id == first_record_id
+        assert records[0].achievement_count == 2
+        assert records[0].material_count == 2
+        assert records[0].file_size == len(second_response.content)
+    finally:
+        db.close()
+
+
+def test_export_history_page_lists_only_owner_records_newest_first(app, tmp_path):
+    client = TestClient(app)
+    owner_file = tmp_path / "owner-2026.zip"
+    older_file = tmp_path / "owner-2025.zip"
+    other_file = tmp_path / "other-2027.zip"
+    owner_file.write_bytes(b"owner 2026")
+    older_file.write_bytes(b"owner 2025")
+    other_file.write_bytes(b"other 2027")
+
+    db = SessionLocal()
+    try:
+        owner = _create_user(db, f"export-owner-{uuid4().hex}")
+        other = _create_user(db, f"export-other-{uuid4().hex}")
+        db.flush()
+        db.add_all(
+            [
+                ExportRecord(
+                    user_id=owner.id,
+                    year=2025,
+                    file_name=older_file.name,
+                    file_path=str(older_file),
+                    achievement_count=2,
+                    material_count=3,
+                    file_size=older_file.stat().st_size,
+                    generated_at=datetime(2026, 1, 2, 10, 0),
+                ),
+                ExportRecord(
+                    user_id=owner.id,
+                    year=2026,
+                    file_name=owner_file.name,
+                    file_path=str(owner_file),
+                    achievement_count=4,
+                    material_count=6,
+                    file_size=owner_file.stat().st_size,
+                    generated_at=datetime(2026, 6, 15, 10, 0),
+                ),
+                ExportRecord(
+                    user_id=other.id,
+                    year=2027,
+                    file_name=other_file.name,
+                    file_path=str(other_file),
+                    achievement_count=8,
+                    material_count=9,
+                    file_size=other_file.stat().st_size,
+                ),
+            ]
+        )
+        db.commit()
+        owner_id = owner.id
+    finally:
+        db.close()
+
+    client.cookies.set("user_id", str(owner_id))
+    response = client.get("/exports")
+
+    assert response.status_code == 200
+    assert "导出记录" in response.text
+    assert response.text.index("2026 年度") < response.text.index("2025 年度")
+    assert "2027 年度" not in response.text
+    assert "4 项成果" in response.text
+    assert "6 份材料" in response.text
+
+
+def test_export_history_page_marks_missing_files_for_regeneration(app, tmp_path):
+    client = TestClient(app)
+    missing_path = tmp_path / "missing.zip"
+
+    db = SessionLocal()
+    try:
+        owner = _create_user(db, f"export-missing-{uuid4().hex}")
+        db.flush()
+        db.add(
+            ExportRecord(
+                user_id=owner.id,
+                year=2026,
+                file_name=missing_path.name,
+                file_path=str(missing_path),
+                achievement_count=1,
+                material_count=0,
+                file_size=100,
+            )
+        )
+        db.commit()
+        owner_id = owner.id
+    finally:
+        db.close()
+
+    client.cookies.set("user_id", str(owner_id))
+    response = client.get("/exports")
+
+    assert response.status_code == 200
+    assert "文件缺失，需重新生成" in response.text
+    assert 'href="/exports/2026/personal"' in response.text
+    assert "/exports/records/" not in response.text
+
+
+def test_recorded_export_download_requires_owner_and_existing_file(app, tmp_path):
+    owner_file = tmp_path / "recorded.zip"
+    owner_file.write_bytes(b"recorded export")
+
+    db = SessionLocal()
+    try:
+        owner = _create_user(db, f"download-owner-{uuid4().hex}")
+        other = _create_user(db, f"download-other-{uuid4().hex}")
+        db.flush()
+        record = ExportRecord(
+            user_id=owner.id,
+            year=2026,
+            file_name=owner_file.name,
+            file_path=str(owner_file),
+            achievement_count=1,
+            material_count=1,
+            file_size=owner_file.stat().st_size,
+        )
+        db.add(record)
+        db.commit()
+        owner_id = owner.id
+        other_id = other.id
+        record_id = record.id
+    finally:
+        db.close()
+
+    owner_client = TestClient(app)
+    owner_client.cookies.set("user_id", str(owner_id))
+    owner_response = owner_client.get(f"/exports/records/{record_id}/download")
+    assert owner_response.status_code == 200
+    assert owner_response.content == owner_file.read_bytes()
+
+    other_client = TestClient(app)
+    other_client.cookies.set("user_id", str(other_id))
+    denied_response = other_client.get(
+        f"/exports/records/{record_id}/download",
+        follow_redirects=False,
+    )
+    assert denied_response.status_code == 404

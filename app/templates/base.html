@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}教师成果管理系统{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260615-5">
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260615-6">
     <script src="{{ url_for('static', path='vendor/lucide.min.js') }}"></script>
 </head>
 <body>
@@ -24,6 +24,9 @@
                 </a>
                 <a href="/achievements/new" class="{% if request.url.path == '/achievements/new' %}active{% endif %}">
                     <i data-lucide="square-plus"></i><span>新增填报</span>
+                </a>
+                <a href="/exports" class="{% if request.url.path.startswith('/exports') %}active{% endif %}">
+                    <i data-lucide="archive"></i><span>导出记录</span>
                 </a>
                 {% if user.role == "admin" %}
                 <div class="nav-label">系统管理</div>
