@@ -31,3 +31,12 @@ def save_material_file(
 
     size = stored_path.stat().st_size
     return str(stored_path), size, ext
+
+
+def delete_material_file(stored_path: str) -> None:
+    upload_root = UPLOAD_DIR.resolve()
+    path = Path(stored_path).resolve()
+    if not path.is_relative_to(upload_root):
+        raise ValueError("Stored material path is outside the upload directory")
+    if path.is_file():
+        path.unlink()

@@ -40,12 +40,33 @@
                 <div><h2>支撑材料</h2><p>系统根据已上传文件自动判断是否缺少材料，无需手动勾选。</p></div>
             </div>
             {% if achievement.materials %}
+            <div class="material-check">
+                <i data-lucide="circle-check"></i>
+                <span>系统已检测到 {{ achievement.materials|length }} 份支撑材料，当前材料状态为“已上传”。</span>
+            </div>
             <div class="material-list">
                 {% for material in achievement.materials %}
                 <div class="material-item">
                     <span class="file-icon"><i data-lucide="file-text"></i></span>
-                    <div><strong>{{ material.display_name }}</strong><small>{{ material.original_filename }} · {{ material.file_size }} B</small></div>
+                    <div class="material-copy"><strong>{{ material.display_name }}</strong><small>{{ material.original_filename }} · {{ material.file_size }} B</small></div>
                     <span class="material-no">{{ material.material_no }}</span>
+                    <div class="material-actions">
+                        <a class="icon-button" href="/materials/{{ material.id }}/download" title="下载材料">
+                            <i data-lucide="download"></i>
+                        </a>
+                        <details class="replace-details">
+                            <summary class="icon-button" title="替换文件"><i data-lucide="replace"></i></summary>
+                            <form class="replace-popover" method="post" action="/materials/{{ material.id }}/replace" enctype="multipart/form-data">
+                                <strong>替换当前文件</strong>
+                                <small>材料编号与名称保持不变</small>
+                                <input type="file" name="file" required>
+                                <button class="button secondary" type="submit"><i data-lucide="upload"></i>确认替换</button>
+                            </form>
+                        </details>
+                        <form method="post" action="/materials/{{ material.id }}/delete" onsubmit="return confirm('确认删除这份支撑材料吗？')">
+                            <button class="icon-button material-delete" type="submit" title="删除材料"><i data-lucide="trash-2"></i></button>
+                        </form>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
