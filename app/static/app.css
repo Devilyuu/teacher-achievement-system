@@ -269,7 +269,7 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 }
 @media (max-width: 640px) {
     .sidebar { position: static; width: 100%; height: auto; flex-direction: row; align-items: center; padding: 10px 14px; }
-    .brand { padding: 0; }.side-nav { flex: 1; flex-direction: row; justify-content: center; }.side-nav a { width: 42px; }
+    .brand { display: none; }.side-nav { flex: 1; min-width: 0; flex-direction: row; justify-content: center; }.side-nav a { width: 42px; }
     .sidebar-user { margin: 0; padding: 0; border: 0; }.avatar { display: none; }
     .workspace { margin: 0; width: 100%; padding: 22px 15px 36px; }
     .page-header { align-items: flex-start; flex-direction: column; }.header-actions { width: 100%; }.header-actions .button { flex: 1; }
