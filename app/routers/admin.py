@@ -1,19 +1,140 @@
+from datetime import datetime
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR
 from app.database import get_db
-from app.models import PerformanceRule, Role, User
+from app.models import Achievement, AchievementStatus, PerformanceRule, Role, User
 from app.security import hash_password, require_admin
-from app.services.performance_rule_guidance import assignment_mode
+from app.services.admin_summary import SummaryFilters, build_admin_summary
+from app.services.performance_rule_guidance import (
+    assignment_mode,
+    find_rule,
+    rule_for_level,
+)
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
+
+
+def _summary_filters(
+    year: int | None,
+    department: str,
+    teacher_id: int | None,
+    achievement_status: str,
+) -> SummaryFilters:
+    return SummaryFilters(
+        year=year or datetime.now().year,
+        department=department.strip(),
+        teacher_id=teacher_id,
+        status=achievement_status.strip(),
+    )
+
+
+def _summary_query_string(filters: SummaryFilters) -> str:
+    values: dict[str, str | int] = {"year": filters.year}
+    if filters.department:
+        values["department"] = filters.department
+    if filters.teacher_id is not None:
+        values["teacher_id"] = filters.teacher_id
+    if filters.status:
+        values["status"] = filters.status
+    return urlencode(values)
+
+
+@router.get("/summary")
+def annual_summary(
+    request: Request,
+    year: int | None = Query(default=None),
+    department: str = Query(default=""),
+    teacher_id: int | None = Query(default=None),
+    achievement_status: str = Query(default="", alias="status"),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    filters = _summary_filters(
+        year,
+        department,
+        teacher_id,
+        achievement_status,
+    )
+    summary = build_admin_summary(db, filters)
+    available_years = [
+        row[0]
+        for row in (
+            db.query(Achievement.year)
+            .join(Achievement.user)
+            .filter(User.role == Role.teacher.value)
+            .distinct()
+            .order_by(Achievement.year.desc())
+            .all()
+        )
+    ]
+    departments = [
+        row[0]
+        for row in (
+            db.query(User.department)
+            .filter(
+                User.role == Role.teacher.value,
+                User.department != "",
+            )
+            .distinct()
+            .order_by(User.department)
+            .all()
+        )
+    ]
+    teachers = (
+        db.query(User)
+        .filter(User.role == Role.teacher.value)
+        .order_by(User.department, User.full_name)
+        .all()
+    )
+    return templates.TemplateResponse(
+        request,
+        "admin/summary.html",
+        {
+            "user": user,
+            "summary": summary,
+            "filters": filters,
+            "available_years": sorted(
+                set([filters.year, datetime.now().year, *available_years]),
+                reverse=True,
+            ),
+            "departments": departments,
+            "teachers": teachers,
+            "statuses": [item.value for item in AchievementStatus],
+            "export_query": _summary_query_string(filters),
+        },
+    )
+
+
+@router.get("/achievements/{achievement_id}")
+def admin_achievement_detail(
+    request: Request,
+    achievement_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    achievement = db.get(Achievement, achievement_id)
+    if not achievement:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    rule = find_rule(db, achievement.category, achievement.subcategory)
+    return templates.TemplateResponse(
+        request,
+        "admin/achievement_detail.html",
+        {
+            "user": user,
+            "achievement": achievement,
+            "rule": rule,
+            "level_rule": rule_for_level(rule, achievement.level),
+            "assignment_mode": assignment_mode(rule),
+        },
+    )
 
 
 @router.get("/users")

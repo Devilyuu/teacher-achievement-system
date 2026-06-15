@@ -1,5 +1,8 @@
 from pathlib import Path
+from urllib.parse import quote
 from uuid import uuid4
+
+from fastapi.testclient import TestClient
 
 from app.config import UPLOAD_DIR
 from app.database import SessionLocal
@@ -10,6 +13,14 @@ from app.services.admin_summary import (
     build_admin_summary,
     missing_reasons,
 )
+
+
+def _login_admin(client: TestClient) -> None:
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
 
 
 def _create_teacher(
@@ -202,3 +213,149 @@ def test_summary_keeps_inactive_teacher_history_and_reports_missing_reasons(app)
         assert "未上传支撑材料" not in reasons
     finally:
         db.close()
+
+
+def test_summary_excludes_achievements_owned_by_admin_accounts(app):
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        admin_achievement = _add_achievement(
+            db,
+            user=admin,
+            year=2026,
+            title=f"管理员测试成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            material_path=_create_material_file("admin-proof.pdf"),
+        )
+        db.commit()
+
+        result = build_admin_summary(db, SummaryFilters(year=2026))
+
+        assert admin_achievement.id not in [
+            achievement.id for achievement in result.achievements
+        ]
+    finally:
+        db.close()
+
+
+def test_admin_summary_page_requires_admin(app):
+    unauthenticated = TestClient(app).get(
+        "/admin/summary",
+        follow_redirects=False,
+    )
+    assert unauthenticated.status_code in {303, 401}
+
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department="权限测试学院",
+            full_name=f"普通教师{uuid4().hex[:5]}",
+        )
+        db.commit()
+        teacher_id = teacher.id
+    finally:
+        db.close()
+
+    teacher_client = TestClient(app)
+    teacher_client.cookies.set("user_id", str(teacher_id))
+    forbidden = teacher_client.get("/admin/summary")
+    assert forbidden.status_code == 403
+
+
+def test_admin_summary_page_renders_filtered_metrics_rows_and_export_links(app):
+    client = TestClient(app)
+    _login_admin(client)
+    department = f"汇总学院{uuid4().hex[:5]}"
+
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department=department,
+            full_name=f"汇总教师{uuid4().hex[:5]}",
+        )
+        matching = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"页面命中成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            claimed_score=6,
+            material_path=_create_material_file("page-proof.pdf"),
+        )
+        excluded = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"页面排除成果{uuid4().hex[:5]}",
+            status=AchievementStatus.needs_info.value,
+        )
+        db.commit()
+        teacher_id = teacher.id
+        teacher_name = teacher.full_name
+        matching_title = matching.title
+        excluded_title = excluded.title
+    finally:
+        db.close()
+
+    response = client.get(
+        "/admin/summary",
+        params={
+            "year": 2026,
+            "department": department,
+            "teacher_id": teacher_id,
+            "status": AchievementStatus.ready.value,
+        },
+    )
+
+    assert response.status_code == 200
+    assert "年度汇总" in response.text
+    assert teacher_name in response.text
+    assert matching_title in response.text
+    assert excluded_title not in response.text
+    assert 'data-metric="teacher-count">1<' in response.text
+    assert 'data-metric="achievement-count">1<' in response.text
+    assert 'data-metric="claimed-score">6.0<' in response.text
+    assert "/admin/summary/export.xlsx?" in response.text
+    assert "/admin/summary/materials.zip?" in response.text
+    assert "year=2026" in response.text
+    assert f"teacher_id={teacher_id}" in response.text
+    assert f"department={quote(department)}" in response.text
+    assert f"status={quote(AchievementStatus.ready.value)}" in response.text
+
+
+def test_admin_can_open_teacher_achievement_as_read_only(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department="只读学院",
+            full_name=f"只读教师{uuid4().hex[:5]}",
+        )
+        achievement = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"只读成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            material_path=_create_material_file("readonly.pdf"),
+        )
+        db.commit()
+        achievement_id = achievement.id
+        title = achievement.title
+        teacher_name = teacher.full_name
+    finally:
+        db.close()
+
+    response = client.get(f"/admin/achievements/{achievement_id}")
+
+    assert response.status_code == 200
+    assert title in response.text
+    assert teacher_name in response.text
+    assert f"/achievements/{achievement_id}/edit" not in response.text
+    assert 'action="/materials/upload"' not in response.text
+    assert f'action="/achievements/{achievement_id}/delete"' not in response.text

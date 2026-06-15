@@ -3,7 +3,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import Achievement, AchievementStatus, ClaimNature, User
+from app.models import Achievement, AchievementStatus, ClaimNature, Role, User
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,10 @@ def build_admin_summary(db: Session, filters: SummaryFilters) -> AdminSummary:
             joinedload(Achievement.user),
             joinedload(Achievement.materials),
         )
-        .filter(Achievement.year == filters.year)
+        .filter(
+            Achievement.year == filters.year,
+            User.role == Role.teacher.value,
+        )
     )
     if filters.department:
         query = query.filter(User.department == filters.department)

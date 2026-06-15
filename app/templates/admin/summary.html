@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}年度汇总{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <p class="eyebrow">系统管理</p>
+        <h1>年度汇总</h1>
+        <p class="muted">查看教师填报与材料准备情况，页面积分为教师申报值，最终以线下审核为准。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button secondary" href="/admin/summary/export.xlsx?{{ export_query }}"><i data-lucide="sheet"></i>导出汇总表</a>
+        <a class="button primary" href="/admin/summary/materials.zip?{{ export_query }}"><i data-lucide="archive-restore"></i>导出材料包</a>
+    </div>
+</header>
+
+<section class="panel summary-filter-panel">
+    <form class="summary-filter-form" method="get" action="/admin/summary">
+        <label>
+            <span>年度</span>
+            <select name="year">
+                {% for year in available_years %}
+                <option value="{{ year }}" {% if year == filters.year %}selected{% endif %}>{{ year }} 年</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>部门</span>
+            <select name="department">
+                <option value="">全部部门</option>
+                {% for department in departments %}
+                <option value="{{ department }}" {% if department == filters.department %}selected{% endif %}>{{ department }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>教师</span>
+            <select name="teacher_id">
+                <option value="">全部教师</option>
+                {% for teacher in teachers %}
+                <option value="{{ teacher.id }}" {% if teacher.id == filters.teacher_id %}selected{% endif %}>{{ teacher.full_name }} · {{ teacher.department or "未设置部门" }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>成果状态</span>
+            <select name="status">
+                <option value="">全部状态</option>
+                {% for item_status in statuses %}
+                <option value="{{ item_status }}" {% if item_status == filters.status %}selected{% endif %}>{{ item_status }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button class="button primary" type="submit"><i data-lucide="search"></i>查询</button>
+        <a class="button ghost" href="/admin/summary?year={{ filters.year }}">重置</a>
+    </form>
+</section>
+
+<section class="summary-stat-grid">
+    <article class="stat-item"><span class="stat-icon blue"><i data-lucide="users"></i></span><div><span>教师人数</span><strong data-metric="teacher-count">{{ summary.metrics.teacher_count }}</strong><small>人</small></div></article>
+    <article class="stat-item"><span class="stat-icon violet"><i data-lucide="library-big"></i></span><div><span>成果数量</span><strong data-metric="achievement-count">{{ summary.metrics.achievement_count }}</strong><small>条</small></div></article>
+    <article class="stat-item"><span class="stat-icon green"><i data-lucide="badge-check"></i></span><div><span>申报积分</span><strong data-metric="claimed-score">{{ summary.metrics.claimed_score }}</strong><small>分</small></div></article>
+    <article class="stat-item"><span class="stat-icon amber"><i data-lucide="triangle-alert"></i></span><div><span>待完善</span><strong data-metric="needs-info-count">{{ summary.metrics.needs_info_count }}</strong><small>条</small></div></article>
+    <article class="stat-item"><span class="stat-icon coral"><i data-lucide="paperclip"></i></span><div><span>支撑材料</span><strong data-metric="material-count">{{ summary.metrics.material_count }}</strong><small>份</small></div></article>
+</section>
+
+{% if summary.achievements %}
+<section class="panel summary-table-panel">
+    <div class="panel-heading summary-panel-heading">
+        <div><h2>教师准备情况</h2><p>按部门和教师姓名排列</p></div>
+        <span class="record-count">{{ summary.teachers|length }} 位教师</span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead><tr><th>教师</th><th>部门</th><th>账号</th><th>成果</th><th>可申报</th><th>待完善</th><th>材料</th><th>申报积分</th></tr></thead>
+            <tbody>
+                {% for row in summary.teachers %}
+                <tr>
+                    <td><strong>{{ row.user.full_name }}</strong></td>
+                    <td>{{ row.user.department or "未设置部门" }}</td>
+                    <td><span class="account-state {{ 'active' if row.user.is_active else 'inactive' }}">{{ "启用" if row.user.is_active else "停用" }}</span></td>
+                    <td>{{ row.achievement_count }}</td>
+                    <td>{{ row.ready_count }}</td>
+                    <td>{{ row.needs_info_count }}</td>
+                    <td>{{ row.material_count }}</td>
+                    <td class="score-cell">{{ row.claimed_score }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel summary-table-panel">
+    <div class="panel-heading summary-panel-heading">
+        <div><h2>成果明细</h2><p>包含当前筛选范围内的全部成果</p></div>
+        <span class="record-count">{{ summary.achievements|length }} 条成果</span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead><tr><th>教师</th><th>部门</th><th>类别</th><th>成果名称</th><th>性质</th><th>级别</th><th>积分</th><th>状态</th><th>材料</th></tr></thead>
+            <tbody>
+                {% for achievement in summary.achievements %}
+                <tr>
+                    <td>{{ achievement.user.full_name }}</td>
+                    <td>{{ achievement.user.department or "未设置部门" }}</td>
+                    <td><strong>{{ achievement.category }}</strong><small>{{ achievement.subcategory }}</small></td>
+                    <td><a class="record-title" href="/admin/achievements/{{ achievement.id }}">{{ achievement.title or "未填写成果名称" }}</a></td>
+                    <td>{{ achievement.claim_nature }}</td>
+                    <td>{{ achievement.level or "待确认" }}</td>
+                    <td class="score-cell">{{ achievement.claimed_score }}</td>
+                    <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
+                    <td>{{ achievement.materials|length }} 份</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% else %}
+<section class="panel empty-state summary-empty">
+    <span class="empty-icon"><i data-lucide="search-x"></i></span>
+    <h2>没有符合条件的成果</h2>
+    <p>调整年度或筛选条件后重新查询。</p>
+</section>
+{% endif %}
+{% endblock %}
