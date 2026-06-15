@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR, DATABASE_PATH, EXPORT_DIR, UPLOAD_DIR
@@ -25,6 +26,12 @@ from app.services.performance_rule_guidance import (
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
+
+RULE_ASSIGNMENT_MODES = {
+    "personal": ("个人申报", False, False),
+    "team": ("团队负责人申报并分配", True, False),
+    "assigned": ("项目负责人统一赋分", False, True),
+}
 
 
 def _summary_filters(
@@ -340,17 +347,280 @@ def reset_user_password(
 @router.get("/rules")
 def list_rules(
     request: Request,
+    status_filter: str = Query(default="active", alias="status"),
+    q: str = Query(default=""),
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    rules = (
-        db.query(PerformanceRule)
-        .filter(PerformanceRule.is_active.is_(True))
-        .order_by(PerformanceRule.sort_order, PerformanceRule.id)
-        .all()
-    )
+    query = db.query(PerformanceRule)
+    if status_filter == "inactive":
+        query = query.filter(PerformanceRule.is_active.is_(False))
+    elif status_filter != "all":
+        status_filter = "active"
+        query = query.filter(PerformanceRule.is_active.is_(True))
+    keyword = q.strip()
+    if keyword:
+        pattern = f"%{keyword}%"
+        query = query.filter(
+            or_(
+                PerformanceRule.category.ilike(pattern),
+                PerformanceRule.subcategory.ilike(pattern),
+                PerformanceRule.remark.ilike(pattern),
+            )
+        )
+    rules = query.order_by(PerformanceRule.sort_order, PerformanceRule.id).all()
     return templates.TemplateResponse(
         request,
         "admin/rules.html",
-        {"user": user, "rules": rules, "assignment_mode": assignment_mode},
+        {
+            "user": user,
+            "rules": rules,
+            "assignment_mode": assignment_mode,
+            "status_filter": status_filter,
+            "q": keyword,
+            "error": request.query_params.get("error"),
+            "success": request.query_params.get("success"),
+        },
+    )
+
+
+def _rule_assignment_key(rule: PerformanceRule | None) -> str:
+    if rule and rule.is_team:
+        return "team"
+    if rule and rule.is_department_assigned:
+        return "assigned"
+    return "personal"
+
+
+def _rule_form_context(
+    request: Request,
+    user: User,
+    rule: PerformanceRule | None,
+    action: str,
+):
+    return {
+        "request": request,
+        "user": user,
+        "rule": rule,
+        "action": action,
+        "assignment_modes": RULE_ASSIGNMENT_MODES,
+        "assignment_mode_key": _rule_assignment_key(rule),
+    }
+
+
+def _managed_rule(db: Session, rule_id: int) -> PerformanceRule:
+    rule = db.get(PerformanceRule, rule_id)
+    if not rule:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return rule
+
+
+def _duplicate_rule(
+    db: Session,
+    category: str,
+    subcategory: str,
+    exclude_id: int | None = None,
+) -> PerformanceRule | None:
+    query = db.query(PerformanceRule).filter(
+        PerformanceRule.category == category,
+        PerformanceRule.subcategory == subcategory,
+    )
+    if exclude_id is not None:
+        query = query.filter(PerformanceRule.id != exclude_id)
+    return query.first()
+
+
+def _assign_rule_values(
+    rule: PerformanceRule,
+    category: str,
+    subcategory: str,
+    base_rule: str,
+    national_rule: str,
+    provincial_rule: str,
+    city_rule: str,
+    school_rule: str,
+    college_rule: str,
+    assignment_mode_key: str,
+    remark: str,
+    sort_order: int,
+) -> None:
+    _, is_team, is_department_assigned = RULE_ASSIGNMENT_MODES[
+        assignment_mode_key
+    ]
+    rule.category = category
+    rule.subcategory = subcategory
+    rule.base_rule = base_rule.strip()
+    rule.national_rule = national_rule.strip()
+    rule.provincial_rule = provincial_rule.strip()
+    rule.city_rule = city_rule.strip()
+    rule.school_rule = school_rule.strip()
+    rule.college_rule = college_rule.strip()
+    rule.is_team = is_team
+    rule.is_department_assigned = is_department_assigned
+    rule.remark = remark.strip()
+    rule.sort_order = sort_order
+
+
+@router.get("/rules/new")
+def new_rule_form(
+    request: Request,
+    user: User = Depends(require_admin),
+):
+    return templates.TemplateResponse(
+        request,
+        "admin/rule_form.html",
+        _rule_form_context(request, user, None, "/admin/rules"),
+    )
+
+
+@router.post("/rules")
+def create_rule(
+    category: str = Form(...),
+    subcategory: str = Form(...),
+    base_rule: str = Form(default=""),
+    national_rule: str = Form(default=""),
+    provincial_rule: str = Form(default=""),
+    city_rule: str = Form(default=""),
+    school_rule: str = Form(default=""),
+    college_rule: str = Form(default=""),
+    assignment_mode_key: str = Form(alias="assignment_mode"),
+    remark: str = Form(default=""),
+    sort_order: int = Form(default=0),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    normalized_category = category.strip()
+    normalized_subcategory = subcategory.strip()
+    if not normalized_category or not normalized_subcategory:
+        return RedirectResponse(
+            f"/admin/rules?{urlencode({'error': '大类和小类不能为空'})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    if assignment_mode_key not in RULE_ASSIGNMENT_MODES:
+        return RedirectResponse(
+            f"/admin/rules?{urlencode({'error': '赋分方式无效'})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    if _duplicate_rule(db, normalized_category, normalized_subcategory):
+        return RedirectResponse(
+            f"/admin/rules?{urlencode({'error': '该大类与小类规则已存在'})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    rule = PerformanceRule(is_active=True)
+    _assign_rule_values(
+        rule,
+        normalized_category,
+        normalized_subcategory,
+        base_rule,
+        national_rule,
+        provincial_rule,
+        city_rule,
+        school_rule,
+        college_rule,
+        assignment_mode_key,
+        remark,
+        sort_order,
+    )
+    db.add(rule)
+    db.commit()
+    return RedirectResponse(
+        f"/admin/rules?{urlencode({'success': '绩效规则已创建'})}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/rules/{rule_id}/edit")
+def edit_rule_form(
+    request: Request,
+    rule_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rule = _managed_rule(db, rule_id)
+    return templates.TemplateResponse(
+        request,
+        "admin/rule_form.html",
+        _rule_form_context(
+            request,
+            user,
+            rule,
+            f"/admin/rules/{rule.id}/edit",
+        ),
+    )
+
+
+@router.post("/rules/{rule_id}/edit")
+def update_rule(
+    rule_id: int,
+    category: str = Form(...),
+    subcategory: str = Form(...),
+    base_rule: str = Form(default=""),
+    national_rule: str = Form(default=""),
+    provincial_rule: str = Form(default=""),
+    city_rule: str = Form(default=""),
+    school_rule: str = Form(default=""),
+    college_rule: str = Form(default=""),
+    assignment_mode_key: str = Form(alias="assignment_mode"),
+    remark: str = Form(default=""),
+    sort_order: int = Form(default=0),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rule = _managed_rule(db, rule_id)
+    normalized_category = category.strip()
+    normalized_subcategory = subcategory.strip()
+    if not normalized_category or not normalized_subcategory:
+        return RedirectResponse(
+            f"/admin/rules?{urlencode({'error': '大类和小类不能为空'})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    if assignment_mode_key not in RULE_ASSIGNMENT_MODES:
+        return RedirectResponse(
+            f"/admin/rules?{urlencode({'error': '赋分方式无效'})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    if _duplicate_rule(
+        db,
+        normalized_category,
+        normalized_subcategory,
+        exclude_id=rule.id,
+    ):
+        return RedirectResponse(
+            f"/admin/rules?{urlencode({'error': '该大类与小类规则已存在'})}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    _assign_rule_values(
+        rule,
+        normalized_category,
+        normalized_subcategory,
+        base_rule,
+        national_rule,
+        provincial_rule,
+        city_rule,
+        school_rule,
+        college_rule,
+        assignment_mode_key,
+        remark,
+        sort_order,
+    )
+    db.commit()
+    return RedirectResponse(
+        f"/admin/rules?{urlencode({'success': '绩效规则已更新'})}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/rules/{rule_id}/toggle-active")
+def toggle_rule_active(
+    rule_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    rule = _managed_rule(db, rule_id)
+    rule.is_active = not rule.is_active
+    db.commit()
+    message = "绩效规则已启用" if rule.is_active else "绩效规则已停用"
+    return RedirectResponse(
+        f"/admin/rules?{urlencode({'success': message})}",
+        status_code=status.HTTP_303_SEE_OTHER,
     )

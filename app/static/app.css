@@ -268,6 +268,19 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .summary-panel-heading .record-count { white-space: nowrap; }
 .score-cell { color: #1d4ed8; font-weight: 700; }
 .summary-empty { margin-top: 16px; min-height: 280px; }
+.rule-filter-panel { padding: 18px 20px; }
+.rule-filter-form { display: grid; grid-template-columns: 150px minmax(240px, 1fr) auto auto; align-items: end; gap: 12px; }
+.rule-filter-form .button { white-space: nowrap; }
+.rule-table-panel { margin-top: 16px; }
+.rule-table-heading { padding: 18px 20px 0; }
+.rule-actions { display: flex; align-items: center; gap: 3px; }
+.rule-actions form { margin: 0; }
+.rule-actions .icon-button { border: 0; background: transparent; cursor: pointer; }
+.rule-form { display: flex; max-width: 1000px; margin: 0 auto; flex-direction: column; gap: 16px; }
+.rule-form .panel { width: 100%; }
+.rule-score-panel textarea { min-height: 76px; }
+.rule-history-note { display: flex; gap: 9px; margin-top: 18px; padding: 12px; color: #5b6475; background: #fff8e8; border: 1px solid #f4e2b9; border-radius: 6px; font-size: 12px; line-height: 1.7; }
+.rule-history-note svg { flex: 0 0 auto; color: #b7791f; }
 
 @media (max-width: 900px) {
     .sidebar { width: 72px; padding-inline: 10px; }.brand span:last-child, .side-nav span, .nav-label, .user-copy { display: none; }
@@ -283,6 +296,7 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .achievement-filter-form { grid-template-columns: 1fr 1fr; }
     .achievement-keyword { grid-column: 1 / -1; }
     .backup-content-list { grid-template-columns: 1fr; }
+    .rule-filter-form { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 640px) {
     .sidebar { position: static; width: 100%; height: auto; flex-direction: row; align-items: center; padding: 10px 14px; }
@@ -298,4 +312,5 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .summary-stat-grid .stat-item:last-child { grid-column: 1 / -1; }
     .achievement-filter-form { grid-template-columns: 1fr; }
     .achievement-keyword { grid-column: auto; }
+    .rule-filter-form { grid-template-columns: 1fr; }
 }

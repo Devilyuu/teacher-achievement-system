@@ -1,3 +1,4 @@
+import json
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -248,3 +249,260 @@ def test_admin_rules_page_only_lists_active_rules_and_shows_assignment_mode(app)
     assert "不应显示的停用规则" not in response.text
     assert "团队负责人申报并分配" in response.text
     assert "项目负责人统一赋分" in response.text
+
+
+def _rule_form_data(category: str, subcategory: str) -> dict[str, str]:
+    return {
+        "category": category,
+        "subcategory": subcategory,
+        "base_rule": "基础分 2 分",
+        "national_rule": "国家级 10 分",
+        "provincial_rule": "省级 6 分",
+        "city_rule": "市级 4 分",
+        "school_rule": "校级 2 分",
+        "college_rule": "学院级 1 分",
+        "assignment_mode": "personal",
+        "remark": "测试规则",
+        "sort_order": "880",
+    }
+
+
+def test_non_admin_user_cannot_open_rule_create_page(app):
+    username = f"rule-teacher-{uuid4().hex}"
+    _create_teacher(username)
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": username, "password": "teacher-pass-123"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/admin/rules/new", follow_redirects=False)
+
+    assert response.status_code == 403
+
+
+def test_admin_can_create_performance_rule(app):
+    suffix = uuid4().hex
+    category = f"新增规则类别-{suffix}"
+    subcategory = f"新增规则小类-{suffix}"
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.post(
+        "/admin/rules",
+        data=_rule_form_data(category, subcategory),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/admin/rules?")
+    db = SessionLocal()
+    try:
+        created = (
+            db.query(PerformanceRule)
+            .filter_by(category=category, subcategory=subcategory)
+            .one()
+        )
+        assert created.provincial_rule == "省级 6 分"
+        assert created.is_team is False
+        assert created.is_department_assigned is False
+        assert created.is_active is True
+    finally:
+        db.query(PerformanceRule).filter_by(
+            category=category,
+            subcategory=subcategory,
+        ).delete()
+        db.commit()
+        db.close()
+
+
+def test_duplicate_performance_rule_returns_page_error(app):
+    existing = SessionLocal()
+    rule = existing.query(PerformanceRule).filter(
+        PerformanceRule.is_active.is_(True)
+    ).first()
+    assert rule is not None
+    category = rule.category
+    subcategory = rule.subcategory
+    existing.close()
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.post(
+        "/admin/rules",
+        data=_rule_form_data(category, subcategory),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "error=" in response.headers["location"]
+
+
+def test_blank_performance_rule_category_returns_page_error(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.post(
+        "/admin/rules",
+        data=_rule_form_data("   ", "有效小类"),
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "error=" in response.headers["location"]
+    db = SessionLocal()
+    try:
+        assert (
+            db.query(PerformanceRule)
+            .filter_by(category="", subcategory="有效小类")
+            .first()
+            is None
+        )
+    finally:
+        db.close()
+
+
+def test_admin_can_edit_performance_rule(app):
+    suffix = uuid4().hex
+    category = f"编辑规则类别-{suffix}"
+    subcategory = f"编辑规则小类-{suffix}"
+    db = SessionLocal()
+    try:
+        rule = PerformanceRule(
+            category=category,
+            subcategory=subcategory,
+            base_rule="旧规则",
+            sort_order=881,
+        )
+        db.add(rule)
+        db.commit()
+        db.refresh(rule)
+        rule_id = rule.id
+    finally:
+        db.close()
+    client = TestClient(app)
+    _login_admin(client)
+    data = _rule_form_data(category, subcategory)
+    data.update(
+        {
+            "base_rule": "更新后的基础规则",
+            "assignment_mode": "team",
+            "remark": "由团队负责人申报",
+            "sort_order": "9",
+        }
+    )
+
+    response = client.post(
+        f"/admin/rules/{rule_id}/edit",
+        data=data,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    db = SessionLocal()
+    try:
+        updated = db.get(PerformanceRule, rule_id)
+        assert updated.base_rule == "更新后的基础规则"
+        assert updated.is_team is True
+        assert updated.is_department_assigned is False
+        assert updated.remark == "由团队负责人申报"
+        assert updated.sort_order == 9
+    finally:
+        db.query(PerformanceRule).filter_by(id=rule_id).delete()
+        db.commit()
+        db.close()
+
+
+def test_rule_active_state_controls_teacher_form_options(app):
+    suffix = uuid4().hex
+    category = f"状态规则类别-{suffix}"
+    subcategory = f"状态规则小类-{suffix}"
+    db = SessionLocal()
+    try:
+        rule = PerformanceRule(
+            category=category,
+            subcategory=subcategory,
+            is_active=True,
+            sort_order=882,
+        )
+        db.add(rule)
+        db.commit()
+        db.refresh(rule)
+        rule_id = rule.id
+    finally:
+        db.close()
+
+    admin_client = TestClient(app)
+    _login_admin(admin_client)
+    disabled = admin_client.post(
+        f"/admin/rules/{rule_id}/toggle-active",
+        follow_redirects=False,
+    )
+    assert disabled.status_code == 303
+
+    username = f"rule-option-teacher-{suffix}"
+    _create_teacher(username)
+    teacher_client = TestClient(app)
+    teacher_client.post(
+        "/login",
+        data={"username": username, "password": "teacher-pass-123"},
+        follow_redirects=False,
+    )
+    inactive_form = teacher_client.get("/achievements/new")
+    serialized_subcategory = json.dumps(subcategory, ensure_ascii=True)[1:-1]
+    assert serialized_subcategory not in inactive_form.text
+
+    enabled = admin_client.post(
+        f"/admin/rules/{rule_id}/toggle-active",
+        follow_redirects=False,
+    )
+    assert enabled.status_code == 303
+    active_form = teacher_client.get("/achievements/new")
+    assert serialized_subcategory in active_form.text
+
+    db = SessionLocal()
+    try:
+        db.query(PerformanceRule).filter_by(id=rule_id).delete()
+        db.query(User).filter_by(username=username).delete()
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_admin_can_filter_inactive_rules_by_keyword(app):
+    suffix = uuid4().hex
+    category = f"筛选规则类别-{suffix}"
+    subcategory = f"筛选规则小类-{suffix}"
+    db = SessionLocal()
+    try:
+        db.add(
+            PerformanceRule(
+                category=category,
+                subcategory=subcategory,
+                is_active=False,
+                sort_order=883,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.get(
+        "/admin/rules",
+        params={"status": "inactive", "q": suffix},
+    )
+
+    assert response.status_code == 200
+    assert subcategory in response.text
+    db = SessionLocal()
+    try:
+        db.query(PerformanceRule).filter_by(
+            category=category,
+            subcategory=subcategory,
+        ).delete()
+        db.commit()
+    finally:
+        db.close()

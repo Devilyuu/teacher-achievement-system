@@ -7,11 +7,39 @@
     <div>
         <p class="eyebrow">系统管理</p>
         <h1>绩效规则</h1>
-        <p class="muted">已导入 {{ rules|length }} 条填报规则，来源为《浮动绩效积分统计.xlsx》。</p>
+        <p class="muted">维护填报分类、分级赋分依据与申报责任方式。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button primary" href="/admin/rules/new"><i data-lucide="plus"></i>新增规则</a>
     </div>
 </header>
 
-<section class="panel table-panel">
+{% if error %}<div class="page-message error"><i data-lucide="circle-alert"></i>{{ error }}</div>{% endif %}
+{% if success %}<div class="page-message success"><i data-lucide="circle-check-big"></i>{{ success }}</div>{% endif %}
+
+<section class="panel rule-filter-panel">
+    <form method="get" action="/admin/rules" class="rule-filter-form">
+        <label>
+            <span>规则状态</span>
+            <select name="status">
+                <option value="active" {% if status_filter == "active" %}selected{% endif %}>已启用</option>
+                <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>已停用</option>
+                <option value="all" {% if status_filter == "all" %}selected{% endif %}>全部</option>
+            </select>
+        </label>
+        <label>
+            <span>关键词</span>
+            <input type="search" name="q" value="{{ q }}" placeholder="搜索大类、小类或备注">
+        </label>
+        <button class="button primary" type="submit"><i data-lucide="search"></i>查询</button>
+        <a class="button secondary" href="/admin/rules">重置</a>
+    </form>
+</section>
+
+<section class="panel table-panel rule-table-panel">
+    <div class="panel-heading rule-table-heading">
+        <div><h2>规则目录</h2><p>当前条件下共 {{ rules|length }} 条</p></div>
+    </div>
     <div class="table-scroll">
         <table>
             <thead>
@@ -24,22 +52,37 @@
                     <th>校级</th>
                     <th>学院级</th>
                     <th>赋分方式</th>
-                    <th>备注</th>
+                    <th>状态</th>
+                    <th>排序</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for rule in rules %}
                 <tr>
                     <td><strong>{{ rule.category }}</strong><small>{{ rule.subcategory }}</small></td>
-                    <td>{{ rule.base_rule or "——" }}</td>
-                    <td>{{ rule.national_rule or "——" }}</td>
-                    <td>{{ rule.provincial_rule or "——" }}</td>
-                    <td>{{ rule.city_rule or "——" }}</td>
-                    <td>{{ rule.school_rule or "——" }}</td>
-                    <td>{{ rule.college_rule or "——" }}</td>
+                    <td>{{ rule.base_rule or "—" }}</td>
+                    <td>{{ rule.national_rule or "—" }}</td>
+                    <td>{{ rule.provincial_rule or "—" }}</td>
+                    <td>{{ rule.city_rule or "—" }}</td>
+                    <td>{{ rule.school_rule or "—" }}</td>
+                    <td>{{ rule.college_rule or "—" }}</td>
                     <td><span class="mode-badge mode-{{ 'team' if rule.is_team else 'assigned' if rule.is_department_assigned else 'personal' }}">{{ assignment_mode(rule) }}</span></td>
-                    <td class="rule-note">{{ rule.remark or "—" }}</td>
+                    <td><span class="account-state {{ 'active' if rule.is_active else 'inactive' }}">{{ "已启用" if rule.is_active else "已停用" }}</span></td>
+                    <td>{{ rule.sort_order }}</td>
+                    <td>
+                        <div class="rule-actions">
+                            <a class="icon-button" href="/admin/rules/{{ rule.id }}/edit" title="编辑规则"><i data-lucide="pencil"></i></a>
+                            <form method="post" action="/admin/rules/{{ rule.id }}/toggle-active">
+                                <button class="icon-button" type="submit" title="{{ '停用规则' if rule.is_active else '启用规则' }}">
+                                    <i data-lucide="{{ 'circle-pause' if rule.is_active else 'circle-play' }}"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
+                {% else %}
+                <tr><td colspan="11"><div class="inline-empty"><i data-lucide="search-x"></i>没有符合当前条件的规则。</div></td></tr>
                 {% endfor %}
             </tbody>
         </table>
