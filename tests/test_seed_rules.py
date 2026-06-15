@@ -1,5 +1,9 @@
+from uuid import uuid4
+
+from app.database import SessionLocal
+from app.models import PerformanceRule
 from app.security import hash_password, verify_password
-from app.seed_rules import INITIAL_RULES, load_rule_catalog
+from app.seed_rules import INITIAL_RULES, load_rule_catalog, seed_initial_data
 
 
 def test_password_hash_roundtrip():
@@ -45,3 +49,57 @@ def test_rule_catalog_preserves_level_rules_and_color_based_assignment_modes():
     ]
     assert union_activity["is_department_assigned"] is True
     assert union_activity["is_team"] is False
+
+
+def test_seed_preserves_edited_and_custom_rules(app):
+    source = load_rule_catalog()[0]
+    custom_subcategory = f"管理员新增规则{uuid4().hex}"
+    db = SessionLocal()
+    try:
+        existing = (
+            db.query(PerformanceRule)
+            .filter_by(
+                category=source["category"],
+                subcategory=source["subcategory"],
+            )
+            .one()
+        )
+        existing.remark = "管理员人工修改"
+        existing.sort_order = 4321
+        existing.is_active = False
+        custom = PerformanceRule(
+            category="管理员自定义类别",
+            subcategory=custom_subcategory,
+            base_rule="2/项",
+            remark="人工新增",
+            is_active=True,
+            sort_order=5000,
+        )
+        db.add(custom)
+        db.commit()
+
+        seed_initial_data()
+        db.expire_all()
+
+        edited = db.get(PerformanceRule, existing.id)
+        persisted_custom = (
+            db.query(PerformanceRule)
+            .filter_by(subcategory=custom_subcategory)
+            .one()
+        )
+        assert edited.remark == "管理员人工修改"
+        assert edited.sort_order == 4321
+        assert edited.is_active is False
+        assert persisted_custom.is_active is True
+        assert persisted_custom.base_rule == "2/项"
+    finally:
+        if "existing" in locals():
+            existing = db.get(PerformanceRule, existing.id)
+            existing.remark = source["remark"]
+            existing.sort_order = source["sort_order"]
+            existing.is_active = True
+        db.query(PerformanceRule).filter_by(
+            subcategory=custom_subcategory
+        ).delete()
+        db.commit()
+        db.close()

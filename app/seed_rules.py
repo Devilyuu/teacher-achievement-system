@@ -64,27 +64,19 @@ def seed_initial_data() -> None:
             )
 
         catalog = load_rule_catalog()
-        catalog_keys = {
-            (rule["category"], rule["subcategory"])
-            for rule in catalog
-        }
         existing_rules = db.query(PerformanceRule).all()
         existing_by_key = {
             (rule.category, rule.subcategory): rule
             for rule in existing_rules
         }
 
-        for existing_rule in existing_rules:
-            if (existing_rule.category, existing_rule.subcategory) not in catalog_keys:
-                existing_rule.is_active = False
-
         for source_rule in catalog:
             key = (source_rule["category"], source_rule["subcategory"])
-            target = existing_by_key.get(key)
-            if target is None:
-                target = PerformanceRule()
-                db.add(target)
+            if key in existing_by_key:
+                continue
+            target = PerformanceRule()
             _apply_rule_values(target, source_rule)
+            db.add(target)
 
         db.commit()
     finally:
