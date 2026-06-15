@@ -22,10 +22,12 @@
 
 **Files:**
 - Modify: `app/static/app.css`
+- Modify: `app/templates/base.html`
 
 - [ ] Set dashboard child panels to full width, zero auto margin, and stretched height.
 - [ ] Set `.category-panel` to a vertical flex layout and `.audit-note` to `margin-top: auto`.
 - [ ] Change `.achievement-form` maximum width to `1240px`.
+- [ ] Constrain the responsive dashboard grid with `minmax(0, 1fr)` and add a stylesheet version parameter.
 - [ ] Run the focused test and the full pytest suite.
 
 ### Task 3: Verify responsive geometry
