@@ -190,6 +190,33 @@ def replace_material(
     )
 
 
+@router.post("/{material_id}/rename")
+def rename_material(
+    material_id: int,
+    display_name: str = Form(...),
+    description: str = Form(""),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    material = _material_for_user(db, material_id, user)
+    achievement = material.achievement
+    normalized_name = display_name.strip()
+    if not normalized_name:
+        query = urlencode({"rename_error": "材料名称不能为空"})
+        return RedirectResponse(
+            f"/achievements/{achievement.id}?{query}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    material.display_name = normalized_name
+    material.description = description.strip()
+    db.commit()
+    return RedirectResponse(
+        f"/achievements/{achievement.id}?renamed=1",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @router.post("/{material_id}/delete")
 def delete_material(
     material_id: int,

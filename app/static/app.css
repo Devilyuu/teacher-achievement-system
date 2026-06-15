@@ -159,6 +159,8 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .replace-popover small { margin: 4px 0 10px; white-space: normal; }
 .replace-popover input { min-height: 36px; padding: 6px; font-size: 12px; }
 .replace-popover .button { width: 100%; margin-top: 10px; }
+.rename-popover label { margin-top: 10px; gap: 5px; font-size: 12px; }
+.rename-popover input { width: 100%; }
 .upload-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid #edf1f6; }
 .upload-form .button { align-self: end; justify-self: start; }
 .file-field { grid-column: 1 / -1; }

@@ -57,6 +57,18 @@
                 <span>替换失败：{{ request.query_params.get("replace_error") }}</span>
             </div>
             {% endif %}
+            {% if request.query_params.get("renamed") %}
+            <div class="material-upload-message success">
+                <i data-lucide="circle-check"></i>
+                <span>材料名称已更新。</span>
+            </div>
+            {% endif %}
+            {% if request.query_params.get("rename_error") %}
+            <div class="material-upload-message error">
+                <i data-lucide="triangle-alert"></i>
+                <span>重命名失败：{{ request.query_params.get("rename_error") }}</span>
+            </div>
+            {% endif %}
             {% if achievement.materials %}
             <div class="material-check">
                 <i data-lucide="circle-check"></i>
@@ -72,6 +84,16 @@
                         <a class="icon-button" href="/materials/{{ material.id }}/download" title="下载材料">
                             <i data-lucide="download"></i>
                         </a>
+                        <details class="replace-details rename-details">
+                            <summary class="icon-button" title="重命名材料"><i data-lucide="pencil-line"></i></summary>
+                            <form class="replace-popover rename-popover" method="post" action="/materials/{{ material.id }}/rename">
+                                <strong>修改材料名称</strong>
+                                <small>不改变原始文件和材料编号</small>
+                                <label><span>材料名称</span><input type="text" name="display_name" value="{{ material.display_name }}" required></label>
+                                <label><span>材料说明</span><input type="text" name="description" value="{{ material.description }}"></label>
+                                <button class="button secondary" type="submit"><i data-lucide="check"></i>保存名称</button>
+                            </form>
+                        </details>
                         <details class="replace-details">
                             <summary class="icon-button" title="替换文件"><i data-lucide="replace"></i></summary>
                             <form class="replace-popover" method="post" action="/materials/{{ material.id }}/replace" enctype="multipart/form-data">

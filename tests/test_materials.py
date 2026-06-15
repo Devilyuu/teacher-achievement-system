@@ -446,6 +446,31 @@ def test_material_detail_shows_batch_upload_controls_and_results(app):
     assert "bad.exe：Unsupported" in response.text
 
 
+def test_material_detail_shows_rename_action_and_messages(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("rename-detail.pdf", b"detail rename")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement_id, material_id = _create_owned_material(db, admin.id, source_path)
+    finally:
+        db.close()
+
+    response = client.get(
+        f"/achievements/{achievement_id}?renamed=1&rename_error=%E6%9D%90%E6%96%99%E5%90%8D%E7%A7%B0%E4%B8%8D%E8%83%BD%E4%B8%BA%E7%A9%BA"
+    )
+
+    assert response.status_code == 200
+    assert "材料名称已更新" in response.text
+    assert "重命名失败：材料名称不能为空" in response.text
+    assert f'action="/materials/{material_id}/rename"' in response.text
+    assert 'name="display_name"' in response.text
+    assert 'name="description"' in response.text
+    assert "修改材料名称" in response.text
+
+
 def test_owner_can_replace_material_without_changing_material_number(app):
     client = TestClient(app)
     _login_admin(client)
@@ -475,6 +500,108 @@ def test_owner_can_replace_material_without_changing_material_number(app):
         assert material.file_ext == ".docx"
         assert Path(material.stored_path).read_bytes() == b"new proof"
         assert not source_path.exists()
+    finally:
+        db.close()
+
+
+def test_owner_can_rename_material_without_changing_file_identity(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("rename-source.pdf", b"rename content")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement_id, material_id = _create_owned_material(db, admin.id, source_path)
+        material = db.get(Material, material_id)
+        original_number = material.material_no
+        original_filename = material.original_filename
+        original_stored_path = material.stored_path
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/materials/{material_id}/rename",
+        data={
+            "display_name": "省赛二等奖证书",
+            "description": "用于年度绩效申报",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith(f"/achievements/{achievement_id}")
+    assert "renamed=1" in response.headers["location"]
+
+    db = SessionLocal()
+    try:
+        material = db.get(Material, material_id)
+        assert material.display_name == "省赛二等奖证书"
+        assert material.description == "用于年度绩效申报"
+        assert material.material_no == original_number
+        assert material.original_filename == original_filename
+        assert material.stored_path == original_stored_path
+        assert Path(material.stored_path).read_bytes() == b"rename content"
+    finally:
+        db.close()
+
+
+def test_blank_material_rename_keeps_original_display_name(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("blank-rename.pdf", b"original name")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement_id, material_id = _create_owned_material(db, admin.id, source_path)
+        original_name = db.get(Material, material_id).display_name
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/materials/{material_id}/rename",
+        data={"display_name": "   ", "description": "will not save"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith(f"/achievements/{achievement_id}")
+    assert "rename_error=" in response.headers["location"]
+
+    db = SessionLocal()
+    try:
+        material = db.get(Material, material_id)
+        assert material.display_name == original_name
+        assert material.description == "Original description"
+    finally:
+        db.close()
+
+
+def test_user_cannot_rename_another_users_material(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("other-rename.pdf", b"private rename")
+
+    db = SessionLocal()
+    try:
+        other_user = _create_user(db, f"other-rename-owner-{uuid4().hex}")
+        _, material_id = _create_owned_material(db, other_user.id, source_path)
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/materials/{material_id}/rename",
+        data={"display_name": "不应成功", "description": ""},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 404
+
+    db = SessionLocal()
+    try:
+        material = db.get(Material, material_id)
+        assert material.display_name == "Original proof"
     finally:
         db.close()
 
