@@ -1,13 +1,20 @@
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 
 from app.config import UPLOAD_DIR
 from app.database import SessionLocal
 from app.models import Achievement, AchievementStatus, ClaimNature, Material, Role, User
 from app.security import hash_password
+from app.services.admin_export_builder import (
+    build_admin_material_package,
+    build_admin_summary_workbook,
+)
 from app.services.admin_summary import (
     SummaryFilters,
     build_admin_summary,
@@ -359,3 +366,214 @@ def test_admin_can_open_teacher_achievement_as_read_only(app):
     assert f"/achievements/{achievement_id}/edit" not in response.text
     assert 'action="/materials/upload"' not in response.text
     assert f'action="/achievements/{achievement_id}/delete"' not in response.text
+
+
+def test_admin_summary_workbook_contains_three_filtered_sheets(app):
+    department = f"导出学院{uuid4().hex[:5]}"
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department=department,
+            full_name=f"导出教师{uuid4().hex[:5]}",
+        )
+        ready = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"完整成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            claimed_score=7,
+            material_path=_create_material_file("complete.pdf"),
+        )
+        incomplete = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"缺材料成果{uuid4().hex[:5]}",
+            status=AchievementStatus.needs_info.value,
+            claimed_score=2,
+        )
+        db.commit()
+        summary = build_admin_summary(
+            db,
+            SummaryFilters(year=2026, department=department),
+        )
+
+        workbook_path = build_admin_summary_workbook(summary)
+        workbook = load_workbook(workbook_path)
+
+        assert workbook.sheetnames == ["教师汇总", "成果明细", "材料缺失"]
+        teacher_sheet = workbook["教师汇总"]
+        detail_sheet = workbook["成果明细"]
+        missing_sheet = workbook["材料缺失"]
+        assert teacher_sheet.max_row == 2
+        assert teacher_sheet.cell(2, 1).value == teacher.full_name
+        assert teacher_sheet.cell(2, 4).value == 2
+        assert teacher_sheet.cell(2, 8).value == 9
+        detail_titles = [detail_sheet.cell(row, 6).value for row in range(2, 4)]
+        assert ready.title in detail_titles
+        assert incomplete.title in detail_titles
+        assert missing_sheet.max_row == 2
+        assert missing_sheet.cell(2, 6).value == incomplete.title
+        assert "未上传支撑材料" in missing_sheet.cell(2, 11).value
+        assert str(2026) in workbook_path.name
+        assert department in workbook_path.name
+    finally:
+        db.close()
+
+
+def test_empty_admin_summary_workbook_still_contains_headers(app):
+    db = SessionLocal()
+    try:
+        summary = build_admin_summary(db, SummaryFilters(year=2099))
+        workbook = load_workbook(build_admin_summary_workbook(summary))
+
+        assert workbook["教师汇总"].max_row == 1
+        assert workbook["成果明细"].max_row == 1
+        assert workbook["材料缺失"].max_row == 1
+    finally:
+        db.close()
+
+
+def test_admin_material_package_groups_files_and_reports_missing_physical_file(app):
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department="艺术/学院",
+            full_name=f"张:老师{uuid4().hex[:4]}",
+        )
+        existing = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title="获奖*项目",
+            status=AchievementStatus.ready.value,
+            material_path=_create_material_file("award.pdf"),
+        )
+        missing_path = (
+            UPLOAD_DIR
+            / "test-admin-summary"
+            / uuid4().hex
+            / "lost-proof.pdf"
+        )
+        missing = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title="文件丢失项目",
+            status=AchievementStatus.needs_info.value,
+            material_path=missing_path,
+        )
+        db.commit()
+        summary = build_admin_summary(
+            db,
+            SummaryFilters(
+                year=2026,
+                department=teacher.department,
+                teacher_id=teacher.id,
+            ),
+        )
+
+        package_path = build_admin_material_package(summary)
+
+        with ZipFile(package_path) as archive:
+            names = archive.namelist()
+            workbook = load_workbook(
+                BytesIO(archive.read("00_年度教师成果汇总.xlsx"))
+            )
+
+        material_prefix = (
+            f"01_教师材料/艺术_学院/"
+            f"{teacher.full_name.replace(':', '_')}/03_教学/"
+        )
+        matching_names = [
+            name
+            for name in names
+            if name.startswith(material_prefix) and name.endswith(".pdf")
+        ]
+        assert len(matching_names) == 1
+        assert "获奖_项目" in matching_names[0]
+        assert existing.materials[0].material_no in matching_names[0]
+        assert not any("文件丢失项目" in name for name in names)
+        missing_sheet = workbook["材料缺失"]
+        missing_rows = [
+            [cell.value for cell in row]
+            for row in missing_sheet.iter_rows(min_row=2)
+        ]
+        assert any(
+            row[5] == missing.title and "材料文件不存在" in row[10]
+            for row in missing_rows
+        )
+    finally:
+        db.close()
+
+
+def test_admin_summary_export_routes_apply_filters_and_require_admin(app):
+    department = f"路由导出学院{uuid4().hex[:5]}"
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department=department,
+            full_name=f"路由导出教师{uuid4().hex[:5]}",
+        )
+        included = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"导出命中{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            material_path=_create_material_file("route-export.pdf"),
+        )
+        excluded = _add_achievement(
+            db,
+            user=teacher,
+            year=2027,
+            title=f"导出排除{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            material_path=_create_material_file("route-future.pdf"),
+        )
+        db.commit()
+        teacher_id = teacher.id
+        included_title = included.title
+        excluded_title = excluded.title
+    finally:
+        db.close()
+
+    teacher_client = TestClient(app)
+    teacher_client.cookies.set("user_id", str(teacher_id))
+    assert teacher_client.get("/admin/summary/export.xlsx").status_code == 403
+    assert teacher_client.get("/admin/summary/materials.zip").status_code == 403
+
+    admin_client = TestClient(app)
+    _login_admin(admin_client)
+    params = {
+        "year": 2026,
+        "department": department,
+        "teacher_id": teacher_id,
+        "status": AchievementStatus.ready.value,
+    }
+    workbook_response = admin_client.get(
+        "/admin/summary/export.xlsx",
+        params=params,
+    )
+    package_response = admin_client.get(
+        "/admin/summary/materials.zip",
+        params=params,
+    )
+
+    assert workbook_response.status_code == 200
+    workbook = load_workbook(BytesIO(workbook_response.content))
+    detail_titles = [
+        workbook["成果明细"].cell(row, 6).value
+        for row in range(2, workbook["成果明细"].max_row + 1)
+    ]
+    assert detail_titles == [included_title]
+    assert excluded_title not in detail_titles
+
+    assert package_response.status_code == 200
+    with ZipFile(BytesIO(package_response.content)) as archive:
+        assert "00_年度教师成果汇总.xlsx" in archive.namelist()
+        assert any(name.endswith(".pdf") for name in archive.namelist())

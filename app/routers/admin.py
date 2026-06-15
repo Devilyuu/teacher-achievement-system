@@ -2,7 +2,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,10 @@ from app.config import BASE_DIR
 from app.database import get_db
 from app.models import Achievement, AchievementStatus, PerformanceRule, Role, User
 from app.security import hash_password, require_admin
+from app.services.admin_export_builder import (
+    build_admin_material_package,
+    build_admin_summary_workbook,
+)
 from app.services.admin_summary import SummaryFilters, build_admin_summary
 from app.services.performance_rule_guidance import (
     assignment_mode,
@@ -110,6 +114,54 @@ def annual_summary(
             "statuses": [item.value for item in AchievementStatus],
             "export_query": _summary_query_string(filters),
         },
+    )
+
+
+@router.get("/summary/export.xlsx")
+def export_annual_summary_workbook(
+    year: int | None = Query(default=None),
+    department: str = Query(default=""),
+    teacher_id: int | None = Query(default=None),
+    achievement_status: str = Query(default="", alias="status"),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    filters = _summary_filters(
+        year,
+        department,
+        teacher_id,
+        achievement_status,
+    )
+    path = build_admin_summary_workbook(build_admin_summary(db, filters))
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+    )
+
+
+@router.get("/summary/materials.zip")
+def export_annual_material_package(
+    year: int | None = Query(default=None),
+    department: str = Query(default=""),
+    teacher_id: int | None = Query(default=None),
+    achievement_status: str = Query(default="", alias="status"),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    filters = _summary_filters(
+        year,
+        department,
+        teacher_id,
+        achievement_status,
+    )
+    path = build_admin_material_package(build_admin_summary(db, filters))
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type="application/zip",
     )
 
 
