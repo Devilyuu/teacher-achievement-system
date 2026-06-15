@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.config import BASE_DIR
+from app.config import BASE_DIR, DATABASE_PATH, EXPORT_DIR, UPLOAD_DIR
 from app.database import get_db
 from app.models import Achievement, AchievementStatus, PerformanceRule, Role, User
 from app.security import hash_password, require_admin
@@ -15,6 +15,7 @@ from app.services.admin_export_builder import (
     build_admin_summary_workbook,
 )
 from app.services.admin_summary import SummaryFilters, build_admin_summary
+from app.services.backup_builder import build_system_backup
 from app.services.performance_rule_guidance import (
     assignment_mode,
     find_rule,
@@ -186,6 +187,30 @@ def admin_achievement_detail(
             "level_rule": rule_for_level(rule, achievement.level),
             "assignment_mode": assignment_mode(rule),
         },
+    )
+
+
+@router.get("/backup")
+def backup_page(
+    request: Request,
+    user: User = Depends(require_admin),
+):
+    return templates.TemplateResponse(
+        request,
+        "admin/backup.html",
+        {"user": user},
+    )
+
+
+@router.get("/backup/download")
+def download_system_backup(
+    user: User = Depends(require_admin),
+):
+    path = build_system_backup(DATABASE_PATH, UPLOAD_DIR, EXPORT_DIR)
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type="application/zip",
     )
 
 

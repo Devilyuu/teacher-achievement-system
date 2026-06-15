@@ -7,6 +7,7 @@ from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 
+from app.config import UPLOAD_DIR
 from app.database import SessionLocal
 from app.models import Role, User
 from app.security import hash_password
@@ -73,3 +74,68 @@ def test_backup_builder_handles_empty_upload_directory(tmp_path):
         ]
     assert manifest["material_file_count"] == 0
     assert manifest["material_total_bytes"] == 0
+
+
+def _login_admin(client: TestClient) -> None:
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+
+def _create_teacher() -> int:
+    db = SessionLocal()
+    try:
+        user = User(
+            username=f"backup-teacher-{uuid4().hex}",
+            full_name="备份权限教师",
+            department="备份测试学院",
+            role=Role.teacher.value,
+            password_hash=hash_password("password123"),
+        )
+        db.add(user)
+        db.commit()
+        return user.id
+    finally:
+        db.close()
+
+
+def test_backup_page_and_download_require_admin(app):
+    unauthenticated = TestClient(app).get(
+        "/admin/backup",
+        follow_redirects=False,
+    )
+    assert unauthenticated.status_code in {303, 401}
+
+    teacher_client = TestClient(app)
+    teacher_client.cookies.set("user_id", str(_create_teacher()))
+    assert teacher_client.get("/admin/backup").status_code == 403
+    assert teacher_client.get("/admin/backup/download").status_code == 403
+
+
+def test_admin_can_open_backup_page_and_download_complete_zip(app):
+    client = TestClient(app)
+    _login_admin(client)
+    marker = f"backup-marker-{uuid4().hex}.txt"
+    marker_path = UPLOAD_DIR / "test-backup-route" / marker
+    marker_path.parent.mkdir(parents=True, exist_ok=True)
+    marker_path.write_text("route backup", encoding="utf-8")
+
+    page = client.get("/admin/backup")
+    download = client.get("/admin/backup/download")
+
+    assert page.status_code == 200
+    assert "系统备份" in page.text
+    assert "下载完整备份" in page.text
+    assert download.status_code == 200
+    assert download.headers["content-type"] in {
+        "application/zip",
+        "application/x-zip-compressed",
+    }
+    with ZipFile(BytesIO(download.content)) as archive:
+        names = archive.namelist()
+        manifest = json.loads(archive.read("backup_manifest.json"))
+    assert "database/app.sqlite3" in names
+    assert f"uploads/test-backup-route/{marker}" in names
+    assert manifest["material_file_count"] >= 1

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}系统备份{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <p class="eyebrow">系统管理</p>
+        <h1>系统备份</h1>
+        <p class="muted">下载数据库和全部支撑材料，便于本机故障恢复、迁移和人工归档。</p>
+    </div>
+</header>
+
+<section class="panel backup-panel">
+    <div class="section-heading">
+        <span class="section-icon blue"><i data-lucide="database-backup"></i></span>
+        <div><h2>完整数据备份</h2><p>生成时创建数据库一致性快照</p></div>
+    </div>
+
+    <div class="backup-content-list">
+        <div><i data-lucide="database"></i><span><strong>系统数据库</strong><small>账号、绩效规则、成果记录和材料索引</small></span></div>
+        <div><i data-lucide="folder-archive"></i><span><strong>全部支撑材料</strong><small>保留原有年度、教师和成果目录结构</small></span></div>
+        <div><i data-lucide="file-json"></i><span><strong>备份清单</strong><small>记录生成时间、材料数量和文件总大小</small></span></div>
+    </div>
+
+    <div class="backup-note">
+        <i data-lucide="info"></i>
+        <span>备份包不包含可重新生成的导出文件。恢复时请先停止系统服务，再由管理员人工替换数据库和上传材料目录。</span>
+    </div>
+
+    <a class="button primary backup-download" href="/admin/backup/download">
+        <i data-lucide="download"></i>下载完整备份
+    </a>
+</section>
+{% endblock %}
