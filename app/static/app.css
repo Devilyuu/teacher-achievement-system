@@ -138,6 +138,10 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .material-list { display: flex; flex-direction: column; gap: 9px; }
 .material-check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 10px 12px; color: #087a55; background: #effaf5; border: 1px solid #d8f2e7; border-radius: 6px; font-size: 12px; }
 .material-check svg { width: 16px; }
+.material-upload-message { display: flex; gap: 8px; margin-bottom: 12px; padding: 10px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; }
+.material-upload-message svg { flex: 0 0 auto; width: 16px; margin-top: 1px; }
+.material-upload-message.success { color: #087a55; background: #e9f8f2; border: 1px solid #cceee0; }
+.material-upload-message.error { color: #a33b32; background: #fff0ee; border: 1px solid #ffd9d4; }
 .material-item { position: relative; display: flex; align-items: center; gap: 11px; padding: 11px; border: 1px solid #e5ebf3; border-radius: 6px; }
 .material-copy { min-width: 0; flex: 1; }.material-item strong, .material-item small { display: block; }
 .material-item strong { font-size: 13px; }.material-item small { margin-top: 3px; color: #8993a4; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -158,6 +162,10 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .upload-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid #edf1f6; }
 .upload-form .button { align-self: end; justify-self: start; }
 .file-field { grid-column: 1 / -1; }
+.batch-upload-form { grid-template-columns: minmax(220px, .7fr) minmax(260px, 1fr) auto; align-items: end; }
+.batch-upload-form .file-field { grid-column: auto; }
+.upload-help { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 7px; margin: -2px 0 0; color: #778195; font-size: 12px; line-height: 1.7; }
+.upload-help svg { flex: 0 0 auto; width: 15px; margin-top: 2px; color: #2563eb; }
 
 .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; max-width: 1240px; margin: 0 auto 18px; }
 .stat-item { display: flex; align-items: center; gap: 13px; min-height: 104px; padding: 18px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 5px 18px rgba(44, 70, 110, .04); }
@@ -349,7 +357,7 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .sidebar-user { margin: 0; padding: 0; border: 0; }.avatar { display: none; }
     .workspace { margin: 0; width: 100%; padding: 22px 15px 36px; }
     .page-header { align-items: flex-start; flex-direction: column; }.header-actions { width: 100%; }.header-actions .button { flex: 1; }
-    .form-grid, .guidance-grid, .detail-grid, .upload-form { grid-template-columns: 1fr; }.span-2, .file-field { grid-column: auto; }
+    .form-grid, .guidance-grid, .detail-grid, .upload-form, .batch-upload-form { grid-template-columns: 1fr; }.span-2, .file-field, .batch-upload-form .file-field, .upload-help { grid-column: auto; }
     .stat-grid { grid-template-columns: 1fr 1fr; }.stat-item { min-height: 88px; padding: 13px; }
     .user-create-form { grid-template-columns: 1fr; }
     .user-import-heading { flex-direction: column; }

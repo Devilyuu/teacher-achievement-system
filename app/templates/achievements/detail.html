@@ -39,6 +39,24 @@
                 <span class="section-icon violet"><i data-lucide="paperclip"></i></span>
                 <div><h2>支撑材料</h2><p>系统根据已上传文件自动判断是否缺少材料，无需手动勾选。</p></div>
             </div>
+            {% if request.query_params.get("uploaded") %}
+            <div class="material-upload-message success">
+                <i data-lucide="circle-check"></i>
+                <span>已上传 {{ request.query_params.get("uploaded") }} 份材料。</span>
+            </div>
+            {% endif %}
+            {% if request.query_params.get("failed") and request.query_params.get("failed") != "0" %}
+            <div class="material-upload-message error">
+                <i data-lucide="triangle-alert"></i>
+                <span>{{ request.query_params.get("failed") }} 份材料上传失败：{{ request.query_params.get("errors") }}</span>
+            </div>
+            {% endif %}
+            {% if request.query_params.get("replace_error") %}
+            <div class="material-upload-message error">
+                <i data-lucide="triangle-alert"></i>
+                <span>替换失败：{{ request.query_params.get("replace_error") }}</span>
+            </div>
+            {% endif %}
             {% if achievement.materials %}
             <div class="material-check">
                 <i data-lucide="circle-check"></i>
@@ -74,11 +92,11 @@
             <div class="inline-empty"><i data-lucide="file-warning"></i><span>尚未上传支撑材料，当前状态将显示为“待完善”。</span></div>
             {% endif %}
 
-            <form class="upload-form" method="post" action="/materials/upload" enctype="multipart/form-data">
+            <form class="upload-form batch-upload-form" method="post" action="/materials/upload" enctype="multipart/form-data">
                 <input type="hidden" name="achievement_id" value="{{ achievement.id }}">
-                <label><span>材料名称</span><input type="text" name="display_name" placeholder="例如：获奖证书、立项文件" required></label>
-                <label><span>材料说明</span><input type="text" name="description" placeholder="可选"></label>
-                <label class="file-field"><span>选择文件</span><input type="file" name="file" required></label>
+                <label><span>材料说明</span><input type="text" name="description" placeholder="可选，同批文件共用"></label>
+                <label class="file-field"><span>选择文件</span><input type="file" name="file" multiple required></label>
+                <p class="upload-help"><i data-lucide="info"></i>可一次选择多份文件；材料名称将自动取文件名。支持 PDF、Word、Excel、图片和压缩包，单个文件不超过 {{ max_upload_mb }}MB。</p>
                 <button class="button secondary" type="submit"><i data-lucide="upload"></i>上传材料</button>
             </form>
         </section>

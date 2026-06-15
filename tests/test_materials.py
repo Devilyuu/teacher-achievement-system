@@ -419,6 +419,33 @@ def test_material_detail_shows_file_management_actions(app):
     assert f"/materials/{material_id}/delete" in response.text
 
 
+def test_material_detail_shows_batch_upload_controls_and_results(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = _complete_process_achievement(admin.id, "Upload result page")
+        db.add(achievement)
+        db.commit()
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.get(
+        f"/achievements/{achievement_id}?uploaded=2&failed=1&errors=bad.exe%EF%BC%9AUnsupported"
+    )
+
+    assert response.status_code == 200
+    assert 'input type="file" name="file" multiple required' in response.text
+    assert "可一次选择多份文件" in response.text
+    assert "单个文件不超过 50MB" in response.text
+    assert "已上传 2 份材料" in response.text
+    assert "1 份材料上传失败" in response.text
+    assert "bad.exe：Unsupported" in response.text
+
+
 def test_owner_can_replace_material_without_changing_material_number(app):
     client = TestClient(app)
     _login_admin(client)
