@@ -7,8 +7,15 @@ from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR
 from app.database import get_db
-from app.models import Achievement, ClaimNature, PerformanceRule, User
+from app.models import (
+    Achievement,
+    AchievementStatus,
+    ClaimNature,
+    PerformanceRule,
+    User,
+)
 from app.security import get_current_user
+from app.services.achievement_search import AchievementFilters, search_achievements
 from app.services.achievement_status import calculate_status
 from app.services.performance_rule_guidance import (
     LEVEL_OPTIONS,
@@ -145,6 +152,10 @@ def _assign_form_values(
 def list_achievements(
     request: Request,
     year: int | None = Query(default=None),
+    achievement_status: str = Query(default="", alias="status"),
+    category: str = Query(default=""),
+    subcategory: str = Query(default=""),
+    q: str = Query(default=""),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -159,16 +170,16 @@ def list_achievements(
         )
     ]
     selected_year = year or datetime.now().year
-    achievements = (
-        db.query(Achievement)
-        .filter(
-            Achievement.user_id == user.id,
-            Achievement.year == selected_year,
-        )
-        .order_by(Achievement.updated_at.desc(), Achievement.id.desc())
-        .all()
+    filters = AchievementFilters(
+        year=selected_year,
+        status=achievement_status.strip(),
+        category=category.strip(),
+        subcategory=subcategory.strip(),
+        keyword=q.strip(),
     )
+    achievements = search_achievements(db, user.id, filters)
     active_rules = _active_rules(db)
+    category_options = list(dict.fromkeys(rule.category for rule in active_rules))
     return templates.TemplateResponse(
         request,
         "achievements/list.html",
@@ -181,6 +192,18 @@ def list_achievements(
                 reverse=True,
             ),
             "selected_year": selected_year,
+            "filters": filters,
+            "statuses": [item.value for item in AchievementStatus],
+            "category_options": category_options,
+            "rules": active_rules,
+            "is_filtered": any(
+                [
+                    filters.status,
+                    filters.category,
+                    filters.subcategory,
+                    filters.keyword,
+                ]
+            ),
         },
     )
 

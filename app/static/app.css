@@ -61,6 +61,10 @@ svg { width: 18px; height: 18px; stroke-width: 1.9; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; max-width: 1240px; margin: 0 auto 12px; }
 .year-filter { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #667085; }
 .year-filter select { min-width: 110px; }
+.achievement-filter-panel { padding: 18px 20px; margin-bottom: 12px; }
+.achievement-filter-form { display: grid; grid-template-columns: 110px 130px minmax(150px, .9fr) minmax(190px, 1.2fr) minmax(220px, 1.4fr) auto auto; align-items: end; gap: 11px; }
+.achievement-filter-form .button { white-space: nowrap; }
+.achievement-result-toolbar { justify-content: flex-end; }
 .record-count { color: #8993a4; font-size: 13px; }
 .text-link { display: inline-flex; align-items: center; gap: 5px; color: var(--blue); font-size: 13px; }
 .text-link svg { width: 15px; }
@@ -266,6 +270,8 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .user-create-form { grid-template-columns: 1fr 1fr; }.user-create-form .button { align-self: end; }
     .summary-filter-form { grid-template-columns: 1fr 1fr; }
     .summary-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .achievement-filter-form { grid-template-columns: 1fr 1fr; }
+    .achievement-keyword { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
     .sidebar { position: static; width: 100%; height: auto; flex-direction: row; align-items: center; padding: 10px 14px; }
@@ -279,4 +285,6 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .summary-filter-form { grid-template-columns: 1fr; }
     .summary-stat-grid { grid-template-columns: 1fr 1fr; }
     .summary-stat-grid .stat-item:last-child { grid-column: 1 / -1; }
+    .achievement-filter-form { grid-template-columns: 1fr; }
+    .achievement-keyword { grid-column: auto; }
 }

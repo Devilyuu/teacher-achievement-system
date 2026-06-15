@@ -1,7 +1,9 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
-from app.models import Achievement, ClaimNature, User
+from app.models import Achievement, AchievementStatus, ClaimNature, User
 
 
 def test_authenticated_admin_can_create_achievement_and_see_it_in_list(app):
@@ -210,13 +212,105 @@ def test_achievement_list_groups_records_in_performance_category_order(app):
 
     assert response.status_code == 200
     assert response.text.count('class="category-section"') >= 3
-    assert response.text.count(">教学<") == 1
-    assert response.text.index(">教学<") < response.text.index(">科研与社会服务工作<")
-    assert response.text.index(">科研与社会服务工作<") < response.text.index(
-        ">其他有价值工作（自定义）<"
+    assert response.text.count("<h2>教学</h2>") == 1
+    assert response.text.index("<h2>教学</h2>") < response.text.index(
+        "<h2>科研与社会服务工作</h2>"
     )
-    teaching_section = response.text.split(">教学<", 1)[1].split(
+    assert response.text.index("<h2>科研与社会服务工作</h2>") < response.text.index(
+        "<h2>其他有价值工作（自定义）</h2>"
+    )
+    teaching_section = response.text.split("<h2>教学</h2>", 1)[1].split(
         'class="category-section"', 1
     )[0]
     assert "教学成果甲" in teaching_section
     assert "教学成果乙" in teaching_section
+
+
+def test_achievement_list_filters_and_retains_selected_values(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+    keyword = f"检索词{uuid4().hex[:6]}"
+    matching_title = f"{keyword}成果"
+    excluded_title = f"排除成果{uuid4().hex[:6]}"
+    subcategory = "教学成果奖申报及获奖"
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        db.add_all(
+            [
+                Achievement(
+                    user_id=admin.id,
+                    year=2026,
+                    category="教学",
+                    subcategory=subcategory,
+                    claim_nature=ClaimNature.result.value,
+                    title=matching_title,
+                    claimed_score=5,
+                    status=AchievementStatus.ready.value,
+                ),
+                Achievement(
+                    user_id=admin.id,
+                    year=2026,
+                    category="教学",
+                    subcategory=subcategory,
+                    claim_nature=ClaimNature.result.value,
+                    title=excluded_title,
+                    notes=keyword,
+                    claimed_score=2,
+                    status=AchievementStatus.needs_info.value,
+                ),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get(
+        "/achievements",
+        params={
+            "year": 2026,
+            "status": AchievementStatus.ready.value,
+            "category": "教学",
+            "subcategory": subcategory,
+            "q": keyword,
+        },
+    )
+
+    assert response.status_code == 200
+    assert matching_title in response.text
+    assert excluded_title not in response.text
+    assert f'value="{AchievementStatus.ready.value}" selected' in response.text
+    assert 'value="教学" selected' in response.text
+    assert (
+        f'value="{subcategory}" data-category="教学" selected'
+        in response.text
+    )
+    assert f'value="{keyword}"' in response.text
+    assert 'href="/exports/2026/personal"' in response.text
+    assert "/exports/2026/personal?" not in response.text
+    assert 'href="/achievements?year=2026"' in response.text
+
+
+def test_achievement_list_shows_filtered_empty_state_and_active_rule_options(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get(
+        "/achievements",
+        params={"year": 2026, "q": f"不存在{uuid4().hex}"},
+    )
+
+    assert response.status_code == 200
+    assert "没有符合条件的成果" in response.text
+    assert "清除筛选" in response.text
+    assert 'data-category="教学"' in response.text
+    assert "教学成果奖申报及获奖" in response.text
