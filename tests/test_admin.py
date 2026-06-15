@@ -300,6 +300,13 @@ def test_admin_can_download_user_import_template(app):
         "初始密码",
     ]
 
+    page = client.get("/admin/users")
+    import_panel_start = page.text.index('class="panel user-import-panel"')
+    import_panel_end = page.text.index("</section>", import_panel_start)
+    import_panel = page.text[import_panel_start:import_panel_end]
+    assert 'href="/admin/users/import-template.xlsx"' in import_panel
+    assert "下载标准模板" in import_panel
+
 
 def test_non_admin_cannot_preview_user_import(app):
     username = f"import-teacher-{uuid4().hex}"

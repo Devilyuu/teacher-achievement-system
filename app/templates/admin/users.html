@@ -9,9 +9,6 @@
         <h1>用户管理</h1>
         <p class="muted">创建教师账号、控制登录状态并在需要时重置密码。</p>
     </div>
-    <div class="header-actions">
-        <a class="button secondary" href="/admin/users/import-template.xlsx"><i data-lucide="file-down"></i>下载模板</a>
-    </div>
 </header>
 
 {% if error %}<div class="page-message error"><i data-lucide="circle-alert"></i>{{ error }}</div>{% endif %}
@@ -38,9 +35,12 @@
 </section>
 
 <section class="panel user-import-panel">
-    <div class="section-heading">
-        <span class="section-icon green"><i data-lucide="sheet"></i></span>
-        <div><h2>Excel 批量导入</h2><p>上传模板后先预检，确认无误再创建账号</p></div>
+    <div class="user-import-heading">
+        <div class="section-heading">
+            <span class="section-icon green"><i data-lucide="sheet"></i></span>
+            <div><h2>Excel 批量导入</h2><p>第一步下载标准模板，填写后上传预检</p></div>
+        </div>
+        <a class="button secondary" href="/admin/users/import-template.xlsx"><i data-lucide="file-down"></i>下载标准模板</a>
     </div>
     <form method="post" action="/admin/users/import-preview" enctype="multipart/form-data" class="user-import-form">
         <label><span>账号文件</span><input type="file" name="file" accept=".xlsx" required></label>

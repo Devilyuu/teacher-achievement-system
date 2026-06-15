@@ -238,6 +238,9 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .user-create-form .button { margin-bottom: 0; white-space: nowrap; }
 .user-table-panel { margin-top: 17px; }
 .user-import-panel { margin-top: 17px; padding: 22px; }
+.user-import-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.user-import-heading .section-heading { margin-bottom: 0; }
+.user-import-heading .button { flex: 0 0 auto; white-space: nowrap; }
 .user-import-form { display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: end; gap: 12px; }
 .user-import-form .button { white-space: nowrap; }
 .import-preview-panel { overflow: hidden; }
@@ -320,6 +323,8 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .form-grid, .guidance-grid, .detail-grid, .upload-form { grid-template-columns: 1fr; }.span-2, .file-field { grid-column: auto; }
     .stat-grid { grid-template-columns: 1fr 1fr; }.stat-item { min-height: 88px; padding: 13px; }
     .user-create-form { grid-template-columns: 1fr; }
+    .user-import-heading { flex-direction: column; }
+    .user-import-heading .button { width: 100%; }
     .user-import-form { grid-template-columns: 1fr; }
     .summary-filter-form { grid-template-columns: 1fr; }
     .summary-stat-grid { grid-template-columns: 1fr 1fr; }
