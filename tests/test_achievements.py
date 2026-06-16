@@ -35,13 +35,19 @@ def test_authenticated_admin_can_create_achievement_and_see_it_in_list(app):
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/achievements"
+    detail_location = response.headers["location"]
+    assert detail_location.startswith("/achievements/")
+    assert detail_location != "/achievements"
 
     list_response = client.get("/achievements")
 
     assert list_response.status_code == 200
     assert "省级技能大赛裁判工作" in list_response.text
     assert "待完善" in list_response.text
+
+    detail_response = client.get(detail_location)
+    assert detail_response.status_code == 200
+    assert f'href="{detail_location}/edit"' in detail_response.text
 
 
 def test_achievements_requires_authentication(app):

@@ -261,7 +261,10 @@ def create_achievement(
     )
     db.add(achievement)
     db.commit()
-    return RedirectResponse("/achievements", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        f"/achievements/{achievement.id}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.get("/{achievement_id}")
