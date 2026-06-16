@@ -591,6 +591,7 @@ def test_admin_summary_workbook_contains_three_filtered_sheets(app):
             claimed_score=2,
         )
         db.commit()
+        confirm_annual_submission(db, teacher, 2026)
         summary = build_admin_summary(
             db,
             SummaryFilters(year=2026, department=department),
@@ -605,8 +606,10 @@ def test_admin_summary_workbook_contains_three_filtered_sheets(app):
         missing_sheet = workbook["材料缺失"]
         assert teacher_sheet.max_row == 2
         assert teacher_sheet.cell(2, 1).value == teacher.full_name
-        assert teacher_sheet.cell(2, 4).value == 2
-        assert teacher_sheet.cell(2, 8).value == 9
+        assert teacher_sheet.cell(1, 4).value == "年度状态"
+        assert teacher_sheet.cell(2, 4).value == "已提交"
+        assert teacher_sheet.cell(2, 5).value == 2
+        assert teacher_sheet.cell(2, 9).value == 9
         detail_titles = [detail_sheet.cell(row, 6).value for row in range(2, 4)]
         assert ready.title in detail_titles
         assert incomplete.title in detail_titles
@@ -626,6 +629,11 @@ def test_empty_admin_summary_workbook_still_contains_headers(app):
         workbook = load_workbook(build_admin_summary_workbook(summary))
 
         assert workbook["教师汇总"].max_row == 1
+        teacher_headers = [
+            workbook["教师汇总"].cell(1, column).value
+            for column in range(1, workbook["教师汇总"].max_column + 1)
+        ]
+        assert "年度状态" in teacher_headers
         assert workbook["成果明细"].max_row == 1
         assert workbook["材料缺失"].max_row == 1
     finally:
@@ -694,6 +702,12 @@ def test_admin_material_package_groups_files_and_reports_missing_physical_file(a
         assert existing.materials[0].material_no in matching_names[0]
         assert not any("文件丢失项目" in name for name in names)
         missing_sheet = workbook["材料缺失"]
+        teacher_sheet = workbook["教师汇总"]
+        teacher_headers = [
+            teacher_sheet.cell(1, column).value
+            for column in range(1, teacher_sheet.max_column + 1)
+        ]
+        assert "年度状态" in teacher_headers
         missing_rows = [
             [cell.value for cell in row]
             for row in missing_sheet.iter_rows(min_row=2)
