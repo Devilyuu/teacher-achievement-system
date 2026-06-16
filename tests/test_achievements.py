@@ -258,7 +258,7 @@ def test_achievement_list_can_filter_and_export_by_year(app):
     assert response.status_code == 200
     assert "2026年度成果" in response.text
     assert "2027年度成果" not in response.text
-    assert 'href="/exports/2026/personal"' in response.text
+    assert 'href="/exports/2026/review"' in response.text
 
 
 def test_achievement_list_groups_records_in_performance_category_order(app):
@@ -400,8 +400,8 @@ def test_achievement_list_filters_and_retains_selected_values(app):
         in response.text
     )
     assert f'value="{keyword}"' in response.text
-    assert 'href="/exports/2026/personal"' in response.text
-    assert "/exports/2026/personal?" not in response.text
+    assert 'href="/exports/2026/review"' in response.text
+    assert "/exports/2026/review?" not in response.text
     assert 'href="/achievements?year=2026"' in response.text
 
 

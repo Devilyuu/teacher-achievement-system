@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import BASE_DIR
 from app.database import get_db
-from app.models import ExportRecord, User
+from app.models import Achievement, AchievementStatus, ExportRecord, User
 from app.security import get_current_user
 from app.services.export_history import generate_personal_export
 
@@ -81,6 +81,42 @@ def download_recorded_export(
         file_path,
         media_type="application/zip",
         filename=record.file_name,
+    )
+
+
+@router.get("/{year}/review")
+def review_personal_export(
+    year: int,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    achievements = (
+        db.query(Achievement)
+        .filter(Achievement.user_id == user.id, Achievement.year == year)
+        .order_by(Achievement.id)
+        .all()
+    )
+    ready_statuses = {
+        AchievementStatus.ready.value,
+        AchievementStatus.exported.value,
+    }
+    needs_attention = [
+        achievement
+        for achievement in achievements
+        if achievement.status not in ready_statuses
+    ]
+    return templates.TemplateResponse(
+        request,
+        "exports/review.html",
+        {
+            "user": user,
+            "year": year,
+            "achievements": achievements,
+            "ready_count": len(achievements) - len(needs_attention),
+            "needs_attention": needs_attention,
+            "material_count": sum(len(achievement.materials) for achievement in achievements),
+        },
     )
 
 

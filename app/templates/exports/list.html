@@ -10,7 +10,7 @@
         <p class="muted">每个年度仅保留最新生成的申报清单与支撑材料包。</p>
     </div>
     <div class="header-actions">
-        <a class="button primary" href="/exports/{{ current_year }}/personal">
+        <a class="button primary" href="/exports/{{ current_year }}/review">
             <i data-lucide="package-plus"></i>生成 {{ current_year }} 年度材料
         </a>
     </div>
@@ -51,7 +51,7 @@
                     <i data-lucide="download"></i>下载最新版本
                 </a>
                 {% endif %}
-                <a class="button ghost" href="/exports/{{ row.record.year }}/personal">
+                <a class="button ghost" href="/exports/{{ row.record.year }}/review">
                     <i data-lucide="refresh-cw"></i>重新生成并下载
                 </a>
             </div>
@@ -65,11 +65,10 @@
         <span class="empty-icon"><i data-lucide="package-open"></i></span>
         <h2>还没有导出记录</h2>
         <p>生成年度材料后，最新版本会保存在这里，后续可以随时回来下载。</p>
-        <a class="button primary" href="/exports/{{ current_year }}/personal">
+        <a class="button primary" href="/exports/{{ current_year }}/review">
             <i data-lucide="package-plus"></i>生成 {{ current_year }} 年度材料
         </a>
     </div>
 </section>
 {% endif %}
 {% endblock %}
-

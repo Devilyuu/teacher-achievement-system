@@ -341,6 +341,68 @@ def test_regenerating_same_year_updates_one_latest_record(app, tmp_path):
         db.close()
 
 
+def test_export_review_page_summarizes_year_before_generation(app, tmp_path):
+    client = TestClient(app)
+    source_path = tmp_path / "review-proof.pdf"
+    source_path.write_bytes(b"%PDF-1.4 review proof")
+
+    db = SessionLocal()
+    try:
+        owner = _create_user(db, f"export-review-owner-{uuid4().hex}")
+        other = _create_user(db, f"export-review-other-{uuid4().hex}")
+        ready = _add_achievement_with_material(
+            db,
+            owner,
+            2026,
+            "教学",
+            "精品在线开放课程建设（含虚拟仿真课程资源）",
+            source_path,
+            "1-1",
+        )
+        ready.status = AchievementStatus.ready.value
+        incomplete = Achievement(
+            user_id=owner.id,
+            year=2026,
+            category="科研与社会服务工作",
+            subcategory="横向课题及项目",
+            claim_nature=ClaimNature.result.value,
+            title="Owner incomplete export item",
+            claimed_score=0,
+            status=AchievementStatus.needs_info.value,
+        )
+        other_incomplete = Achievement(
+            user_id=other.id,
+            year=2026,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="Other incomplete export item",
+            claimed_score=0,
+            status=AchievementStatus.needs_info.value,
+        )
+        db.add_all([incomplete, other_incomplete])
+        db.commit()
+        owner_id = owner.id
+    finally:
+        db.close()
+
+    client.cookies.set("user_id", str(owner_id))
+    response = client.get("/exports/2026/review")
+
+    assert response.status_code == 200
+    assert "2026 年度导出确认" in response.text
+    assert "2 项成果" in response.text
+    assert "1 项可导出" in response.text
+    assert "1 项待完善" in response.text
+    assert "1 份材料" in response.text
+    assert "最终分值和级别认定仍以线下审核为准" in response.text
+    assert "每个年度仅保留最新生成版本" in response.text
+    assert "Owner incomplete export item" in response.text
+    assert "Other incomplete export item" not in response.text
+    assert 'href="/achievements?year=2026"' in response.text
+    assert 'href="/exports/2026/personal"' in response.text
+
+
 def test_export_history_page_lists_only_owner_records_newest_first(app, tmp_path):
     client = TestClient(app)
     owner_file = tmp_path / "owner-2026.zip"
@@ -402,6 +464,9 @@ def test_export_history_page_lists_only_owner_records_newest_first(app, tmp_path
     assert "2027 年度" not in response.text
     assert "4 项成果" in response.text
     assert "6 份材料" in response.text
+    assert 'href="/exports/2026/review"' in response.text
+    assert 'href="/exports/2025/review"' in response.text
+    assert 'href="/exports/records/' in response.text
 
 
 def test_export_history_page_marks_missing_files_for_regeneration(app, tmp_path):
@@ -433,7 +498,7 @@ def test_export_history_page_marks_missing_files_for_regeneration(app, tmp_path)
 
     assert response.status_code == 200
     assert "文件缺失，需重新生成" in response.text
-    assert 'href="/exports/2026/personal"' in response.text
+    assert 'href="/exports/2026/review"' in response.text
     assert "/exports/records/" not in response.text
 
 
