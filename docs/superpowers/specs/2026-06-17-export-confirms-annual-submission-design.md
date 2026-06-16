@@ -20,8 +20,8 @@ When a teacher generates a personal annual export package, the system should als
 
 - The export review page primary button should read `确认整理并下载`.
 - Clicking it still downloads the ZIP from the existing `/exports/{year}/personal` route.
-- The export action should create or refresh the annual submission record before writing the export record.
-- Teachers who already confirmed from the dashboard should keep the same behavior; export refreshes the final exported state.
+- The export action should create an annual submission record before writing the export record if the year has not been confirmed yet.
+- Teachers who already confirmed from the dashboard should keep the original confirmation time; export only refreshes the final exported state.
 
 ## Scope
 
@@ -41,7 +41,7 @@ Out of scope:
 
 ## Data Rule
 
-`generate_personal_export(db, user, year)` should ensure there is an `AnnualSubmission` record for `user_id + year` before creating the export record. Because export generation happens after that confirmation, `get_annual_submission_state()` can evaluate the latest export as `已导出`.
+`generate_personal_export(db, user, year)` should ensure there is an `AnnualSubmission` record for `user_id + year` before creating the export record. If the record already exists, keep its `submitted_at` value so a teacher's earlier confirmation time is not overwritten. Because export generation happens after any missing confirmation is created, `get_annual_submission_state()` can evaluate the latest export as `已导出`.
 
 ## Testing
 

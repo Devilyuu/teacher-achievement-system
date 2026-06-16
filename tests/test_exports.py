@@ -12,6 +12,7 @@ from app.database import Base, SessionLocal
 from app.models import (
     Achievement,
     AchievementStatus,
+    AnnualSubmission,
     ClaimNature,
     ExportRecord,
     Material,
@@ -238,6 +239,40 @@ def test_export_route_requires_auth_and_authenticated_user_can_download(app, tmp
         db.close()
 
 
+def test_personal_export_confirms_year_when_teacher_has_not_submitted(app, tmp_path):
+    source_path = tmp_path / "auto-submit-proof.pdf"
+    source_path.write_bytes(b"%PDF-1.4 auto submit proof")
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, f"export-auto-submit-{uuid4().hex}")
+        _add_achievement_with_material(
+            db,
+            user,
+            2026,
+            "教学",
+            "教学成果",
+            source_path,
+            "1-1",
+        )
+        db.commit()
+
+        generate_personal_export(db, user, 2026)
+        state = get_annual_submission_state(db, user.id, 2026)
+        submission_count = (
+            db.query(AnnualSubmission)
+            .filter_by(user_id=user.id, year=2026)
+            .count()
+        )
+
+        assert submission_count == 1
+        assert state.status == ANNUAL_STATUS_EXPORTED
+        assert state.submitted_at is not None
+        assert state.exported_at is not None
+    finally:
+        db.close()
+
+
 def test_personal_export_marks_submitted_year_as_exported(app, tmp_path, monkeypatch):
     source_path = tmp_path / "submitted-proof.pdf"
     source_path.write_bytes(b"%PDF-1.4 submitted proof")
@@ -399,6 +434,8 @@ def test_export_review_page_summarizes_year_before_generation(app, tmp_path):
     assert "每个年度仅保留最新生成版本" in response.text
     assert "Owner incomplete export item" in response.text
     assert "Other incomplete export item" not in response.text
+    assert "确认整理并下载" in response.text
+    assert "确认生成并下载" not in response.text
     assert 'href="/achievements?year=2026"' in response.text
     assert 'href="/exports/2026/personal"' in response.text
 
