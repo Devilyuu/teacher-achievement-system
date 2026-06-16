@@ -39,11 +39,11 @@ def generate_personal_export(
     record.achievement_count = len(achievements)
     record.material_count = sum(len(item.materials) for item in achievements)
     record.file_size = zip_path.stat().st_size
-    record.generated_at = datetime.utcnow()
 
     for achievement in achievements:
         achievement.status = AchievementStatus.exported.value
         achievement.updated_at = datetime.utcnow()
+    record.generated_at = datetime.utcnow()
 
     db.commit()
     db.refresh(record)

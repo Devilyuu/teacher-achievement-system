@@ -19,7 +19,13 @@ from app.models import (
     User,
 )
 from app.security import hash_password
+from app.services.annual_submission import (
+    ANNUAL_STATUS_EXPORTED,
+    confirm_annual_submission,
+    get_annual_submission_state,
+)
 from app.services.export_builder import build_personal_export
+from app.services.export_history import generate_personal_export
 
 
 APPLICATION_HEADERS = [
@@ -228,6 +234,49 @@ def test_export_route_requires_auth_and_authenticated_user_can_download(app, tmp
         assert record.file_size == len(response.content)
         assert Path(record.file_path).exists()
         assert achievement.status == AchievementStatus.exported.value
+    finally:
+        db.close()
+
+
+def test_personal_export_marks_submitted_year_as_exported(app, tmp_path, monkeypatch):
+    source_path = tmp_path / "submitted-proof.pdf"
+    source_path.write_bytes(b"%PDF-1.4 submitted proof")
+
+    from app.services import export_history
+
+    class ExportClock:
+        calls = 0
+
+        @classmethod
+        def utcnow(cls):
+            cls.calls += 1
+            if cls.calls == 1:
+                return datetime(2026, 6, 2, 10, 0, 0)
+            return datetime(2026, 6, 2, 10, 0, 5)
+
+    monkeypatch.setattr(export_history, "datetime", ExportClock)
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, f"export-submitted-{uuid4().hex}")
+        _add_achievement_with_material(
+            db,
+            user,
+            2026,
+            "教学",
+            "教学成果",
+            source_path,
+            "1-1",
+        )
+        db.commit()
+        submission = confirm_annual_submission(db, user, 2026)
+        submission.submitted_at = datetime(2026, 6, 2, 9, 0, 0)
+        db.commit()
+        generate_personal_export(db, user, 2026)
+        user_id = user.id
+        state = get_annual_submission_state(db, user_id, 2026)
+        assert state.status == ANNUAL_STATUS_EXPORTED
+        assert state.exported_at is not None
     finally:
         db.close()
 
