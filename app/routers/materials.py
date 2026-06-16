@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models import Achievement, Material, User
 from app.security import get_current_user
 from app.services.achievement_status import calculate_status
+from app.services.material_preview import preview_media_type, safe_material_path
 from app.services.storage import delete_material_file, save_material_file
 
 
@@ -140,16 +141,26 @@ def download_material(
     db: Session = Depends(get_db),
 ):
     material = _material_for_user(db, material_id, user)
-    path = Path(material.stored_path)
-    if not path.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Material file not found",
-        )
+    path = safe_material_path(material)
     return FileResponse(
         path,
         filename=material.original_filename,
         media_type="application/octet-stream",
+    )
+
+
+@router.get("/{material_id}/preview")
+def preview_material(
+    material_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    material = _material_for_user(db, material_id, user)
+    return FileResponse(
+        safe_material_path(material),
+        filename=material.original_filename,
+        media_type=preview_media_type(material),
+        content_disposition_type="inline",
     )
 
 

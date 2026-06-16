@@ -17,6 +17,7 @@ from app.models import (
 from app.security import get_current_user
 from app.services.achievement_search import AchievementFilters, search_achievements
 from app.services.achievement_status import calculate_status
+from app.services.material_preview import PREVIEW_EXTENSIONS
 from app.services.performance_rule_guidance import (
     LEVEL_OPTIONS,
     assignment_mode,
@@ -280,6 +281,7 @@ def achievement_detail(
             "level_rule": rule_for_level(rule, achievement.level),
             "assignment_mode": assignment_mode(rule),
             "max_upload_mb": MAX_UPLOAD_MB,
+            "preview_extensions": PREVIEW_EXTENSIONS,
         },
     )
 

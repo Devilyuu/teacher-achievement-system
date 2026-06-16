@@ -399,6 +399,62 @@ def test_owner_can_download_material(app):
     assert "download-proof.pdf" in response.headers["content-disposition"]
 
 
+def test_owner_can_preview_pdf_material_inline(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("preview-proof.pdf", b"%PDF-1.4 preview")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        _, material_id = _create_owned_material(db, admin.id, source_path)
+    finally:
+        db.close()
+
+    response = client.get(f"/materials/{material_id}/preview")
+
+    assert response.status_code == 200
+    assert response.content == source_path.read_bytes()
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert "inline" in response.headers["content-disposition"]
+    assert "preview-proof.pdf" in response.headers["content-disposition"]
+
+
+def test_owner_cannot_preview_unsupported_material(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("word-proof.docx", b"word")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        _, material_id = _create_owned_material(db, admin.id, source_path)
+    finally:
+        db.close()
+
+    response = client.get(f"/materials/{material_id}/preview")
+
+    assert response.status_code == 404
+
+
+def test_preview_missing_material_file_returns_404(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("missing-preview.pdf", b"missing")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        _, material_id = _create_owned_material(db, admin.id, source_path)
+        source_path.unlink()
+    finally:
+        db.close()
+
+    response = client.get(f"/materials/{material_id}/preview")
+
+    assert response.status_code == 404
+
+
 def test_material_detail_shows_file_management_actions(app):
     client = TestClient(app)
     _login_admin(client)
@@ -417,6 +473,38 @@ def test_material_detail_shows_file_management_actions(app):
     assert f"/materials/{material_id}/download" in response.text
     assert f"/materials/{material_id}/replace" in response.text
     assert f"/materials/{material_id}/delete" in response.text
+
+
+def test_material_detail_shows_preview_only_for_supported_files(app):
+    client = TestClient(app)
+    _login_admin(client)
+    preview_path = _create_material_file("detail-preview.png", b"png")
+    unsupported_path = _create_material_file("detail-word.docx", b"docx")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement_id, preview_id = _create_owned_material(db, admin.id, preview_path)
+        material = Material(
+            achievement_id=achievement_id,
+            material_no=f"{achievement_id}-2",
+            display_name="Word proof",
+            original_filename=unsupported_path.name,
+            stored_path=str(unsupported_path),
+            file_ext=unsupported_path.suffix,
+            file_size=unsupported_path.stat().st_size,
+        )
+        db.add(material)
+        db.commit()
+        unsupported_id = material.id
+    finally:
+        db.close()
+
+    response = client.get(f"/achievements/{achievement_id}")
+
+    assert response.status_code == 200
+    assert f"/materials/{preview_id}/preview" in response.text
+    assert f"/materials/{unsupported_id}/preview" not in response.text
 
 
 def test_material_detail_shows_batch_upload_controls_and_results(app):
@@ -690,4 +778,22 @@ def test_user_cannot_download_replace_or_delete_another_users_material(app):
     assert download.status_code == 404
     assert replace.status_code == 404
     assert delete.status_code == 404
+    assert source_path.exists()
+
+
+def test_user_cannot_preview_another_users_material(app):
+    client = TestClient(app)
+    _login_admin(client)
+    source_path = _create_material_file("other-preview.pdf", b"private preview")
+
+    db = SessionLocal()
+    try:
+        other_user = _create_user(db, f"other-preview-owner-{uuid4().hex}")
+        _, material_id = _create_owned_material(db, other_user.id, source_path)
+    finally:
+        db.close()
+
+    response = client.get(f"/materials/{material_id}/preview", follow_redirects=False)
+
+    assert response.status_code == 404
     assert source_path.exists()

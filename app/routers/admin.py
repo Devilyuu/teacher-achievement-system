@@ -26,7 +26,7 @@ from app.config import (
     USER_IMPORT_DIR,
 )
 from app.database import get_db
-from app.models import Achievement, AchievementStatus, PerformanceRule, Role, User
+from app.models import Achievement, AchievementStatus, Material, PerformanceRule, Role, User
 from app.security import hash_password, require_admin
 from app.services.admin_export_builder import (
     build_admin_material_package,
@@ -38,6 +38,11 @@ from app.services.performance_rule_guidance import (
     assignment_mode,
     find_rule,
     rule_for_level,
+)
+from app.services.material_preview import (
+    PREVIEW_EXTENSIONS,
+    preview_media_type,
+    safe_material_path,
 )
 from app.services.user_import import (
     build_user_import_template,
@@ -216,7 +221,25 @@ def admin_achievement_detail(
             "rule": rule,
             "level_rule": rule_for_level(rule, achievement.level),
             "assignment_mode": assignment_mode(rule),
+            "preview_extensions": PREVIEW_EXTENSIONS,
         },
+    )
+
+
+@router.get("/materials/{material_id}/preview")
+def admin_preview_material(
+    material_id: int,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    material = db.get(Material, material_id)
+    if not material:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return FileResponse(
+        safe_material_path(material),
+        filename=material.original_filename,
+        media_type=preview_media_type(material),
+        content_disposition_type="inline",
     )
 
 

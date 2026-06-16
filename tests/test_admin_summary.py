@@ -368,6 +368,85 @@ def test_admin_can_open_teacher_achievement_as_read_only(app):
     assert f'action="/achievements/{achievement_id}/delete"' not in response.text
 
 
+def test_admin_can_preview_teacher_material_inline(app):
+    client = TestClient(app)
+    _login_admin(client)
+    material_path = _create_material_file("admin-preview.pdf", b"%PDF-1.4 admin")
+
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department="Preview",
+            full_name=f"Preview Teacher {uuid4().hex[:5]}",
+        )
+        achievement = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"Preview achievement {uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            material_path=material_path,
+        )
+        db.commit()
+        material_id = achievement.materials[0].id
+    finally:
+        db.close()
+
+    response = client.get(f"/admin/materials/{material_id}/preview")
+
+    assert response.status_code == 200
+    assert response.content == material_path.read_bytes()
+    assert response.headers["content-type"].startswith("application/pdf")
+    assert "inline" in response.headers["content-disposition"]
+
+
+def test_admin_achievement_detail_shows_preview_for_supported_materials(app):
+    client = TestClient(app)
+    _login_admin(client)
+    preview_path = _create_material_file("admin-detail-preview.jpg", b"jpg")
+    unsupported_path = _create_material_file("admin-detail-sheet.xlsx", b"xlsx")
+
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department="Preview Detail",
+            full_name=f"Preview Detail Teacher {uuid4().hex[:5]}",
+        )
+        achievement = _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"Preview detail achievement {uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+            material_path=preview_path,
+        )
+        material = Material(
+            achievement_id=achievement.id,
+            material_no=f"{achievement.id}-2",
+            display_name="Excel proof",
+            original_filename=unsupported_path.name,
+            stored_path=str(unsupported_path),
+            file_ext=unsupported_path.suffix,
+            file_size=unsupported_path.stat().st_size,
+        )
+        achievement.materials.append(material)
+        db.add(material)
+        db.commit()
+        achievement_id = achievement.id
+        preview_id = achievement.materials[0].id
+        unsupported_id = material.id
+    finally:
+        db.close()
+
+    response = client.get(f"/admin/achievements/{achievement_id}")
+
+    assert response.status_code == 200
+    assert f"/admin/materials/{preview_id}/preview" in response.text
+    assert f"/admin/materials/{unsupported_id}/preview" not in response.text
+
+
 def test_admin_summary_workbook_contains_three_filtered_sheets(app):
     department = f"导出学院{uuid4().hex[:5]}"
     db = SessionLocal()

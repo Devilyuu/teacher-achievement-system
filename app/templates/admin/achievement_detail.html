@@ -48,6 +48,13 @@
                     <span class="file-icon"><i data-lucide="file-text"></i></span>
                     <div class="material-copy"><strong>{{ material.display_name }}</strong><small>{{ material.original_filename }} · {{ material.file_size }} B</small></div>
                     <span class="material-no">{{ material.material_no }}</span>
+                    {% if material.file_ext|lower in preview_extensions %}
+                    <div class="material-actions">
+                        <a class="icon-button" href="/admin/materials/{{ material.id }}/preview" target="_blank" title="预览材料">
+                            <i data-lucide="eye"></i>
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
