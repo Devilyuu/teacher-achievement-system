@@ -15,6 +15,7 @@ from app.services.admin_export_builder import (
     build_admin_material_package,
     build_admin_summary_workbook,
 )
+from app.services.achievement_readiness import missing_reasons as readiness_missing_reasons
 from app.services.admin_summary import (
     SummaryFilters,
     build_admin_summary,
@@ -208,6 +209,7 @@ def test_summary_keeps_inactive_teacher_history_and_reports_missing_reasons(app)
         )
         reasons = missing_reasons(achievement)
 
+        assert missing_reasons is readiness_missing_reasons
         assert achievement.id in [item.id for item in result.achievements]
         teacher_row = next(
             row for row in result.teachers if row.user.id == inactive_teacher.id
