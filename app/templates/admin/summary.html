@@ -52,6 +52,15 @@
                 {% endfor %}
             </select>
         </label>
+        <label>
+            <span>年度状态</span>
+            <select name="annual_status">
+                <option value="">全部年度状态</option>
+                {% for annual_status in annual_statuses %}
+                <option value="{{ annual_status }}" {% if annual_status == filters.annual_status %}selected{% endif %}>{{ annual_status }}</option>
+                {% endfor %}
+            </select>
+        </label>
         <button class="button primary" type="submit"><i data-lucide="search"></i>查询</button>
         <a class="button ghost" href="/admin/summary?year={{ filters.year }}">重置</a>
     </form>
@@ -63,9 +72,10 @@
     <article class="stat-item"><span class="stat-icon green"><i data-lucide="badge-check"></i></span><div><span>申报积分</span><strong data-metric="claimed-score">{{ summary.metrics.claimed_score }}</strong><small>分</small></div></article>
     <article class="stat-item"><span class="stat-icon amber"><i data-lucide="triangle-alert"></i></span><div><span>待完善</span><strong data-metric="needs-info-count">{{ summary.metrics.needs_info_count }}</strong><small>条</small></div></article>
     <article class="stat-item"><span class="stat-icon coral"><i data-lucide="paperclip"></i></span><div><span>支撑材料</span><strong data-metric="material-count">{{ summary.metrics.material_count }}</strong><small>份</small></div></article>
+    <article class="stat-item"><span class="stat-icon green"><i data-lucide="clipboard-check"></i></span><div><span>已提交教师</span><strong data-metric="submitted-teacher-count">{{ summary.metrics.submitted_teacher_count }}</strong><small>人</small></div></article>
 </section>
 
-{% if summary.achievements %}
+{% if summary.teachers %}
 <section class="panel summary-table-panel">
     <div class="panel-heading summary-panel-heading">
         <div><h2>教师准备情况</h2><p>按部门和教师姓名排列</p></div>
@@ -73,13 +83,14 @@
     </div>
     <div class="table-scroll">
         <table>
-            <thead><tr><th>教师</th><th>部门</th><th>账号</th><th>成果</th><th>可申报</th><th>待完善</th><th>材料</th><th>申报积分</th></tr></thead>
+            <thead><tr><th>教师</th><th>部门</th><th>账号</th><th>年度状态</th><th>成果</th><th>可申报</th><th>待完善</th><th>材料</th><th>申报积分</th></tr></thead>
             <tbody>
                 {% for row in summary.teachers %}
                 <tr>
                     <td><strong>{{ row.user.full_name }}</strong></td>
                     <td>{{ row.user.department or "未设置部门" }}</td>
                     <td><span class="account-state {{ 'active' if row.user.is_active else 'inactive' }}">{{ "启用" if row.user.is_active else "停用" }}</span></td>
+                    <td><span class="status status-{{ row.annual_state.status }}">{{ row.annual_state.status }}</span></td>
                     <td>{{ row.achievement_count }}</td>
                     <td>{{ row.ready_count }}</td>
                     <td>{{ row.needs_info_count }}</td>
@@ -92,6 +103,7 @@
     </div>
 </section>
 
+{% if summary.achievements %}
 <section class="panel summary-table-panel">
     <div class="panel-heading summary-panel-heading">
         <div><h2>成果明细</h2><p>包含当前筛选范围内的全部成果</p></div>
@@ -118,6 +130,7 @@
         </table>
     </div>
 </section>
+{% endif %}
 {% else %}
 <section class="panel empty-state summary-empty">
     <span class="empty-icon"><i data-lucide="search-x"></i></span>

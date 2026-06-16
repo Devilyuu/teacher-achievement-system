@@ -20,6 +20,7 @@ from app.services.admin_summary import (
     build_admin_summary,
     missing_reasons,
 )
+from app.services.annual_submission import confirm_annual_submission
 
 
 def _login_admin(client: TestClient) -> None:
@@ -330,6 +331,122 @@ def test_admin_summary_page_renders_filtered_metrics_rows_and_export_links(app):
     assert f"teacher_id={teacher_id}" in response.text
     assert f"department={quote(department)}" in response.text
     assert f"status={quote(AchievementStatus.ready.value)}" in response.text
+
+
+def test_admin_summary_page_shows_annual_status_filter_and_teacher_status(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    db = SessionLocal()
+    try:
+        teacher = _create_teacher(
+            db,
+            department="年度状态学院",
+            full_name=f"年度状态教师{uuid4().hex[:5]}",
+        )
+        _add_achievement(
+            db,
+            user=teacher,
+            year=2026,
+            title=f"整理中成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/admin/summary", params={"year": 2026})
+
+    assert response.status_code == 200
+    assert "年度状态" in response.text
+    assert "全部年度状态" in response.text
+    assert "整理中" in response.text
+
+
+def test_admin_summary_filters_not_started_teachers_by_annual_status(app):
+    db = SessionLocal()
+    try:
+        not_started = _create_teacher(
+            db,
+            department="年度筛选学院",
+            full_name=f"未开始教师{uuid4().hex[:5]}",
+        )
+        in_progress = _create_teacher(
+            db,
+            department="年度筛选学院",
+            full_name=f"整理中教师{uuid4().hex[:5]}",
+        )
+        _add_achievement(
+            db,
+            user=in_progress,
+            year=2026,
+            title=f"已有成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+        )
+        db.commit()
+
+        result = build_admin_summary(
+            db,
+            SummaryFilters(
+                year=2026,
+                department="年度筛选学院",
+                annual_status="未开始",
+            ),
+        )
+
+        assert [row.user.id for row in result.teachers] == [not_started.id]
+        assert result.achievements == []
+    finally:
+        db.close()
+
+
+def test_admin_summary_filters_submitted_teachers_and_their_achievements(app):
+    db = SessionLocal()
+    try:
+        submitted = _create_teacher(
+            db,
+            department="已提交学院",
+            full_name=f"已提交教师{uuid4().hex[:5]}",
+        )
+        submitted_achievement = _add_achievement(
+            db,
+            user=submitted,
+            year=2026,
+            title=f"已提交成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+        )
+        in_progress = _create_teacher(
+            db,
+            department="已提交学院",
+            full_name=f"整理中教师{uuid4().hex[:5]}",
+        )
+        _add_achievement(
+            db,
+            user=in_progress,
+            year=2026,
+            title=f"整理中成果{uuid4().hex[:5]}",
+            status=AchievementStatus.ready.value,
+        )
+        db.commit()
+        confirm_annual_submission(db, submitted, 2026)
+
+        result = build_admin_summary(
+            db,
+            SummaryFilters(
+                year=2026,
+                department="已提交学院",
+                annual_status="已提交",
+            ),
+        )
+
+        assert [row.user.id for row in result.teachers] == [submitted.id]
+        assert [achievement.id for achievement in result.achievements] == [
+            submitted_achievement.id
+        ]
+        assert result.metrics.teacher_count == 1
+        assert result.metrics.submitted_teacher_count == 1
+    finally:
+        db.close()
 
 
 def test_admin_can_open_teacher_achievement_as_read_only(app):

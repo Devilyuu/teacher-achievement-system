@@ -33,6 +33,7 @@ from app.services.admin_export_builder import (
     build_admin_summary_workbook,
 )
 from app.services.admin_summary import SummaryFilters, build_admin_summary
+from app.services.annual_submission import ANNUAL_STATUS_OPTIONS
 from app.services.backup_builder import build_system_backup
 from app.services.performance_rule_guidance import (
     assignment_mode,
@@ -67,12 +68,14 @@ def _summary_filters(
     department: str,
     teacher_id: int | None,
     achievement_status: str,
+    annual_status: str,
 ) -> SummaryFilters:
     return SummaryFilters(
         year=year or datetime.now().year,
         department=department.strip(),
         teacher_id=teacher_id,
         status=achievement_status.strip(),
+        annual_status=annual_status.strip(),
     )
 
 
@@ -84,6 +87,8 @@ def _summary_query_string(filters: SummaryFilters) -> str:
         values["teacher_id"] = filters.teacher_id
     if filters.status:
         values["status"] = filters.status
+    if filters.annual_status:
+        values["annual_status"] = filters.annual_status
     return urlencode(values)
 
 
@@ -94,6 +99,7 @@ def annual_summary(
     department: str = Query(default=""),
     teacher_id: int | None = Query(default=None),
     achievement_status: str = Query(default="", alias="status"),
+    annual_status: str = Query(default=""),
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -102,6 +108,7 @@ def annual_summary(
         department,
         teacher_id,
         achievement_status,
+        annual_status,
     )
     summary = build_admin_summary(db, filters)
     available_years = [
@@ -148,6 +155,7 @@ def annual_summary(
             "departments": departments,
             "teachers": teachers,
             "statuses": [item.value for item in AchievementStatus],
+            "annual_statuses": ANNUAL_STATUS_OPTIONS,
             "export_query": _summary_query_string(filters),
         },
     )
@@ -159,6 +167,7 @@ def export_annual_summary_workbook(
     department: str = Query(default=""),
     teacher_id: int | None = Query(default=None),
     achievement_status: str = Query(default="", alias="status"),
+    annual_status: str = Query(default=""),
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -167,6 +176,7 @@ def export_annual_summary_workbook(
         department,
         teacher_id,
         achievement_status,
+        annual_status,
     )
     path = build_admin_summary_workbook(build_admin_summary(db, filters))
     return FileResponse(
@@ -184,6 +194,7 @@ def export_annual_material_package(
     department: str = Query(default=""),
     teacher_id: int | None = Query(default=None),
     achievement_status: str = Query(default="", alias="status"),
+    annual_status: str = Query(default=""),
     user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -192,6 +203,7 @@ def export_annual_material_package(
         department,
         teacher_id,
         achievement_status,
+        annual_status,
     )
     path = build_admin_material_package(build_admin_summary(db, filters))
     return FileResponse(
