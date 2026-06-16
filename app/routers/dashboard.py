@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import BASE_DIR
 from app.database import get_db
 from app.models import Achievement, AchievementStatus, Material, User
+from app.services.achievement_readiness import missing_reasons
 from app.security import get_current_user
 from app.services.annual_submission import (
     confirm_annual_submission,
@@ -57,6 +58,15 @@ def dashboard(
     category_counts: dict[str, int] = {}
     for achievement in achievements:
         category_counts[achievement.category] = category_counts.get(achievement.category, 0) + 1
+    pending_achievements = [
+        achievement
+        for achievement in achievements
+        if achievement.status == AchievementStatus.needs_info.value
+    ]
+    pending_items = [
+        {"achievement": achievement, "reasons": missing_reasons(achievement)}
+        for achievement in pending_achievements[:6]
+    ]
     annual_state = get_annual_submission_state(db, user.id, selected_year)
 
     return templates.TemplateResponse(
@@ -70,6 +80,8 @@ def dashboard(
                 reverse=True,
             ),
             "recent_achievements": achievements[:6],
+            "pending_items": pending_items,
+            "pending_total": len(pending_achievements),
             "category_counts": sorted(
                 category_counts.items(),
                 key=lambda item: (-item[1], item[0]),
@@ -87,6 +99,7 @@ def dashboard(
                     achievement.claimed_score or 0
                     for achievement in achievements
                 ),
+                "needs_info_status": AchievementStatus.needs_info.value,
             },
         },
     )

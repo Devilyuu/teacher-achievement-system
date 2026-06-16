@@ -61,6 +61,41 @@
     </div>
 </section>
 
+<section class="panel pending-panel">
+    <div class="panel-heading">
+        <div>
+            <h2>待处理事项</h2>
+            <p>{{ selected_year }} 年度仍需补充的信息与材料</p>
+        </div>
+        <a class="text-link" href="/achievements?year={{ selected_year }}&status={{ stats.needs_info_status }}">
+            全部 {{ pending_total }} 条<i data-lucide="arrow-right"></i>
+        </a>
+    </div>
+    {% if pending_items %}
+    <div class="pending-list">
+        {% for item in pending_items %}
+        <a class="pending-item" href="/achievements/{{ item.achievement.id }}">
+            <span class="section-icon amber"><i data-lucide="circle-alert"></i></span>
+            <span class="pending-copy">
+                <strong>{{ item.achievement.title }}</strong>
+                <small>{{ item.achievement.category }} / {{ item.achievement.subcategory }}</small>
+                <em class="pending-reasons">{{ item.reasons | join("；") }}</em>
+            </span>
+            <i data-lucide="chevron-right"></i>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="pending-empty">
+        <span class="section-icon green"><i data-lucide="circle-check"></i></span>
+        <div>
+            <strong>本年度暂无待处理事项</strong>
+            <small>提交前仍建议检查支撑材料与线下审核要求是否一致。</small>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
 <section class="stat-grid">
     <article class="stat-item">
         <span class="stat-icon blue"><i data-lucide="library-big"></i></span>

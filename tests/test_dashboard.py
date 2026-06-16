@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
-from app.models import Achievement, AnnualSubmission, ClaimNature, User
+from app.models import Achievement, AchievementStatus, AnnualSubmission, ClaimNature, User
 
 
 def test_dashboard_shows_current_year_summary_recent_record_and_export(app):
@@ -43,6 +43,85 @@ def test_dashboard_shows_current_year_summary_recent_record_and_export(app):
     assert 'data-lucide="package-down"' not in response.text
     assert 'src="http://testserver/static/vendor/lucide.min.js"' in response.text
     assert "unpkg.com" not in response.text
+
+
+def test_dashboard_shows_current_year_pending_items_with_reasons(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    year = datetime.now().year
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        pending = Achievement(
+            user_id=admin.id,
+            year=year,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="当前年度待处理成果",
+            claimed_score=3,
+            status=AchievementStatus.needs_info.value,
+        )
+        ready = Achievement(
+            user_id=admin.id,
+            year=year,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="当前年度已完整成果",
+            claimed_score=5,
+            status=AchievementStatus.ready.value,
+        )
+        previous_year_pending = Achievement(
+            user_id=admin.id,
+            year=year - 1,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="上一年度待处理成果",
+            claimed_score=3,
+            status=AchievementStatus.needs_info.value,
+        )
+        db.add_all([pending, ready, previous_year_pending])
+        db.commit()
+        pending_id = pending.id
+    finally:
+        db.close()
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="panel pending-panel"' in response.text
+    pending_panel = response.text.split('class="panel pending-panel"', 1)[1].split(
+        "</section>",
+        1,
+    )[0]
+    assert "待处理事项" in pending_panel
+    assert "当前年度待处理成果" in pending_panel
+    assert "未上传支撑材料" in pending_panel
+    assert f'href="/achievements/{pending_id}"' in pending_panel
+    assert "当前年度已完整成果" not in pending_panel
+    assert "上一年度待处理成果" not in pending_panel
+
+
+def test_dashboard_shows_pending_empty_state_when_no_items(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="panel pending-panel"' in response.text
+    assert "本年度暂无待处理事项" in response.text
 
 
 def test_dashboard_shows_annual_submission_status_and_confirm_button(app):

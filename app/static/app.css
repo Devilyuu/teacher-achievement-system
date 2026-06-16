@@ -104,6 +104,7 @@ td small { display: block; max-width: 360px; margin-top: 4px; color: #8a94a5; wh
 .section-icon { width: 36px; height: 36px; border-radius: 7px; }
 .section-icon.blue { color: #2563eb; background: #eaf2ff; }.section-icon.green { color: #099268; background: #e7f8f1; }
 .section-icon.violet { color: #7c3aed; background: #f1ebff; }
+.section-icon.amber { color: #d97706; background: #fff4dc; }
 .form-grid, .guidance-grid, .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 label { display: flex; flex-direction: column; gap: 7px; color: #445066; font-size: 13px; font-weight: 600; }
 .span-2 { grid-column: 1 / -1; }
@@ -179,6 +180,29 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, .8fr); gap: 18px; max-width: 1240px; margin: 0 auto; align-items: stretch; }
 .dashboard-grid > .panel { width: 100%; height: 100%; margin: 0; }
 .dashboard-grid > .panel { min-width: 0; }
+.pending-panel { padding: 20px; margin-bottom: 18px; }
+.pending-list { display: flex; flex-direction: column; gap: 8px; }
+.pending-item {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 12px;
+    min-height: 74px;
+    padding: 11px 12px;
+    border: 1px solid #edf1f6;
+    border-radius: 7px;
+    background: #fffdf8;
+}
+.pending-item:hover { border-color: #f2d58b; background: #fffaf0; }
+.pending-item > svg { width: 16px; color: #9aa4b4; }
+.pending-copy { display: block; min-width: 0; }
+.pending-copy strong, .pending-copy small, .pending-copy em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pending-copy strong { color: #273348; font-size: 13px; }
+.pending-copy small { margin-top: 4px; color: #8993a4; font-size: 11px; }
+.pending-reasons { margin-top: 5px; color: #a15c05; font-size: 12px; font-style: normal; }
+.pending-empty { display: flex; align-items: center; gap: 12px; min-height: 74px; padding: 14px 12px; color: #526071; background: #f8fbff; border: 1px solid #e5edf7; border-radius: 7px; }
+.pending-empty strong, .pending-empty small { display: block; }
+.pending-empty small { margin-top: 4px; color: #8993a4; font-size: 12px; }
 .recent-panel, .category-panel { padding: 20px; }
 .category-panel { display: flex; flex-direction: column; }
 .panel-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }

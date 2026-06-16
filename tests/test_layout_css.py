@@ -28,6 +28,9 @@ def test_dashboard_panels_fill_grid_and_achievement_form_uses_page_width():
         in css
     )
     assert ".dashboard-grid > .panel { min-width: 0;" in css
+    assert ".pending-panel { padding: 20px; margin-bottom: 18px; }" in css
+    assert ".pending-list { display: flex; flex-direction: column;" in css
+    assert "grid-template-columns: 36px minmax(0, 1fr) 18px;" in css
 
 
 def test_base_template_versions_application_stylesheet():
