@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session, joinedload
 from app.models import Achievement, AchievementStatus, ClaimNature, Role, User
 from app.services.annual_submission import (
     ANNUAL_STATUS_EXPORTED,
-    ANNUAL_STATUS_OPTIONS,
     ANNUAL_STATUS_SUBMITTED,
     AnnualSubmissionState,
     get_annual_submission_state,
