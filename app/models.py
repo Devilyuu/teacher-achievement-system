@@ -117,6 +117,22 @@ class Material(Base):
     achievement = relationship("Achievement", back_populates="materials")
 
 
+class AnnualSubmission(Base):
+    __tablename__ = "annual_submissions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "year", name="uq_annual_submissions_user_year"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    year: Mapped[int] = mapped_column(Integer, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="submitted")
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
 class ExportRecord(Base):
     __tablename__ = "export_records"
     __table_args__ = (
