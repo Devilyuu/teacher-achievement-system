@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -9,6 +10,10 @@ from app.config import BASE_DIR
 from app.database import get_db
 from app.models import Achievement, AchievementStatus, Material, User
 from app.security import get_current_user
+from app.services.annual_submission import (
+    confirm_annual_submission,
+    get_annual_submission_state,
+)
 
 
 router = APIRouter()
@@ -52,6 +57,7 @@ def dashboard(
     category_counts: dict[str, int] = {}
     for achievement in achievements:
         category_counts[achievement.category] = category_counts.get(achievement.category, 0) + 1
+    annual_state = get_annual_submission_state(db, user.id, selected_year)
 
     return templates.TemplateResponse(
         request,
@@ -68,6 +74,8 @@ def dashboard(
                 category_counts.items(),
                 key=lambda item: (-item[1], item[0]),
             ),
+            "annual_state": annual_state,
+            "submitted_success": request.query_params.get("submitted") == "1",
             "stats": {
                 "total": len(achievements),
                 "needs_info": sum(
@@ -81,4 +89,17 @@ def dashboard(
                 ),
             },
         },
+    )
+
+
+@router.post("/annual-submissions/{year}/confirm")
+def confirm_annual_submission_route(
+    year: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    confirm_annual_submission(db, user, year)
+    return RedirectResponse(
+        f"/?year={year}&submitted=1",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
