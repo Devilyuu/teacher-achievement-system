@@ -62,7 +62,11 @@
             {% if request.query_params.get("uploaded") %}
             <div class="material-upload-message success">
                 <i data-lucide="circle-check"></i>
+                {% if achievement.status == "可申报" %}
+                <span>已上传 {{ request.query_params.get("uploaded") }} 份材料，当前成果已满足基础申报条件。最终认定仍以线下审核为准。</span>
+                {% else %}
                 <span>已上传 {{ request.query_params.get("uploaded") }} 份材料。</span>
+                {% endif %}
             </div>
             {% endif %}
             {% if request.query_params.get("failed") and request.query_params.get("failed") != "0" %}

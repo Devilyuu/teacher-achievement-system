@@ -151,6 +151,12 @@ def test_authenticated_user_can_upload_material_to_owned_achievement(app):
     finally:
         db.close()
 
+    detail_response = client.get(response.headers["location"])
+
+    assert detail_response.status_code == 200
+    assert "当前成果已满足基础申报条件" in detail_response.text
+    assert "最终认定仍以线下审核为准" in detail_response.text
+
 
 def test_authenticated_user_can_upload_multiple_materials_with_filename_names(app):
     client = TestClient(app)
