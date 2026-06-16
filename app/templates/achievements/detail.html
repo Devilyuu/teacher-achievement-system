@@ -17,6 +17,26 @@
 
 <div class="detail-layout">
     <div class="detail-main">
+        {% if achievement.status == "待完善" and readiness_reasons %}
+        <section class="panel readiness-panel">
+            <div class="section-heading">
+                <span class="section-icon amber"><i data-lucide="circle-alert"></i></span>
+                <div><h2>待完善原因</h2><p>以下为系统根据当前填报信息自动生成的自查提示，不代表线下审核意见。</p></div>
+            </div>
+            <ul class="readiness-list">
+                {% for reason in readiness_reasons %}
+                <li><i data-lucide="dot"></i><span>{{ reason }}</span></li>
+                {% endfor %}
+            </ul>
+            {% if "材料" in readiness_reasons | join("；") %}
+            <p class="readiness-material-note"><i data-lucide="paperclip"></i>材料可在下方支撑材料区域上传、替换或重命名。</p>
+            {% endif %}
+            <div class="readiness-actions">
+                <a class="button secondary" href="/achievements/{{ achievement.id }}/edit"><i data-lucide="pencil"></i>编辑成果</a>
+            </div>
+        </section>
+        {% endif %}
+
         <section class="panel detail-panel">
             <div class="section-heading">
                 <span class="section-icon blue"><i data-lucide="clipboard-list"></i></span>

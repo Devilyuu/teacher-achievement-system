@@ -135,6 +135,17 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .rule-remark { color: #586579; font-size: 13px; line-height: 1.7; }
 .review-note, .inline-empty { display: flex; gap: 9px; padding: 12px; color: #5b6475; background: #f4f8fe; border-radius: 6px; font-size: 12px; line-height: 1.6; }
 .review-note svg, .inline-empty svg { flex: 0 0 auto; margin-top: 1px; color: var(--blue); }
+.readiness-panel { padding: 20px; border-color: #f3dfae; background: #fffdf8; }
+.readiness-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.readiness-list li { display: flex; align-items: flex-start; gap: 6px; color: #5f4b21; font-size: 13px; line-height: 1.6; }
+.readiness-list svg { flex: 0 0 auto; width: 16px; margin-top: 2px; color: #d97706; }
+.readiness-material-note { display: flex; align-items: flex-start; gap: 7px; margin: 12px 0 0; padding: 10px 11px; color: #7a5714; background: #fff7e6; border: 1px solid #f4e2b9; border-radius: 6px; font-size: 12px; line-height: 1.6; }
+.readiness-material-note svg { flex: 0 0 auto; width: 15px; margin-top: 1px; color: #d97706; }
+.readiness-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.readiness-inline { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 14px; padding: 12px 14px; color: #5f4b21; background: #fffdf8; border: 1px solid #f3dfae; border-radius: 7px; font-size: 12px; line-height: 1.6; }
+.readiness-inline > svg { flex: 0 0 auto; width: 17px; margin-top: 2px; color: #d97706; }
+.readiness-inline strong, .readiness-inline span { display: block; }
+.readiness-inline span { margin-top: 2px; color: #745a24; }
 .danger-link { display: flex; align-items: center; gap: 7px; margin: 14px auto 0; padding: 8px; color: #b42318; background: transparent; border: 0; cursor: pointer; }
 .material-list { display: flex; flex-direction: column; gap: 9px; }
 .material-check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 10px 12px; color: #087a55; background: #effaf5; border: 1px solid #d8f2e7; border-radius: 6px; font-size: 12px; }

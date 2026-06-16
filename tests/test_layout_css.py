@@ -31,6 +31,8 @@ def test_dashboard_panels_fill_grid_and_achievement_form_uses_page_width():
     assert ".pending-panel { padding: 20px; margin-bottom: 18px; }" in css
     assert ".pending-list { display: flex; flex-direction: column;" in css
     assert "grid-template-columns: 36px minmax(0, 1fr) 18px;" in css
+    assert ".readiness-panel { padding: 20px;" in css
+    assert ".readiness-inline { display: flex; align-items: flex-start;" in css
 
 
 def test_base_template_versions_application_stylesheet():

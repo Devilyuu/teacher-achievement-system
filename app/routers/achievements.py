@@ -15,6 +15,7 @@ from app.models import (
     User,
 )
 from app.security import get_current_user
+from app.services.achievement_readiness import missing_reasons
 from app.services.achievement_search import AchievementFilters, search_achievements
 from app.services.achievement_status import calculate_status
 from app.services.material_preview import PREVIEW_EXTENSIONS
@@ -111,6 +112,7 @@ def _form_context(
         "rules": [_rule_data(rule) for rule in _active_rules(db)],
         "claim_natures": [nature.value for nature in ClaimNature],
         "level_options": LEVEL_OPTIONS,
+        "readiness_reasons": missing_reasons(achievement) if achievement else [],
         "current_year": datetime.now().year,
         "action": action,
     }
@@ -282,6 +284,7 @@ def achievement_detail(
             "assignment_mode": assignment_mode(rule),
             "max_upload_mb": MAX_UPLOAD_MB,
             "preview_extensions": PREVIEW_EXTENSIONS,
+            "readiness_reasons": missing_reasons(achievement),
         },
     )
 

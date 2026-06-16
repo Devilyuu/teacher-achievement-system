@@ -107,6 +107,109 @@ def test_achievement_detail_shows_matching_rule_and_assignment_mode(app):
     assert "线下审核" in response.text
 
 
+def test_achievement_detail_shows_readiness_reasons_for_pending_record(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = Achievement(
+            user_id=admin.id,
+            year=2026,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="详情页待完善提示成果",
+            claimed_score=3,
+            status=AchievementStatus.needs_info.value,
+        )
+        db.add(achievement)
+        db.commit()
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.get(f"/achievements/{achievement_id}")
+
+    assert response.status_code == 200
+    assert "待完善原因" in response.text
+    assert "未上传支撑材料" in response.text
+    assert f'href="/achievements/{achievement_id}/edit"' in response.text
+
+
+def test_achievement_detail_hides_readiness_reasons_for_ready_record(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = Achievement(
+            user_id=admin.id,
+            year=2026,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="详情页可申报成果",
+            claimed_score=3,
+            status=AchievementStatus.ready.value,
+        )
+        db.add(achievement)
+        db.commit()
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.get(f"/achievements/{achievement_id}")
+
+    assert response.status_code == 200
+    assert "待完善原因" not in response.text
+
+
+def test_edit_achievement_shows_readiness_reasons_hint(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = Achievement(
+            user_id=admin.id,
+            year=2026,
+            category="教学",
+            subcategory="教学成果奖申报及获奖",
+            claim_nature=ClaimNature.result.value,
+            title="编辑页待完善提示成果",
+            claimed_score=3,
+            status=AchievementStatus.needs_info.value,
+        )
+        db.add(achievement)
+        db.commit()
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    response = client.get(f"/achievements/{achievement_id}/edit")
+
+    assert response.status_code == 200
+    assert "当前待完善原因" in response.text
+    assert "未上传支撑材料" in response.text
+    assert "保存后系统会重新判断状态" in response.text
+
+
 def test_achievement_list_can_filter_and_export_by_year(app):
     client = TestClient(app)
     client.post(

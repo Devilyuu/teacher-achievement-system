@@ -12,6 +12,16 @@
 </header>
 
 <form method="post" action="{{ action }}" class="achievement-form">
+    {% if achievement and readiness_reasons %}
+    <div class="readiness-inline">
+        <i data-lucide="circle-alert"></i>
+        <div>
+            <strong>当前待完善原因</strong>
+            <span>{{ readiness_reasons | join("；") }}。保存后系统会重新判断状态。</span>
+        </div>
+    </div>
+    {% endif %}
+
     <section class="panel form-panel">
         <div class="section-heading">
             <span class="section-icon blue"><i data-lucide="file-pen-line"></i></span>
