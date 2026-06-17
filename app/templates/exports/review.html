@@ -52,6 +52,47 @@
 <section class="panel table-panel summary-table-panel">
     <div class="user-table-heading">
         <div class="section-heading">
+            <span class="section-icon green"><i data-lucide="archive"></i></span>
+            <div><h2>本次导出成果</h2><p>请先核对本年度会进入材料包的成果、状态和材料数量。</p></div>
+        </div>
+    </div>
+    {% if achievements %}
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>成果名称</th>
+                    <th>大类 / 小类</th>
+                    <th>材料</th>
+                    <th>状态</th>
+                    <th aria-label="操作"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for achievement in achievements %}
+                <tr>
+                    <td><a class="record-title" href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a></td>
+                    <td>{{ achievement.category }} / {{ achievement.subcategory }}</td>
+                    <td>{{ achievement.materials|length }} 份</td>
+                    <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
+                    <td><a class="button ghost" href="/achievements/{{ achievement.id }}">查看</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon"><i data-lucide="archive-x"></i></span>
+        <h2>本年度还没有成果</h2>
+        <p>先新增成果并上传支撑材料，再生成年度材料包。</p>
+    </div>
+    {% endif %}
+</section>
+
+<section class="panel table-panel summary-table-panel">
+    <div class="user-table-heading">
+        <div class="section-heading">
             <span class="section-icon amber"><i data-lucide="list-todo"></i></span>
             <div><h2>待完善成果</h2><p>可先补充信息或材料，也可以带着提醒生成材料包。</p></div>
         </div>
