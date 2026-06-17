@@ -142,7 +142,7 @@ def test_build_personal_export_creates_zip_workbooks_and_category_materials(app,
     db = SessionLocal()
     try:
         user = _create_user(db, f"export-builder-{uuid4().hex}")
-        _add_achievement_with_material(
+        standard = _add_achievement_with_material(
             db,
             user,
             year,
@@ -151,7 +151,8 @@ def test_build_personal_export_creates_zip_workbooks_and_category_materials(app,
             standard_source,
             "1-1",
         )
-        _add_achievement_with_material(
+        standard.status = AchievementStatus.ready.value
+        custom = _add_achievement_with_material(
             db,
             user,
             year,
@@ -160,10 +161,23 @@ def test_build_personal_export_creates_zip_workbooks_and_category_materials(app,
             custom_source,
             "2-1",
         )
+        custom.status = AchievementStatus.ready.value
+        incomplete = Achievement(
+            user_id=user.id,
+            year=year,
+            category="科研与社会服务工作",
+            subcategory="横向课题及项目",
+            claim_nature=ClaimNature.result.value,
+            title="待完善导出说明成果",
+            claimed_score=0,
+            status=AchievementStatus.needs_info.value,
+        )
+        db.add(incomplete)
         db.commit()
 
         zip_path = build_personal_export(db, user, year)
         user_id = user.id
+        full_name = user.full_name
     finally:
         db.close()
 
@@ -172,9 +186,19 @@ def test_build_personal_export_creates_zip_workbooks_and_category_materials(app,
 
     with ZipFile(zip_path) as archive:
         names = archive.namelist()
+        summary = archive.read("00_导出说明.txt").decode("utf-8")
 
+    assert "00_导出说明.txt" in names
     assert "01_个人项目申报表.xlsx" in names
     assert "04_材料目录.xlsx" in names
+    assert f"年度：{year}" in summary
+    assert f"教师：{full_name}" in summary
+    assert "成果总数：3" in summary
+    assert "支撑材料总数：2" in summary
+    assert "待完善成果：1" in summary
+    assert "缺少材料成果：1" in summary
+    assert "待完善导出说明成果" in summary
+    assert "最终分值和级别认定仍以线下审核为准" in summary
     assert any(
         name.startswith("05_支撑材料/03_教学/") and name.endswith(".pdf")
         for name in names

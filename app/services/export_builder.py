@@ -5,7 +5,7 @@ from openpyxl import Workbook
 from sqlalchemy.orm import Session
 
 from app.config import EXPORT_DIR
-from app.models import Achievement, Material, PerformanceRule, User
+from app.models import Achievement, AchievementStatus, Material, PerformanceRule, User
 from app.services.performance_rule_guidance import assignment_mode
 
 
@@ -77,7 +77,7 @@ def build_personal_export(db: Session, user: User, year: int) -> Path:
 
     _write_application_workbook(application_path, achievements, rule_lookup)
     _write_material_catalog(catalog_path, achievements)
-    _write_zip(zip_path, application_path, catalog_path, achievements)
+    _write_zip(zip_path, application_path, catalog_path, achievements, user, year)
     return zip_path
 
 
@@ -151,8 +151,11 @@ def _write_zip(
     application_path: Path,
     catalog_path: Path,
     achievements: list[Achievement],
+    user: User,
+    year: int,
 ) -> None:
     with ZipFile(zip_path, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("00_导出说明.txt", _summary_text(user, year, achievements))
         archive.write(application_path, application_path.name)
         archive.write(catalog_path, catalog_path.name)
 
@@ -166,6 +169,46 @@ def _write_zip(
                     source,
                     f"{folder}/{_material_archive_name(achievement_index, achievement, material)}",
                 )
+
+
+def _summary_text(user: User, year: int, achievements: list[Achievement]) -> str:
+    ready_statuses = {
+        AchievementStatus.ready.value,
+        AchievementStatus.exported.value,
+    }
+    ready_count = sum(achievement.status in ready_statuses for achievement in achievements)
+    needs_attention = [
+        achievement
+        for achievement in achievements
+        if achievement.status not in ready_statuses
+    ]
+    material_count = sum(len(achievement.materials) for achievement in achievements)
+    missing_materials = [
+        achievement
+        for achievement in achievements
+        if not achievement.materials
+    ]
+
+    lines = [
+        "教师个人年度绩效材料包导出说明",
+        f"年度：{year}",
+        f"教师：{user.full_name}",
+        f"成果总数：{len(achievements)}",
+        f"可导出成果：{ready_count}",
+        f"待完善成果：{len(needs_attention)}",
+        f"支撑材料总数：{material_count}",
+        f"缺少材料成果：{len(missing_materials)}",
+        "",
+        "说明：最终分值和级别认定仍以线下审核为准。",
+    ]
+    if needs_attention:
+        lines.extend(["", "待完善成果清单："])
+        for achievement in needs_attention:
+            lines.append(
+                f"- {achievement.title}｜{achievement.status}｜"
+                f"{achievement.category} / {achievement.subcategory}"
+            )
+    return "\n".join(lines) + "\n"
 
 
 def _category_folder(category: str) -> str:
