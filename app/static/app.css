@@ -139,6 +139,9 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .rule-remark { color: #586579; font-size: 13px; line-height: 1.7; }
 .review-note, .inline-empty { display: flex; gap: 9px; padding: 12px; color: #5b6475; background: #f4f8fe; border-radius: 6px; font-size: 12px; line-height: 1.6; }
 .review-note svg, .inline-empty svg { flex: 0 0 auto; margin-top: 1px; color: var(--blue); }
+.export-warning-panel { padding: 18px 20px; border-color: #f3d19c; background: #fffaf0; }
+.review-note.warning { color: #8a5a08; background: #fff4d8; border: 1px solid #f2d49b; }
+.review-note.warning svg { color: #b7791f; }
 .readiness-panel { padding: 20px; border-color: #f3dfae; background: #fffdf8; }
 .readiness-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .readiness-list li { display: flex; align-items: flex-start; gap: 6px; color: #5f4b21; font-size: 13px; line-height: 1.6; }

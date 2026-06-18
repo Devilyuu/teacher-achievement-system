@@ -14,7 +14,7 @@
             <i data-lucide="arrow-left"></i>返回继续整理
         </a>
         <a class="button primary" href="/exports/{{ year }}/personal">
-            <i data-lucide="download"></i>确认整理并下载
+            <i data-lucide="download"></i>{% if needs_attention %}继续生成并下载{% else %}确认整理并下载{% endif %}
         </a>
     </div>
 </header>
@@ -37,6 +37,15 @@
         <div><span>支撑材料</span><strong>{{ material_count }} 份材料</strong></div>
     </article>
 </section>
+
+{% if needs_attention %}
+<section class="panel export-warning-panel">
+    <div class="review-note warning">
+        <i data-lucide="triangle-alert"></i>
+        <span>仍有 {{ needs_attention|length }} 项待完善成果，建议先补充材料或说明后再生成；如果确需先提交过程材料，可以继续生成，最终仍以线下审核为准。</span>
+    </div>
+</section>
+{% endif %}
 
 <section class="panel export-history-panel">
     <div class="section-heading">

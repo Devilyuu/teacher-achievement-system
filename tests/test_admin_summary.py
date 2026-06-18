@@ -10,7 +10,7 @@ from openpyxl import load_workbook
 from app.config import UPLOAD_DIR
 from app.database import SessionLocal
 from app.models import Achievement, AchievementStatus, ClaimNature, Material, Role, User
-from app.security import hash_password
+from app.security import create_auth_cookie, hash_password
 from app.services.admin_export_builder import (
     build_admin_material_package,
     build_admin_summary_workbook,
@@ -22,6 +22,7 @@ from app.services.admin_summary import (
     missing_reasons,
 )
 from app.services.annual_submission import confirm_annual_submission
+from app.services.reporting_year import default_reporting_year
 
 
 def _login_admin(client: TestClient) -> None:
@@ -268,9 +269,23 @@ def test_admin_summary_page_requires_admin(app):
         db.close()
 
     teacher_client = TestClient(app)
-    teacher_client.cookies.set("user_id", str(teacher_id))
+    teacher_client.cookies.set("user_id", create_auth_cookie(teacher_id))
     forbidden = teacher_client.get("/admin/summary")
     assert forbidden.status_code == 403
+
+
+def test_admin_summary_defaults_to_current_reporting_year(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    response = client.get("/admin/summary")
+
+    assert response.status_code == 200
+    assert (
+        f'<option value="{default_reporting_year()}" selected>'
+        f"{default_reporting_year()} 年</option>"
+    ) in response.text
+    assert f"year={default_reporting_year()}" in response.text
 
 
 def test_admin_summary_page_renders_filtered_metrics_rows_and_export_links(app):
@@ -755,7 +770,7 @@ def test_admin_summary_export_routes_apply_filters_and_require_admin(app):
         db.close()
 
     teacher_client = TestClient(app)
-    teacher_client.cookies.set("user_id", str(teacher_id))
+    teacher_client.cookies.set("user_id", create_auth_cookie(teacher_id))
     assert teacher_client.get("/admin/summary/export.xlsx").status_code == 403
     assert teacher_client.get("/admin/summary/materials.zip").status_code == 403
 

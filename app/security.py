@@ -1,12 +1,15 @@
 from fastapi import Cookie, Depends, HTTPException, Request, status
+from itsdangerous import BadSignature, URLSafeSerializer
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
+from app.config import SECRET_KEY
 from app.database import get_db
 from app.models import Role, User
 
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+auth_serializer = URLSafeSerializer(SECRET_KEY, salt="teacher-achievement-auth")
 
 
 def hash_password(password: str) -> str:
@@ -15,6 +18,19 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
+
+
+def create_auth_cookie(user_id: int) -> str:
+    return auth_serializer.dumps({"user_id": user_id})
+
+
+def parse_auth_cookie(cookie_value: str) -> int | None:
+    try:
+        data = auth_serializer.loads(cookie_value)
+    except BadSignature:
+        return None
+    user_id = data.get("user_id") if isinstance(data, dict) else None
+    return user_id if isinstance(user_id, int) else None
 
 
 def get_current_user(
@@ -28,9 +44,8 @@ def get_current_user(
             detail="Authentication required",
         )
 
-    try:
-        parsed_user_id = int(auth_user_id)
-    except ValueError:
+    parsed_user_id = parse_auth_cookie(auth_user_id)
+    if parsed_user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication cookie",

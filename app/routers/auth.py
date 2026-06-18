@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import BASE_DIR
 from app.database import get_db
 from app.models import User
-from app.security import get_current_user, hash_password, verify_password
+from app.security import create_auth_cookie, get_current_user, hash_password, verify_password
 
 
 router = APIRouter()
@@ -50,7 +50,7 @@ def login(
     response = RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         "user_id",
-        str(user.id),
+        create_auth_cookie(user.id),
         httponly=True,
         samesite="lax",
     )

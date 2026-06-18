@@ -10,6 +10,7 @@ from app.models import (
     ExportRecord,
     User,
 )
+from app.services.achievement_status import calculate_status
 from app.services.annual_submission import confirm_annual_submission
 from app.services.export_builder import build_personal_export
 
@@ -50,7 +51,11 @@ def generate_personal_export(
     record.file_size = zip_path.stat().st_size
 
     for achievement in achievements:
-        achievement.status = AchievementStatus.exported.value
+        current_status = calculate_status(achievement)
+        if current_status == AchievementStatus.ready.value:
+            achievement.status = AchievementStatus.exported.value
+        else:
+            achievement.status = current_status
         achievement.updated_at = datetime.utcnow()
     record.generated_at = datetime.utcnow()
 

@@ -19,7 +19,7 @@ from app.models import (
     Role,
     User,
 )
-from app.security import hash_password
+from app.security import create_auth_cookie, hash_password
 from app.services.annual_submission import (
     ANNUAL_STATUS_EXPORTED,
     confirm_annual_submission,
@@ -238,7 +238,7 @@ def test_export_route_requires_auth_and_authenticated_user_can_download(app, tmp
     finally:
         db.close()
 
-    client.cookies.set("user_id", str(user_id))
+    client.cookies.set("user_id", create_auth_cookie(user_id))
     response = client.get("/exports/2026/personal")
 
     assert response.status_code == 200
@@ -294,6 +294,46 @@ def test_personal_export_confirms_year_when_teacher_has_not_submitted(app, tmp_p
         assert state.status == ANNUAL_STATUS_EXPORTED
         assert state.submitted_at is not None
         assert state.exported_at is not None
+    finally:
+        db.close()
+
+
+def test_personal_export_keeps_incomplete_achievements_needing_info(app, tmp_path):
+    source_path = tmp_path / "ready-proof.pdf"
+    source_path.write_bytes(b"%PDF-1.4 ready proof")
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, f"export-incomplete-status-{uuid4().hex}")
+        ready = _add_achievement_with_material(
+            db,
+            user,
+            2026,
+            "教学",
+            "教学成果",
+            source_path,
+            "1-1",
+        )
+        ready.status = AchievementStatus.ready.value
+        incomplete = Achievement(
+            user_id=user.id,
+            year=2026,
+            category="科研与社会服务工作",
+            subcategory="横向课题及项目",
+            claim_nature=ClaimNature.result.value,
+            title="缺少材料的待完善成果",
+            claimed_score=0,
+            status=AchievementStatus.needs_info.value,
+        )
+        db.add(incomplete)
+        db.commit()
+        ready_id = ready.id
+        incomplete_id = incomplete.id
+
+        generate_personal_export(db, user, 2026)
+
+        assert db.get(Achievement, ready_id).status == AchievementStatus.exported.value
+        assert db.get(Achievement, incomplete_id).status == AchievementStatus.needs_info.value
     finally:
         db.close()
 
@@ -365,7 +405,7 @@ def test_regenerating_same_year_updates_one_latest_record(app, tmp_path):
     finally:
         db.close()
 
-    client.cookies.set("user_id", str(user_id))
+    client.cookies.set("user_id", create_auth_cookie(user_id))
     first_response = client.get("/exports/2026/personal")
     assert first_response.status_code == 200
 
@@ -446,7 +486,7 @@ def test_export_review_page_summarizes_year_before_generation(app, tmp_path):
     finally:
         db.close()
 
-    client.cookies.set("user_id", str(owner_id))
+    client.cookies.set("user_id", create_auth_cookie(owner_id))
     response = client.get("/exports/2026/review")
 
     assert response.status_code == 200
@@ -455,11 +495,13 @@ def test_export_review_page_summarizes_year_before_generation(app, tmp_path):
     assert "1 项可导出" in response.text
     assert "1 项待完善" in response.text
     assert "1 份材料" in response.text
+    assert "仍有 1 项待完善成果" in response.text
+    assert "建议先补充材料或说明后再生成" in response.text
     assert "最终分值和级别认定仍以线下审核为准" in response.text
     assert "每个年度仅保留最新生成版本" in response.text
     assert "Owner incomplete export item" in response.text
     assert "Other incomplete export item" not in response.text
-    assert "确认整理并下载" in response.text
+    assert "继续生成并下载" in response.text
     assert "确认生成并下载" not in response.text
     assert 'href="/achievements?year=2026"' in response.text
     assert 'href="/exports/2026/personal"' in response.text
@@ -517,7 +559,7 @@ def test_export_history_page_lists_only_owner_records_newest_first(app, tmp_path
     finally:
         db.close()
 
-    client.cookies.set("user_id", str(owner_id))
+    client.cookies.set("user_id", create_auth_cookie(owner_id))
     response = client.get("/exports")
 
     assert response.status_code == 200
@@ -571,7 +613,7 @@ def test_export_history_page_marks_missing_files_for_regeneration(app, tmp_path)
     finally:
         db.close()
 
-    client.cookies.set("user_id", str(owner_id))
+    client.cookies.set("user_id", create_auth_cookie(owner_id))
     response = client.get("/exports")
 
     assert response.status_code == 200
@@ -607,13 +649,13 @@ def test_recorded_export_download_requires_owner_and_existing_file(app, tmp_path
         db.close()
 
     owner_client = TestClient(app)
-    owner_client.cookies.set("user_id", str(owner_id))
+    owner_client.cookies.set("user_id", create_auth_cookie(owner_id))
     owner_response = owner_client.get(f"/exports/records/{record_id}/download")
     assert owner_response.status_code == 200
     assert owner_response.content == owner_file.read_bytes()
 
     other_client = TestClient(app)
-    other_client.cookies.set("user_id", str(other_id))
+    other_client.cookies.set("user_id", create_auth_cookie(other_id))
     denied_response = other_client.get(
         f"/exports/records/{record_id}/download",
         follow_redirects=False,

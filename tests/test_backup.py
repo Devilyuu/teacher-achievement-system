@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.config import UPLOAD_DIR
 from app.database import SessionLocal
 from app.models import Role, User
-from app.security import hash_password
+from app.security import create_auth_cookie, hash_password
 from app.services.backup_builder import build_system_backup
 
 
@@ -109,7 +109,7 @@ def test_backup_page_and_download_require_admin(app):
     assert unauthenticated.status_code in {303, 401}
 
     teacher_client = TestClient(app)
-    teacher_client.cookies.set("user_id", str(_create_teacher()))
+    teacher_client.cookies.set("user_id", create_auth_cookie(_create_teacher()))
     assert teacher_client.get("/admin/backup").status_code == 403
     assert teacher_client.get("/admin/backup/download").status_code == 403
 

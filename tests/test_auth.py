@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from app.database import SessionLocal
 from app.models import Role, User
-from app.security import hash_password, verify_password
+from app.security import create_auth_cookie, hash_password, verify_password
 
 
 def test_login_page_opens(app):
@@ -45,8 +45,20 @@ def test_valid_admin_login_redirects_and_sets_cookie(app):
 
     assert response.status_code == 303
     assert response.headers["location"] == "/"
-    assert client.cookies.get("user_id")
+    cookie_value = client.cookies.get("user_id")
+    assert cookie_value
+    assert cookie_value != "1"
     assert "httponly" in response.headers["set-cookie"].lower()
+
+
+def test_raw_user_id_cookie_is_rejected(app):
+    client = TestClient(app)
+    client.cookies.set("user_id", "1")
+
+    response = client.get("/admin/users", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
 
 
 def test_dashboard_requires_auth(app):
@@ -138,7 +150,7 @@ def test_authenticated_user_can_change_password(app):
         db.close()
 
     client = TestClient(app)
-    client.cookies.set("user_id", str(user_id))
+    client.cookies.set("user_id", create_auth_cookie(user_id))
     page = client.get("/change-password")
     assert page.status_code == 200
     assert "修改密码" in page.text

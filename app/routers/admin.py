@@ -49,6 +49,7 @@ from app.services.performance_rule_guidance import (
     find_rule,
     rule_for_level,
 )
+from app.services.reporting_year import default_reporting_year
 from app.services.material_preview import (
     PREVIEW_EXTENSIONS,
     preview_media_type,
@@ -82,7 +83,7 @@ def _summary_filters(
     annual_status: str,
 ) -> SummaryFilters:
     return SummaryFilters(
-        year=year or datetime.now().year,
+        year=year or default_reporting_year(),
         department=department.strip(),
         teacher_id=teacher_id,
         status=achievement_status.strip(),
@@ -286,7 +287,14 @@ def annual_summary(
             "summary": summary,
             "filters": filters,
             "available_years": sorted(
-                set([filters.year, datetime.now().year, *available_years]),
+                set(
+                    [
+                        filters.year,
+                        default_reporting_year(),
+                        datetime.now().year,
+                        *available_years,
+                    ]
+                ),
                 reverse=True,
             ),
             "departments": departments,
