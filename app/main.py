@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import BASE_DIR, DATA_DIR
 from app.database import Base, engine
-from app.routers import achievements, admin, auth, dashboard, exports, materials
+from app.routers import achievements, admin, auth, dashboard, exports, feedback, materials
 from app.schema_updates import apply_schema_updates
 from app.seed_rules import seed_initial_data
 
@@ -48,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(achievements.router)
     app.include_router(materials.router)
     app.include_router(exports.router)
+    app.include_router(feedback.router)
 
     return app
 

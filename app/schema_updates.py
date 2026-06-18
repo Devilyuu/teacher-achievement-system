@@ -16,6 +16,10 @@ def apply_schema_updates() -> None:
                     "ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0"
                 )
             )
+        if "last_login_at" not in columns:
+            connection.execute(
+                text("ALTER TABLE users ADD COLUMN last_login_at DATETIME")
+            )
 
         connection.execute(
             text(
@@ -43,5 +47,30 @@ def apply_schema_updates() -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS ix_annual_submissions_year "
                 "ON annual_submissions (year)"
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS trial_feedback (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    issue_type VARCHAR(40) NOT NULL DEFAULT '其他',
+                    current_page VARCHAR(255) NOT NULL DEFAULT '',
+                    related_title VARCHAR(255) NOT NULL DEFAULT '',
+                    description TEXT NOT NULL DEFAULT '',
+                    status VARCHAR(30) NOT NULL DEFAULT '待处理',
+                    admin_note TEXT NOT NULL DEFAULT '',
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES users (id)
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_trial_feedback_user_id "
+                "ON trial_feedback (user_id)"
             )
         )

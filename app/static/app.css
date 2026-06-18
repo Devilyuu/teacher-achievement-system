@@ -118,6 +118,10 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .guidance-grid span { display: block; margin-bottom: 7px; color: #7b8799; font-size: 12px; }
 .guidance-grid strong { font-size: 15px; }.guidance-grid p { margin: 0; color: #526071; font-size: 13px; line-height: 1.7; }
 .form-actions { justify-content: flex-end; margin-top: 18px; }
+.inline-form { display: flex; min-width: 360px; align-items: center; gap: 8px; }
+.inline-form select { flex: 0 0 105px; }
+.inline-form input { min-width: 150px; }
+.inline-form .button { flex: 0 0 auto; min-height: 36px; padding: 0 11px; }
 
 .title-meta { display: flex; align-items: center; gap: 10px; color: #68758a; font-size: 13px; }
 .detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; max-width: 1240px; margin: 0 auto; align-items: start; }

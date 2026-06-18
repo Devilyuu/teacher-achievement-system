@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}教师成果管理系统{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260615-6">
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260618-1">
     <script src="{{ url_for('static', path='vendor/lucide.min.js') }}"></script>
 </head>
 <body>
@@ -28,9 +28,13 @@
                 <a href="/exports" class="{% if request.url.path.startswith('/exports') %}active{% endif %}">
                     <i data-lucide="archive"></i><span>导出记录</span>
                 </a>
+                <a href="/feedback" class="{% if request.url.path.startswith('/feedback') %}active{% endif %}">
+                    <i data-lucide="message-square-warning"></i><span>试用反馈</span>
+                </a>
                 {% if user.role == "admin" %}
                 <div class="nav-label">系统管理</div>
                 <a href="/admin/summary" class="{% if request.url.path.startswith('/admin/summary') or request.url.path.startswith('/admin/achievements') %}active{% endif %}"><i data-lucide="chart-no-axes-combined"></i><span>年度汇总</span></a>
+                <a href="/admin/trial" class="{% if request.url.path.startswith('/admin/trial') %}active{% endif %}"><i data-lucide="radar"></i><span>试用看板</span></a>
                 <a href="/admin/users" class="{% if request.url.path.startswith('/admin/users') %}active{% endif %}"><i data-lucide="users"></i><span>用户管理</span></a>
                 <a href="/admin/rules" class="{% if request.url.path.startswith('/admin/rules') %}active{% endif %}"><i data-lucide="book-open-check"></i><span>绩效规则</span></a>
                 <a href="/admin/backup" class="{% if request.url.path.startswith('/admin/backup') %}active{% endif %}"><i data-lucide="database-backup"></i><span>系统备份</span></a>

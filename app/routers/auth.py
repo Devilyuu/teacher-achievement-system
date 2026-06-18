@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -43,6 +45,8 @@ def login(
         )
 
     destination = "/change-password" if user.must_change_password else "/"
+    user.last_login_at = datetime.utcnow()
+    db.commit()
     response = RedirectResponse(destination, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         "user_id",

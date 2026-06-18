@@ -14,7 +14,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import or_
+from sqlalchemy import distinct, or_
 from sqlalchemy.orm import Session
 
 from app.config import (
@@ -26,7 +26,16 @@ from app.config import (
     USER_IMPORT_DIR,
 )
 from app.database import get_db
-from app.models import Achievement, AchievementStatus, Material, PerformanceRule, Role, User
+from app.models import (
+    Achievement,
+    AchievementStatus,
+    ExportRecord,
+    Material,
+    PerformanceRule,
+    Role,
+    TrialFeedback,
+    User,
+)
 from app.security import hash_password, require_admin
 from app.services.admin_export_builder import (
     build_admin_material_package,
@@ -62,6 +71,8 @@ RULE_ASSIGNMENT_MODES = {
     "assigned": ("项目负责人统一赋分", False, True),
 }
 
+FEEDBACK_STATUSES = ["待处理", "已确认", "已解决", "暂不处理"]
+
 
 def _summary_filters(
     year: int | None,
@@ -90,6 +101,132 @@ def _summary_query_string(filters: SummaryFilters) -> str:
     if filters.annual_status:
         values["annual_status"] = filters.annual_status
     return urlencode(values)
+
+
+def _trial_progress(db: Session) -> dict[str, int]:
+    teacher_query = db.query(User).filter(User.role == Role.teacher.value)
+    teacher_ids = [row[0] for row in teacher_query.with_entities(User.id).all()]
+    if not teacher_ids:
+        return {
+            "teacher_count": 0,
+            "logged_in_count": 0,
+            "password_changed_count": 0,
+            "achievement_user_count": 0,
+            "material_user_count": 0,
+            "exported_user_count": 0,
+            "feedback_count": 0,
+            "open_feedback_count": 0,
+        }
+
+    return {
+        "teacher_count": teacher_query.count(),
+        "logged_in_count": teacher_query.filter(User.last_login_at.is_not(None)).count(),
+        "password_changed_count": teacher_query.filter(
+            User.must_change_password.is_(False)
+        ).count(),
+        "achievement_user_count": db.query(distinct(Achievement.user_id))
+        .filter(Achievement.user_id.in_(teacher_ids))
+        .count(),
+        "material_user_count": db.query(distinct(Achievement.user_id))
+        .join(Material)
+        .filter(Achievement.user_id.in_(teacher_ids))
+        .count(),
+        "exported_user_count": db.query(distinct(ExportRecord.user_id))
+        .filter(ExportRecord.user_id.in_(teacher_ids))
+        .count(),
+        "feedback_count": db.query(TrialFeedback)
+        .filter(TrialFeedback.user_id.in_(teacher_ids))
+        .count(),
+        "open_feedback_count": db.query(TrialFeedback)
+        .filter(
+            TrialFeedback.user_id.in_(teacher_ids),
+            TrialFeedback.status.in_(["待处理", "已确认"]),
+        )
+        .count(),
+    }
+
+
+def _trial_teacher_rows(db: Session) -> list[dict]:
+    teachers = (
+        db.query(User)
+        .filter(User.role == Role.teacher.value)
+        .order_by(User.department, User.full_name)
+        .all()
+    )
+    rows: list[dict] = []
+    for teacher in teachers:
+        achievements = (
+            db.query(Achievement)
+            .filter(Achievement.user_id == teacher.id)
+            .all()
+        )
+        achievement_ids = [achievement.id for achievement in achievements]
+        material_count = (
+            db.query(Material)
+            .filter(Material.achievement_id.in_(achievement_ids))
+            .count()
+            if achievement_ids
+            else 0
+        )
+        export_count = (
+            db.query(ExportRecord)
+            .filter(ExportRecord.user_id == teacher.id)
+            .count()
+        )
+        rows.append(
+            {
+                "teacher": teacher,
+                "achievement_count": len(achievements),
+                "material_count": material_count,
+                "export_count": export_count,
+            }
+        )
+    return rows
+
+
+@router.get("/trial")
+def trial_dashboard(
+    request: Request,
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    feedback_items = (
+        db.query(TrialFeedback)
+        .join(User)
+        .order_by(TrialFeedback.created_at.desc(), TrialFeedback.id.desc())
+        .all()
+    )
+    return templates.TemplateResponse(
+        request,
+        "admin/trial.html",
+        {
+            "user": user,
+            "metrics": _trial_progress(db),
+            "teacher_rows": _trial_teacher_rows(db),
+            "feedback_items": feedback_items,
+            "feedback_statuses": FEEDBACK_STATUSES,
+        },
+    )
+
+
+@router.post("/feedback/{feedback_id}/status")
+def update_feedback_status(
+    feedback_id: int,
+    feedback_status: str = Form(alias="status"),
+    admin_note: str = Form(""),
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    feedback = db.get(TrialFeedback, feedback_id)
+    if not feedback:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    feedback.status = (
+        feedback_status if feedback_status in FEEDBACK_STATUSES else "待处理"
+    )
+    feedback.admin_note = admin_note.strip()
+    feedback.updated_at = datetime.utcnow()
+    db.commit()
+    return RedirectResponse("/admin/trial", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.get("/summary")
