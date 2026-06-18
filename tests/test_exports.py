@@ -27,6 +27,7 @@ from app.services.annual_submission import (
 )
 from app.services.export_builder import build_personal_export
 from app.services.export_history import generate_personal_export
+from app.services.reporting_year import default_reporting_year
 
 
 APPLICATION_HEADERS = [
@@ -521,13 +522,29 @@ def test_export_history_page_lists_only_owner_records_newest_first(app, tmp_path
 
     assert response.status_code == 200
     assert "导出记录" in response.text
-    assert response.text.index("2026 年度") < response.text.index("2025 年度")
+    record_list = response.text.split('class="export-record-list"', 1)[1]
+    assert record_list.index("2026 年度") < record_list.index("2025 年度")
     assert "2027 年度" not in response.text
     assert "4 项成果" in response.text
     assert "6 份材料" in response.text
     assert 'href="/exports/2026/review"' in response.text
     assert 'href="/exports/2025/review"' in response.text
     assert 'href="/exports/records/' in response.text
+
+
+def test_export_history_defaults_generation_to_previous_reporting_year(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/exports")
+
+    assert response.status_code == 200
+    assert f"生成 {default_reporting_year()} 年度材料" in response.text
+    assert f'href="/exports/{default_reporting_year()}/review"' in response.text
 
 
 def test_export_history_page_marks_missing_files_for_regeneration(app, tmp_path):

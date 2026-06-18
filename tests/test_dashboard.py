@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
 from app.models import Achievement, AchievementStatus, AnnualSubmission, ClaimNature, User
+from app.services.reporting_year import default_reporting_year
 
 
 def test_dashboard_shows_current_year_summary_recent_record_and_export(app):
@@ -32,7 +33,7 @@ def test_dashboard_shows_current_year_summary_recent_record_and_export(app):
     finally:
         db.close()
 
-    response = client.get("/")
+    response = client.get(f"/?year={year}")
 
     assert response.status_code == 200
     assert f"{year} 年度成果概览" in response.text
@@ -62,6 +63,21 @@ def test_dashboard_uses_designed_right_rail_for_year_workbench(app):
     assert 'class="dashboard-side-metrics"' in response.text
     assert 'class="panel category-panel dashboard-category-card"' in response.text
     assert 'data-lucide="clipboard-check"' in response.text
+
+
+def test_dashboard_defaults_to_previous_reporting_year(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert f"{default_reporting_year()} 年度成果概览" in response.text
+    assert f'href="/achievements/new?year={default_reporting_year()}"' in response.text
 
 
 def test_dashboard_offers_previous_year_and_carries_selected_year_to_new_record(app):
@@ -128,7 +144,7 @@ def test_dashboard_shows_current_year_pending_items_with_reasons(app):
     finally:
         db.close()
 
-    response = client.get("/")
+    response = client.get(f"/?year={year}")
 
     assert response.status_code == 200
     assert 'class="panel pending-panel"' in response.text
@@ -186,7 +202,7 @@ def test_dashboard_shows_annual_submission_status_and_confirm_button(app):
     finally:
         db.close()
 
-    response = client.get("/")
+    response = client.get(f"/?year={year}")
 
     assert response.status_code == 200
     assert "年度整理状态" in response.text

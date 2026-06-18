@@ -27,7 +27,6 @@ from app.services.performance_rule_guidance import (
 )
 from app.services.reporting_year import (
     available_reporting_years,
-    current_reporting_year,
     default_reporting_year,
 )
 
@@ -190,7 +189,7 @@ def list_achievements(
             .all()
         )
     ]
-    selected_year = year or current_reporting_year()
+    selected_year = year or default_reporting_year()
     filters = AchievementFilters(
         year=selected_year,
         status=achievement_status.strip(),

@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
 from app.models import Achievement, AchievementStatus, ClaimNature, User
+from app.services.reporting_year import default_reporting_year
 
 
 def test_authenticated_admin_can_create_achievement_and_see_it_in_list(app):
@@ -39,7 +40,7 @@ def test_authenticated_admin_can_create_achievement_and_see_it_in_list(app):
     assert detail_location.startswith("/achievements/")
     assert detail_location != "/achievements"
 
-    list_response = client.get("/achievements")
+    list_response = client.get("/achievements?year=2026")
 
     assert list_response.status_code == 200
     assert "省级技能大赛裁判工作" in list_response.text
@@ -106,6 +107,21 @@ def test_achievement_list_offers_previous_year_and_preserves_year_for_new_record
     assert '<option value="2025" selected>2025 年</option>' in response.text
     assert '<option value="2026"' in response.text
     assert 'href="/achievements/new?year=2025"' in response.text
+
+
+def test_achievement_list_defaults_to_previous_reporting_year(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/achievements")
+
+    assert response.status_code == 200
+    assert f"{default_reporting_year()} 年度成果" in response.text
+    assert f'href="/achievements/new?year={default_reporting_year()}"' in response.text
 
 
 def test_achievement_detail_shows_matching_rule_and_assignment_mode(app):

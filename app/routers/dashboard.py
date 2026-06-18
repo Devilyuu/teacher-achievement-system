@@ -13,7 +13,7 @@ from app.services.annual_submission import (
     confirm_annual_submission,
     get_annual_submission_state,
 )
-from app.services.reporting_year import available_reporting_years, current_reporting_year
+from app.services.reporting_year import available_reporting_years, default_reporting_year
 
 
 router = APIRouter()
@@ -27,7 +27,7 @@ def dashboard(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    selected_year = year or current_reporting_year()
+    selected_year = year or default_reporting_year()
     base_query = db.query(Achievement).filter(
         Achievement.user_id == user.id,
         Achievement.year == selected_year,
