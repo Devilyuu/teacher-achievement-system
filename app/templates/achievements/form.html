@@ -30,7 +30,11 @@
         <div class="form-grid">
             <label>
                 <span>年度</span>
-                <input type="number" name="year" min="2000" max="2100" value="{{ achievement.year if achievement else current_year }}" required>
+                <select name="year" required>
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }} 年</option>
+                    {% endfor %}
+                </select>
             </label>
             <label>
                 <span>申报性质</span>

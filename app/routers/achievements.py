@@ -25,6 +25,11 @@ from app.services.performance_rule_guidance import (
     find_rule,
     rule_for_level,
 )
+from app.services.reporting_year import (
+    available_reporting_years,
+    current_reporting_year,
+    default_reporting_year,
+)
 
 
 router = APIRouter(prefix="/achievements", tags=["achievements"])
@@ -104,7 +109,19 @@ def _form_context(
     db: Session,
     achievement: Achievement | None = None,
     action: str = "/achievements",
+    selected_year: int | None = None,
 ):
+    existing_years = [
+        row[0]
+        for row in (
+            db.query(Achievement.year)
+            .filter(Achievement.user_id == user.id)
+            .distinct()
+            .order_by(Achievement.year.desc())
+            .all()
+        )
+    ]
+    form_year = achievement.year if achievement else selected_year or default_reporting_year()
     return {
         "request": request,
         "user": user,
@@ -113,7 +130,8 @@ def _form_context(
         "claim_natures": [nature.value for nature in ClaimNature],
         "level_options": LEVEL_OPTIONS,
         "readiness_reasons": missing_reasons(achievement) if achievement else [],
-        "current_year": datetime.now().year,
+        "selected_year": form_year,
+        "available_years": available_reporting_years(existing_years, form_year),
         "action": action,
     }
 
@@ -172,7 +190,7 @@ def list_achievements(
             .all()
         )
     ]
-    selected_year = year or datetime.now().year
+    selected_year = year or current_reporting_year()
     filters = AchievementFilters(
         year=selected_year,
         status=achievement_status.strip(),
@@ -190,9 +208,9 @@ def list_achievements(
             "user": user,
             "achievements": achievements,
             "achievement_groups": _group_achievements(achievements, active_rules),
-            "available_years": sorted(
-                set([selected_year, datetime.now().year, *available_years]),
-                reverse=True,
+            "available_years": available_reporting_years(
+                available_years,
+                selected_year,
             ),
             "selected_year": selected_year,
             "filters": filters,
@@ -214,13 +232,14 @@ def list_achievements(
 @router.get("/new")
 def new_achievement(
     request: Request,
+    year: int | None = Query(default=None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return templates.TemplateResponse(
         request,
         "achievements/form.html",
-        _form_context(request, user, db),
+        _form_context(request, user, db, selected_year=year),
     )
 
 

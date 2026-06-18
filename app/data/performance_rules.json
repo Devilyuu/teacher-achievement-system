@@ -1,6 +1,16 @@
 {
   "version": "2025-06-18",
-  "source": "浮动绩效积分统计.xlsx / 附表1 超额工作绩效积分对照表",
+  "source": "2025年度超额工作绩效积分对照表.xlsx / 附表1 超额工作绩效积分对照表 (2)",
+  "deprecated_rules": [
+    {
+      "category": "教师发展",
+      "subcategory": "教师企业实践（上限12分）"
+    },
+    {
+      "category": "教师发展",
+      "subcategory": "教师参加其他比赛（学院鼓励的）"
+    }
+  ],
   "rules": [
     {
       "category": "师德师风及党建思政工作",
@@ -60,20 +70,6 @@
     },
     {
       "category": "教师发展",
-      "subcategory": "教师企业实践（上限12分）",
-      "base_rule": "2/月",
-      "national_rule": "——",
-      "provincial_rule": "——",
-      "city_rule": "——",
-      "school_rule": "——",
-      "college_rule": "——",
-      "remark": "个人申报，以学院派驻为准",
-      "is_team": false,
-      "is_department_assigned": false,
-      "sort_order": 5
-    },
-    {
-      "category": "教师发展",
       "subcategory": "团队人才项目（青蓝工程团队、黄大年）",
       "base_rule": "5/项",
       "national_rule": "30/项",
@@ -84,7 +80,7 @@
       "remark": "团队项目，负责人验收通过后赋分",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 6
+      "sort_order": 5
     },
     {
       "category": "教师发展",
@@ -98,7 +94,7 @@
       "remark": "个人申报，验收通过后赋分",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 7
+      "sort_order": 6
     },
     {
       "category": "教师发展",
@@ -112,7 +108,7 @@
       "remark": "个人申报，前4每人计分，按最高奖项",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 8
+      "sort_order": 7
     },
     {
       "category": "教师发展",
@@ -126,7 +122,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 9
+      "sort_order": 8
     },
     {
       "category": "教师发展",
@@ -140,21 +136,21 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 10
+      "sort_order": 9
     },
     {
       "category": "教师发展",
-      "subcategory": "教师参加其他比赛（学院鼓励的）",
+      "subcategory": "教师参加其他比赛\n（学院鼓励的 且备案的比赛）",
       "base_rule": "2/项",
       "national_rule": "15、12、10/项",
       "provincial_rule": "10、8、5/项",
       "city_rule": "5、4、3/项",
       "school_rule": "3、2、1/项",
       "college_rule": "——",
-      "remark": "个人申报，如属于突出成果，不计积分",
+      "remark": "个人申报\n赛前向学院报备，代表学校参赛（以证书或公示为准）赛后提交证书电子版至院办存档",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 11
+      "sort_order": 10
     },
     {
       "category": "教师发展",
@@ -168,7 +164,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 12
+      "sort_order": 11
     },
     {
       "category": "教师发展",
@@ -182,7 +178,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 13
+      "sort_order": 12
     },
     {
       "category": "教学",
@@ -196,7 +192,7 @@
       "remark": "团队主任个人申报，依团队的考核结果赋分",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 14
+      "sort_order": 13
     },
     {
       "category": "教学",
@@ -210,7 +206,7 @@
       "remark": "个人申报，审核通过赋分",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 15
+      "sort_order": 14
     },
     {
       "category": "教学",
@@ -224,7 +220,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 16
+      "sort_order": 15
     },
     {
       "category": "教学",
@@ -238,7 +234,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 17
+      "sort_order": 16
     },
     {
       "category": "教学",
@@ -252,7 +248,7 @@
       "remark": "个人申报，验收通过，如获校级资助则无分",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 18
+      "sort_order": 17
     },
     {
       "category": "教学",
@@ -266,7 +262,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 19
+      "sort_order": 18
     },
     {
       "category": "教学",
@@ -280,7 +276,7 @@
       "remark": "个人申报，双语*1.5",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 20
+      "sort_order": 19
     },
     {
       "category": "教学",
@@ -294,7 +290,7 @@
       "remark": "个人申报，双语*1.5",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 21
+      "sort_order": 20
     },
     {
       "category": "教学",
@@ -308,7 +304,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 22
+      "sort_order": 21
     },
     {
       "category": "教学",
@@ -322,7 +318,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 23
+      "sort_order": 22
     },
     {
       "category": "教学",
@@ -336,7 +332,7 @@
       "remark": "团队项目，负责人赋分",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 24
+      "sort_order": 23
     },
     {
       "category": "教学",
@@ -350,7 +346,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 25
+      "sort_order": 24
     },
     {
       "category": "教学",
@@ -364,7 +360,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 26
+      "sort_order": 25
     },
     {
       "category": "教学",
@@ -378,7 +374,7 @@
       "remark": "团队项目，负责人赋分",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 27
+      "sort_order": 26
     },
     {
       "category": "产教融合工作",
@@ -392,7 +388,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 28
+      "sort_order": 27
     },
     {
       "category": "产教融合工作",
@@ -406,7 +402,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 29
+      "sort_order": 28
     },
     {
       "category": "产教融合工作",
@@ -420,7 +416,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 30
+      "sort_order": 29
     },
     {
       "category": "产教融合工作",
@@ -434,7 +430,7 @@
       "remark": "团队项目，负责人赋分",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 31
+      "sort_order": 30
     },
     {
       "category": "产教融合工作",
@@ -448,7 +444,7 @@
       "remark": "团队项目，负责人赋分",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 32
+      "sort_order": 31
     },
     {
       "category": "产教融合工作",
@@ -462,7 +458,7 @@
       "remark": "个人申报，软资产上限10分",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 33
+      "sort_order": 32
     },
     {
       "category": "产教融合工作",
@@ -476,7 +472,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 34
+      "sort_order": 33
     },
     {
       "category": "产教融合工作",
@@ -490,7 +486,7 @@
       "remark": "个人申报，行业类降级赋分",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 35
+      "sort_order": 34
     },
     {
       "category": "学生工作",
@@ -504,7 +500,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 36
+      "sort_order": 35
     },
     {
       "category": "学生工作",
@@ -518,7 +514,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 37
+      "sort_order": 36
     },
     {
       "category": "学生工作",
@@ -532,7 +528,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 38
+      "sort_order": 37
     },
     {
       "category": "学生工作",
@@ -546,7 +542,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 39
+      "sort_order": 38
     },
     {
       "category": "学生工作",
@@ -560,7 +556,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 40
+      "sort_order": 39
     },
     {
       "category": "科研与社会服务工作",
@@ -574,7 +570,7 @@
       "remark": "团队项目，负责人申报",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 41
+      "sort_order": 40
     },
     {
       "category": "科研与社会服务工作",
@@ -588,7 +584,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 42
+      "sort_order": 41
     },
     {
       "category": "科研与社会服务工作",
@@ -602,7 +598,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 43
+      "sort_order": 42
     },
     {
       "category": "科研与社会服务工作",
@@ -616,7 +612,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 44
+      "sort_order": 43
     },
     {
       "category": "科研与社会服务工作",
@@ -630,7 +626,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 45
+      "sort_order": 44
     },
     {
       "category": "科研与社会服务工作",
@@ -644,7 +640,7 @@
       "remark": "个人申报，封顶12分",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 46
+      "sort_order": 45
     },
     {
       "category": "科研与社会服务工作",
@@ -658,7 +654,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 47
+      "sort_order": 46
     },
     {
       "category": "科研与社会服务工作",
@@ -672,7 +668,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 48
+      "sort_order": 47
     },
     {
       "category": "科研与社会服务工作",
@@ -686,7 +682,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 49
+      "sort_order": 48
     },
     {
       "category": "科研与社会服务工作",
@@ -700,7 +696,7 @@
       "remark": "团队项目，负责人申报",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 50
+      "sort_order": 49
     },
     {
       "category": "科研与社会服务工作",
@@ -714,7 +710,7 @@
       "remark": "团队项目，负责人申报",
       "is_team": true,
       "is_department_assigned": false,
-      "sort_order": 51
+      "sort_order": 50
     },
     {
       "category": "国际交流与合作",
@@ -728,7 +724,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 52
+      "sort_order": 51
     },
     {
       "category": "国际交流与合作",
@@ -742,7 +738,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 53
+      "sort_order": 52
     },
     {
       "category": "国际交流与合作",
@@ -756,7 +752,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 54
+      "sort_order": 53
     },
     {
       "category": "国际交流与合作",
@@ -770,7 +766,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 55
+      "sort_order": 54
     },
     {
       "category": "国际交流与合作",
@@ -784,7 +780,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 56
+      "sort_order": 55
     },
     {
       "category": "国际交流与合作",
@@ -798,7 +794,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 57
+      "sort_order": 56
     },
     {
       "category": "育人成效",
@@ -812,7 +808,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 58
+      "sort_order": 57
     },
     {
       "category": "育人成效",
@@ -823,10 +819,10 @@
       "city_rule": "3、2、1/项",
       "school_rule": "/",
       "college_rule": "——",
-      "remark": "个人申报，学院备案的比赛",
+      "remark": "个人申报，\n赛前向学院报备，代表学校参赛（以证书或公示为准）赛后提交证书电子版至院办存档",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 59
+      "sort_order": 58
     },
     {
       "category": "育人成效",
@@ -840,7 +836,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 60
+      "sort_order": 59
     },
     {
       "category": "育人成效",
@@ -854,7 +850,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 61
+      "sort_order": 60
     },
     {
       "category": "育人成效",
@@ -868,7 +864,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 62
+      "sort_order": 61
     },
     {
       "category": "育人成效",
@@ -882,7 +878,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 63
+      "sort_order": 62
     },
     {
       "category": "育人成效",
@@ -896,7 +892,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 64
+      "sort_order": 63
     },
     {
       "category": "监管类工作",
@@ -910,7 +906,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 65
+      "sort_order": 64
     },
     {
       "category": "监管类工作",
@@ -924,7 +920,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 66
+      "sort_order": 65
     },
     {
       "category": "监管类工作",
@@ -938,7 +934,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 67
+      "sort_order": 66
     },
     {
       "category": "监管类工作",
@@ -952,7 +948,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 68
+      "sort_order": 67
     },
     {
       "category": "监管类工作",
@@ -966,7 +962,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 69
+      "sort_order": 68
     },
     {
       "category": "监管类工作",
@@ -980,7 +976,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 70
+      "sort_order": 69
     },
     {
       "category": "监管类工作",
@@ -994,7 +990,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 71
+      "sort_order": 70
     },
     {
       "category": "监管类工作",
@@ -1008,7 +1004,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 72
+      "sort_order": 71
     },
     {
       "category": "监管类工作",
@@ -1022,7 +1018,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 73
+      "sort_order": 72
     },
     {
       "category": "监管类工作",
@@ -1036,7 +1032,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 74
+      "sort_order": 73
     },
     {
       "category": "监管类工作",
@@ -1050,7 +1046,7 @@
       "remark": "个人申报，教师作为答辩秘书，非学生",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 75
+      "sort_order": 74
     },
     {
       "category": "监管类工作",
@@ -1064,7 +1060,7 @@
       "remark": "个人申报",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 76
+      "sort_order": 75
     },
     {
       "category": "监管类工作",
@@ -1078,7 +1074,7 @@
       "remark": "个人申报，党政联席会议确定",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 77
+      "sort_order": 76
     },
     {
       "category": "监管类工作",
@@ -1092,7 +1088,35 @@
       "remark": "个人无需申报，综合办赋分",
       "is_team": false,
       "is_department_assigned": true,
+      "sort_order": 77
+    },
+    {
+      "category": "职称附加分",
+      "subcategory": "正高职称",
+      "base_rule": "3",
+      "national_rule": "——",
+      "provincial_rule": "——",
+      "city_rule": "——",
+      "school_rule": "——",
+      "college_rule": "——",
+      "remark": "",
+      "is_team": false,
+      "is_department_assigned": false,
       "sort_order": 78
+    },
+    {
+      "category": "职称附加分",
+      "subcategory": "副高职称",
+      "base_rule": "2",
+      "national_rule": "——",
+      "provincial_rule": "——",
+      "city_rule": "——",
+      "school_rule": "——",
+      "college_rule": "——",
+      "remark": "",
+      "is_team": false,
+      "is_department_assigned": false,
+      "sort_order": 79
     },
     {
       "category": "其他有价值工作（自定义）",
@@ -1106,7 +1130,7 @@
       "remark": "用于记录现有绩效分类未覆盖但教师认为有必要申报的工作。需填写工作说明、价值说明和支撑材料，最终是否赋分以线下审核为准。",
       "is_team": false,
       "is_department_assigned": false,
-      "sort_order": 79
+      "sort_order": 80
     }
   ]
 }

@@ -13,7 +13,7 @@
         <a class="button secondary" href="/exports/{{ selected_year }}/review">
             <i data-lucide="archive-restore"></i>导出年度材料
         </a>
-        <a class="button primary" href="/achievements/new">
+        <a class="button primary" href="/achievements/new?year={{ selected_year }}">
             <i data-lucide="plus"></i>新增成果
         </a>
     </div>
@@ -128,7 +128,7 @@
         <span class="empty-icon"><i data-lucide="folder-open"></i></span>
         <h2>该年度还没有成果记录</h2>
         <p>成果和过程性工作都可以先记录，支撑材料可以稍后补充。</p>
-        <a class="button primary" href="/achievements/new"><i data-lucide="plus"></i>新增成果</a>
+        <a class="button primary" href="/achievements/new?year={{ selected_year }}"><i data-lucide="plus"></i>新增成果</a>
         {% endif %}
     </div>
 </section>

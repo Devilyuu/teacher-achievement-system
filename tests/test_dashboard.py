@@ -64,6 +64,22 @@ def test_dashboard_uses_designed_right_rail_for_year_workbench(app):
     assert 'data-lucide="clipboard-check"' in response.text
 
 
+def test_dashboard_offers_previous_year_and_carries_selected_year_to_new_record(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/?year=2025")
+
+    assert response.status_code == 200
+    assert '<option value="2025" selected>2025 年</option>' in response.text
+    assert '<option value="2026"' in response.text
+    assert 'href="/achievements/new?year=2025"' in response.text
+
+
 def test_dashboard_shows_current_year_pending_items_with_reasons(app):
     client = TestClient(app)
     client.post(

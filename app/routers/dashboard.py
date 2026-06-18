@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -15,6 +13,7 @@ from app.services.annual_submission import (
     confirm_annual_submission,
     get_annual_submission_state,
 )
+from app.services.reporting_year import available_reporting_years, current_reporting_year
 
 
 router = APIRouter()
@@ -28,7 +27,7 @@ def dashboard(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    selected_year = year or datetime.now().year
+    selected_year = year or current_reporting_year()
     base_query = db.query(Achievement).filter(
         Achievement.user_id == user.id,
         Achievement.year == selected_year,
@@ -75,9 +74,9 @@ def dashboard(
         {
             "user": user,
             "selected_year": selected_year,
-            "available_years": sorted(
-                set([selected_year, datetime.now().year, *available_years]),
-                reverse=True,
+            "available_years": available_reporting_years(
+                available_years,
+                selected_year,
             ),
             "recent_achievements": achievements[:6],
             "pending_items": pending_items,

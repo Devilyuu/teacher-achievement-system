@@ -9,10 +9,21 @@ from app.security import hash_password
 RULE_CATALOG_PATH = Path(__file__).with_name("data") / "performance_rules.json"
 
 
-def load_rule_catalog() -> list[dict]:
+def _load_catalog() -> dict:
     with RULE_CATALOG_PATH.open(encoding="utf-8") as catalog_file:
-        catalog = json.load(catalog_file)
-    return catalog["rules"]
+        return json.load(catalog_file)
+
+
+def load_rule_catalog() -> list[dict]:
+    return _load_catalog()["rules"]
+
+
+def load_deprecated_rule_keys() -> set[tuple[str, str]]:
+    catalog = _load_catalog()
+    return {
+        (rule["category"], rule["subcategory"])
+        for rule in catalog.get("deprecated_rules", [])
+    }
 
 
 INITIAL_RULES = [
@@ -64,6 +75,7 @@ def seed_initial_data() -> None:
             )
 
         catalog = load_rule_catalog()
+        deprecated_rule_keys = load_deprecated_rule_keys()
         existing_rules = db.query(PerformanceRule).all()
         existing_by_key = {
             (rule.category, rule.subcategory): rule
@@ -73,10 +85,16 @@ def seed_initial_data() -> None:
         for source_rule in catalog:
             key = (source_rule["category"], source_rule["subcategory"])
             if key in existing_by_key:
-                continue
-            target = PerformanceRule()
+                target = existing_by_key[key]
+            else:
+                target = PerformanceRule()
+                db.add(target)
             _apply_rule_values(target, source_rule)
-            db.add(target)
+
+        if deprecated_rule_keys:
+            for existing_rule in existing_rules:
+                if (existing_rule.category, existing_rule.subcategory) in deprecated_rule_keys:
+                    existing_rule.is_active = False
 
         db.commit()
     finally:

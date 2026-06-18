@@ -76,6 +76,38 @@ def test_new_achievement_form_shows_level_and_offline_review_guidance(app):
     assert "最终以线下审核认定为准" in response.text
 
 
+def test_new_achievement_form_allows_selecting_reporting_year(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/achievements/new?year=2025")
+
+    assert response.status_code == 200
+    assert '<select name="year" required>' in response.text
+    assert '<option value="2025" selected>2025 年</option>' in response.text
+    assert '<option value="2026"' in response.text
+
+
+def test_achievement_list_offers_previous_year_and_preserves_year_for_new_record(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/achievements?year=2025")
+
+    assert response.status_code == 200
+    assert '<option value="2025" selected>2025 年</option>' in response.text
+    assert '<option value="2026"' in response.text
+    assert 'href="/achievements/new?year=2025"' in response.text
+
+
 def test_achievement_detail_shows_matching_rule_and_assignment_mode(app):
     client = TestClient(app)
     client.post(

@@ -11,7 +11,7 @@
     </div>
     <div class="header-actions">
         <a class="button secondary" href="/exports/{{ selected_year }}/personal"><i data-lucide="archive-restore"></i>导出年度材料</a>
-        <a class="button primary" href="/achievements/new"><i data-lucide="plus"></i>新增成果</a>
+        <a class="button primary" href="/achievements/new?year={{ selected_year }}"><i data-lucide="plus"></i>新增成果</a>
     </div>
 </header>
 
@@ -103,7 +103,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="small-empty"><i data-lucide="folder-open"></i><p>该年度还没有成果记录</p><a class="button primary" href="/achievements/new">新增第一条成果</a></div>
+            <div class="small-empty"><i data-lucide="folder-open"></i><p>该年度还没有成果记录</p><a class="button primary" href="/achievements/new?year={{ selected_year }}">新增第一条成果</a></div>
             {% endif %}
         </section>
     </main>
