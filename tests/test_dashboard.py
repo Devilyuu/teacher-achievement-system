@@ -45,6 +45,25 @@ def test_dashboard_shows_current_year_summary_recent_record_and_export(app):
     assert "unpkg.com" not in response.text
 
 
+def test_dashboard_uses_designed_right_rail_for_year_workbench(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="dashboard-workbench"' in response.text
+    assert 'class="dashboard-side"' in response.text
+    assert 'class="panel annual-submission-panel dashboard-status-card"' in response.text
+    assert 'class="dashboard-side-metrics"' in response.text
+    assert 'class="panel category-panel dashboard-category-card"' in response.text
+    assert 'data-lucide="clipboard-check"' in response.text
+
+
 def test_dashboard_shows_current_year_pending_items_with_reasons(app):
     client = TestClient(app)
     client.post(

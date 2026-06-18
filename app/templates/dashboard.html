@@ -27,135 +27,139 @@
     <a class="text-link" href="/achievements?year={{ selected_year }}">查看全部成果<i data-lucide="arrow-right"></i></a>
 </section>
 
-<section class="panel annual-submission-panel">
-    <div class="panel-heading">
-        <div>
-            <h2>年度整理状态</h2>
-            <p>仅表示本年度材料是否整理完成，不代表线下审核通过。</p>
-        </div>
-        <span class="status status-{{ annual_state.status }}">{{ annual_state.status }}</span>
-    </div>
-    {% if submitted_success %}
-    <div class="material-upload-message success">
-        <i data-lucide="circle-check"></i>
-        <span>已确认本年度材料整理状态。</span>
-    </div>
-    {% endif %}
-    <div class="annual-submission-body">
-        <div>
-            <strong>{{ selected_year }} 年度</strong>
-            <small>
-                {% if annual_state.submitted_at %}
-                最近确认：{{ annual_state.submitted_at.strftime("%Y-%m-%d %H:%M") }}
-                {% else %}
-                尚未确认整理完成
-                {% endif %}
-                {% if stats.needs_info %} · 仍有 {{ stats.needs_info }} 条待完善{% endif %}
-            </small>
-        </div>
-        <form method="post" action="/annual-submissions/{{ selected_year }}/confirm">
-            <button class="button secondary" type="submit">
-                <i data-lucide="clipboard-check"></i>确认本年度材料已整理完成
-            </button>
-        </form>
-    </div>
-</section>
+<div class="dashboard-workbench">
+    <main class="dashboard-main">
+        <section class="stat-grid">
+            <article class="stat-item">
+                <span class="stat-icon blue"><i data-lucide="library-big"></i></span>
+                <div><span>成果记录</span><strong>{{ stats.total }}</strong><small>条</small></div>
+            </article>
+            <article class="stat-item">
+                <span class="stat-icon amber"><i data-lucide="circle-alert"></i></span>
+                <div><span>待完善</span><strong>{{ stats.needs_info }}</strong><small>条</small></div>
+            </article>
+            <article class="stat-item">
+                <span class="stat-icon violet"><i data-lucide="paperclip"></i></span>
+                <div><span>支撑材料</span><strong>{{ stats.materials }}</strong><small>份</small></div>
+            </article>
+            <article class="stat-item">
+                <span class="stat-icon green"><i data-lucide="chart-no-axes-combined"></i></span>
+                <div><span>申报积分</span><strong>{{ stats.claimed_score }}</strong><small>分</small></div>
+            </article>
+        </section>
 
-<section class="panel pending-panel">
-    <div class="panel-heading">
-        <div>
-            <h2>待处理事项</h2>
-            <p>{{ selected_year }} 年度仍需补充的信息与材料</p>
-        </div>
-        <a class="text-link" href="/achievements?year={{ selected_year }}&status={{ stats.needs_info_status }}">
-            全部 {{ pending_total }} 条<i data-lucide="arrow-right"></i>
-        </a>
-    </div>
-    {% if pending_items %}
-    <div class="pending-list">
-        {% for item in pending_items %}
-        <a class="pending-item" href="/achievements/{{ item.achievement.id }}">
-            <span class="section-icon amber"><i data-lucide="circle-alert"></i></span>
-            <span class="pending-copy">
-                <strong>{{ item.achievement.title }}</strong>
-                <small>{{ item.achievement.category }} / {{ item.achievement.subcategory }}</small>
-                <em class="pending-reasons">{{ item.reasons | join("；") }}</em>
-            </span>
-            <i data-lucide="chevron-right"></i>
-        </a>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="pending-empty">
-        <span class="section-icon green"><i data-lucide="circle-check"></i></span>
-        <div>
-            <strong>本年度暂无待处理事项</strong>
-            <small>提交前仍建议检查支撑材料与线下审核要求是否一致。</small>
-        </div>
-    </div>
-    {% endif %}
-</section>
-
-<section class="stat-grid">
-    <article class="stat-item">
-        <span class="stat-icon blue"><i data-lucide="library-big"></i></span>
-        <div><span>成果记录</span><strong>{{ stats.total }}</strong><small>条</small></div>
-    </article>
-    <article class="stat-item">
-        <span class="stat-icon amber"><i data-lucide="circle-alert"></i></span>
-        <div><span>待完善</span><strong>{{ stats.needs_info }}</strong><small>条</small></div>
-    </article>
-    <article class="stat-item">
-        <span class="stat-icon violet"><i data-lucide="paperclip"></i></span>
-        <div><span>支撑材料</span><strong>{{ stats.materials }}</strong><small>份</small></div>
-    </article>
-    <article class="stat-item">
-        <span class="stat-icon green"><i data-lucide="chart-no-axes-combined"></i></span>
-        <div><span>申报积分</span><strong>{{ stats.claimed_score }}</strong><small>分</small></div>
-    </article>
-</section>
-
-<div class="dashboard-grid">
-    <section class="panel recent-panel">
-        <div class="panel-heading">
-            <div><h2>最近成果</h2><p>按最后更新时间排列</p></div>
-            <a class="icon-button" href="/achievements?year={{ selected_year }}" title="查看全部"><i data-lucide="arrow-up-right"></i></a>
-        </div>
-        {% if recent_achievements %}
-        <div class="recent-list">
-            {% for achievement in recent_achievements %}
-            <a class="recent-item" href="/achievements/{{ achievement.id }}">
-                <span class="recent-icon"><i data-lucide="{% if achievement.claim_nature == '过程性工作' %}timer{% else %}award{% endif %}"></i></span>
-                <span class="recent-copy">
-                    <strong>{{ achievement.title }}</strong>
-                    <small>{{ achievement.category }} / {{ achievement.subcategory }}</small>
-                </span>
-                <span class="status status-{{ achievement.status }}">{{ achievement.status }}</span>
-                <i data-lucide="chevron-right"></i>
-            </a>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="small-empty"><i data-lucide="folder-open"></i><p>该年度还没有成果记录</p><a class="button primary" href="/achievements/new">新增第一条成果</a></div>
-        {% endif %}
-    </section>
-
-    <section class="panel category-panel">
-        <div class="panel-heading"><div><h2>分类分布</h2><p>当前年度已填报类别</p></div></div>
-        {% if category_counts %}
-        <div class="category-list">
-            {% for category, count in category_counts %}
-            <div class="category-item">
-                <span class="category-dot color-{{ loop.index0 % 5 }}"></span>
-                <span>{{ category }}</span>
-                <strong>{{ count }}</strong>
+        <section class="panel pending-panel">
+            <div class="panel-heading">
+                <div>
+                    <h2>待处理事项</h2>
+                    <p>{{ selected_year }} 年度仍需补充的信息与材料</p>
+                </div>
+                <a class="text-link" href="/achievements?year={{ selected_year }}&status={{ stats.needs_info_status }}">
+                    全部 {{ pending_total }} 条<i data-lucide="arrow-right"></i>
+                </a>
             </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="small-empty"><i data-lucide="chart-pie"></i><p>暂无分类数据</p></div>
-        {% endif %}
-        <p class="audit-note"><i data-lucide="shield-check"></i>页面积分为教师申报值，最终结果以线下审核为准。</p>
-    </section>
+            {% if pending_items %}
+            <div class="pending-list">
+                {% for item in pending_items %}
+                <a class="pending-item" href="/achievements/{{ item.achievement.id }}">
+                    <span class="section-icon amber"><i data-lucide="circle-alert"></i></span>
+                    <span class="pending-copy">
+                        <strong>{{ item.achievement.title }}</strong>
+                        <small>{{ item.achievement.category }} / {{ item.achievement.subcategory }}</small>
+                        <em class="pending-reasons">{{ item.reasons | join("；") }}</em>
+                    </span>
+                    <i data-lucide="chevron-right"></i>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="pending-empty">
+                <span class="section-icon green"><i data-lucide="circle-check"></i></span>
+                <div>
+                    <strong>本年度暂无待处理事项</strong>
+                    <small>提交前仍建议检查支撑材料与线下审核要求是否一致。</small>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="panel recent-panel">
+            <div class="panel-heading">
+                <div><h2>最近成果</h2><p>按最后更新时间排列</p></div>
+                <a class="icon-button" href="/achievements?year={{ selected_year }}" title="查看全部"><i data-lucide="arrow-up-right"></i></a>
+            </div>
+            {% if recent_achievements %}
+            <div class="recent-list">
+                {% for achievement in recent_achievements %}
+                <a class="recent-item" href="/achievements/{{ achievement.id }}">
+                    <span class="recent-icon"><i data-lucide="{% if achievement.claim_nature == '过程性工作' %}timer{% else %}award{% endif %}"></i></span>
+                    <span class="recent-copy">
+                        <strong>{{ achievement.title }}</strong>
+                        <small>{{ achievement.category }} / {{ achievement.subcategory }}</small>
+                    </span>
+                    <span class="status status-{{ achievement.status }}">{{ achievement.status }}</span>
+                    <i data-lucide="chevron-right"></i>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="small-empty"><i data-lucide="folder-open"></i><p>该年度还没有成果记录</p><a class="button primary" href="/achievements/new">新增第一条成果</a></div>
+            {% endif %}
+        </section>
+    </main>
+
+    <aside class="dashboard-side">
+        <section class="panel annual-submission-panel dashboard-status-card">
+            <div class="annual-status-hero">
+                <span class="annual-status-icon"><i data-lucide="clipboard-check"></i></span>
+                <div>
+                    <span class="side-kicker">{{ selected_year }} 年度整理状态</span>
+                    <strong>{{ annual_state.status }}</strong>
+                    <p>
+                        {% if annual_state.submitted_at %}
+                        最近确认：{{ annual_state.submitted_at.strftime("%Y-%m-%d %H:%M") }}
+                        {% else %}
+                        尚未确认整理完成
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="status status-{{ annual_state.status }}">{{ annual_state.status }}</span>
+            </div>
+            {% if submitted_success %}
+            <div class="material-upload-message success">
+                <i data-lucide="circle-check"></i>
+                <span>已确认本年度材料整理状态。</span>
+            </div>
+            {% endif %}
+            <div class="dashboard-side-metrics">
+                <div><span>待完善</span><strong>{{ stats.needs_info }}</strong><small>条</small></div>
+                <div><span>支撑材料</span><strong>{{ stats.materials }}</strong><small>份</small></div>
+            </div>
+            <form method="post" action="/annual-submissions/{{ selected_year }}/confirm">
+                <button class="button secondary full-width" type="submit">
+                    <i data-lucide="clipboard-check"></i>确认本年度材料已整理完成
+                </button>
+            </form>
+            <p class="side-note"><i data-lucide="info"></i>仅表示材料整理完成，不代表线下审核通过。</p>
+        </section>
+
+        <section class="panel category-panel dashboard-category-card">
+            <div class="panel-heading"><div><h2>分类分布</h2><p>当前年度已填报类别</p></div></div>
+            {% if category_counts %}
+            <div class="category-list">
+                {% for category, count in category_counts %}
+                <div class="category-item">
+                    <span class="category-dot color-{{ loop.index0 % 5 }}"></span>
+                    <span>{{ category }}</span>
+                    <strong>{{ count }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="small-empty compact-empty"><i data-lucide="chart-pie"></i><p>暂无分类数据</p></div>
+            {% endif %}
+            <p class="audit-note"><i data-lucide="shield-check"></i>页面积分为教师申报值，最终结果以线下审核为准。</p>
+        </section>
+    </aside>
 </div>
 {% endblock %}

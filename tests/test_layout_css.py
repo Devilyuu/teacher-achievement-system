@@ -13,22 +13,23 @@ BASE_TEMPLATE_PATH = (
 def test_dashboard_panels_fill_grid_and_achievement_form_uses_page_width():
     css = CSS_PATH.read_text(encoding="utf-8")
 
-    assert (
-        ".dashboard-grid > .panel { width: 100%; height: 100%; margin: 0; }"
-        in css
-    )
-    assert "align-items: stretch;" in css
+    assert ".dashboard-workbench { display: grid;" in css
+    assert "grid-template-columns: minmax(0, 1fr) 340px;" in css
+    assert ".dashboard-side { position: sticky;" in css
+    assert ".dashboard-status-card { position: relative;" in css
+    assert ".dashboard-side-metrics { display: grid;" in css
     assert (
         ".category-panel { display: flex; flex-direction: column;" in css
     )
     assert ".category-panel .audit-note { margin-top: auto; }" in css
     assert ".achievement-form { max-width: 1240px;" in css
     assert (
-        ".detail-layout, .dashboard-grid { grid-template-columns: minmax(0, 1fr); }"
+        ".detail-layout, .dashboard-workbench { grid-template-columns: minmax(0, 1fr); }"
         in css
     )
-    assert ".dashboard-grid > .panel { min-width: 0;" in css
-    assert ".pending-panel { padding: 20px; margin-bottom: 18px; }" in css
+    assert ".dashboard-main, .dashboard-side { min-width: 0; }" in css
+    assert ".dashboard-main > .panel, .dashboard-side > .panel { width: 100%;" in css
+    assert ".pending-panel { padding: 20px; margin: 0; }" in css
     assert ".pending-list { display: flex; flex-direction: column;" in css
     assert "grid-template-columns: 36px minmax(0, 1fr) 18px;" in css
     assert ".readiness-panel { padding: 20px;" in css
