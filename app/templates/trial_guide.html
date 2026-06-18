@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}试用指引{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <p class="eyebrow">COLLEGE TRIAL</p>
+        <h1>教师试用指引</h1>
+        <p class="muted">请先用 {{ reporting_year }} 年度的一条成果跑通填报、上传、导出和反馈流程。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button secondary" href="/feedback"><i data-lucide="message-square-warning"></i>提交反馈</a>
+        <a class="button primary" href="/achievements/new?year={{ reporting_year }}"><i data-lucide="square-plus"></i>开始填报</a>
+    </div>
+</header>
+
+<section class="trial-guide-hero panel">
+    <div class="trial-guide-copy">
+        <span class="section-icon blue"><i data-lucide="route"></i></span>
+        <div>
+            <h2>{{ reporting_year }} 年度试用流程</h2>
+            <p>这次试用不追求把所有历史成果一次填完，重点是确认系统能不能替你把日常成果、支撑材料和年度导出串起来。</p>
+        </div>
+    </div>
+    <div class="trial-guide-year">
+        <span>当前默认统计年度</span>
+        <strong>{{ reporting_year }}</strong>
+    </div>
+</section>
+
+<section class="trial-step-grid">
+    <article class="trial-step panel">
+        <span class="step-index">01</span>
+        <div class="step-icon blue"><i data-lucide="key-round"></i></div>
+        <h2>首次登录后改密码</h2>
+        <p>管理员分配初始账号后，第一次登录会要求设置自己的密码，后续材料只在你的账号下管理。</p>
+    </article>
+    <article class="trial-step panel">
+        <span class="step-index">02</span>
+        <div class="step-icon green"><i data-lucide="file-plus-2"></i></div>
+        <h2>新增一条真实或接近真实的成果</h2>
+        <p>选择 {{ reporting_year }} 年度、大类、小类、级别和申报性质。系统只做填报辅助，最终赋分仍按线下审核为准。</p>
+        <a class="text-link" href="/achievements/new?year={{ reporting_year }}">去新增成果 <i data-lucide="arrow-right"></i></a>
+    </article>
+    <article class="trial-step panel">
+        <span class="step-index">03</span>
+        <div class="step-icon amber"><i data-lucide="paperclip"></i></div>
+        <h2>上传至少一份支撑材料</h2>
+        <p>进入成果详情页上传证书、通知、截图或过程材料，上传后可按材料名称进行识别和整理。</p>
+    </article>
+    <article class="trial-step panel">
+        <span class="step-index">04</span>
+        <div class="step-icon purple"><i data-lucide="archive-restore"></i></div>
+        <h2>生成年度材料包</h2>
+        <p>在导出前先核对待完善项目，确认后生成年度清单和按类别整理好的支撑材料压缩包。</p>
+        <a class="text-link" href="/exports/{{ reporting_year }}/review">去导出材料 <i data-lucide="arrow-right"></i></a>
+    </article>
+</section>
+
+<section class="panel trial-note-panel">
+    <div class="section-heading">
+        <span class="section-icon indigo"><i data-lucide="messages-square"></i></span>
+        <div>
+            <h2>试用时请重点反馈</h2>
+            <p>如果卡在某一步，不用反复尝试，直接把页面和现象写清楚即可。</p>
+        </div>
+    </div>
+    <div class="trial-feedback-list">
+        <span><i data-lucide="circle-dot"></i>分类、小类或级别是否容易选择</span>
+        <span><i data-lucide="circle-dot"></i>支撑材料上传后是否能确认成功</span>
+        <span><i data-lucide="circle-dot"></i>导出的清单和压缩包是否符合提交习惯</span>
+        <span><i data-lucide="circle-dot"></i>页面文字、按钮、流程是否有让人困惑的地方</span>
+    </div>
+    <div class="form-actions">
+        <a class="button secondary" href="/achievements?year={{ reporting_year }}"><i data-lucide="library-big"></i>查看成果</a>
+        <a class="button primary" href="/feedback"><i data-lucide="send"></i>提交试用反馈</a>
+    </div>
+</section>
+{% endblock %}

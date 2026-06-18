@@ -392,6 +392,32 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
 .rule-score-panel textarea { min-height: 76px; }
 .rule-history-note { display: flex; gap: 9px; margin-top: 18px; padding: 12px; color: #5b6475; background: #fff8e8; border: 1px solid #f4e2b9; border-radius: 6px; font-size: 12px; line-height: 1.7; }
 .rule-history-note svg { flex: 0 0 auto; color: #b7791f; }
+.trial-guide-hero { display: grid; grid-template-columns: minmax(0, 1fr) 170px; align-items: center; gap: 22px; padding: 24px; overflow: hidden; background: linear-gradient(135deg, #ffffff 0%, #f3f8ff 64%, #ecfff7 100%); }
+.trial-guide-copy { display: flex; align-items: flex-start; gap: 14px; }
+.trial-guide-copy h2 { margin: 0 0 8px; color: #17233c; font-size: 22px; letter-spacing: 0; }
+.trial-guide-copy p { max-width: 720px; margin: 0; color: #667085; font-size: 13px; line-height: 1.7; }
+.trial-guide-year { justify-self: end; width: 150px; padding: 18px; text-align: center; background: rgba(255,255,255,.82); border: 1px solid #dbe8f8; border-radius: 8px; box-shadow: 0 12px 26px rgba(54, 91, 143, .08); }
+.trial-guide-year span, .trial-guide-year strong { display: block; }
+.trial-guide-year span { color: #6f7d92; font-size: 12px; }
+.trial-guide-year strong { margin-top: 7px; color: #2563eb; font-size: 34px; letter-spacing: 0; }
+.trial-step-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; max-width: 1240px; margin: 16px auto; }
+.trial-step { position: relative; min-height: 236px; padding: 22px; overflow: hidden; }
+.trial-step::after { content: ""; position: absolute; right: -28px; top: -28px; width: 96px; height: 96px; background: #f1f6ff; border-radius: 50%; }
+.step-index { position: absolute; right: 16px; top: 14px; z-index: 1; color: #d4deed; font-size: 24px; font-weight: 800; letter-spacing: 0; }
+.step-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 20px; border-radius: 8px; }
+.step-icon svg { width: 21px; height: 21px; }
+.step-icon.blue { color: #2563eb; background: #eaf2ff; }
+.step-icon.green { color: #0a9b70; background: #e7f8f1; }
+.step-icon.amber { color: #b7791f; background: #fff6df; }
+.step-icon.purple { color: #7c3aed; background: #f1ecff; }
+.trial-step h2 { margin: 0 0 10px; color: #1f2d46; font-size: 16px; letter-spacing: 0; }
+.trial-step p { margin: 0; color: #667085; font-size: 12px; line-height: 1.75; }
+.text-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 14px; color: #2563eb; font-size: 12px; font-weight: 700; }
+.text-link svg { width: 14px; height: 14px; }
+.trial-note-panel { padding: 24px; }
+.trial-feedback-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 18px 0; }
+.trial-feedback-list span { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 10px 12px; color: #536074; background: #f8fbff; border: 1px solid #e5edf7; border-radius: 7px; font-size: 12px; line-height: 1.5; }
+.trial-feedback-list svg { flex: 0 0 auto; width: 14px; color: #2563eb; }
 
 @media (max-width: 900px) {
     .sidebar { width: 72px; padding-inline: 10px; }.brand span:last-child, .side-nav span, .nav-label, .user-copy { display: none; }
@@ -408,6 +434,9 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .achievement-filter-form { grid-template-columns: 1fr 1fr; }
     .achievement-keyword { grid-column: 1 / -1; }
     .backup-content-list { grid-template-columns: 1fr; }
+    .trial-guide-hero { grid-template-columns: 1fr; }
+    .trial-guide-year { justify-self: stretch; width: auto; }
+    .trial-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .export-record { grid-template-columns: minmax(180px, .8fr) minmax(280px, 1.2fr) auto; }
     .export-file-state { grid-column: 2; }
     .export-actions { grid-column: 3; grid-row: 1 / span 2; flex-direction: column; align-items: stretch; }
@@ -438,4 +467,5 @@ input:focus, select:focus, textarea:focus { border-color: #6b9df4; box-shadow: 0
     .export-actions { flex-direction: row; justify-content: flex-start; flex-wrap: wrap; }
     .export-actions .button { flex: 1 1 180px; }
     .rule-filter-form { grid-template-columns: 1fr; }
+    .trial-step-grid, .trial-feedback-list { grid-template-columns: 1fr; }
 }
