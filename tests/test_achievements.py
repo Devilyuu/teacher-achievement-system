@@ -77,6 +77,27 @@ def test_new_achievement_form_shows_level_and_offline_review_guidance(app):
     assert "最终以线下审核认定为准" in response.text
 
 
+def test_new_achievement_form_shows_base_and_performance_score_inputs(app):
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    response = client.get("/achievements/new")
+
+    assert response.status_code == 200
+    assert "<span>基本分</span>" in response.text
+    assert 'type="number" step="0.01" min="0" name="base_score"' in response.text
+    assert "<span>绩效分</span>" in response.text
+    assert 'type="number" step="0.01" min="0" name="performance_score"' in response.text
+    assert "基本分规则" in response.text
+    assert "绩效分规则" in response.text
+    assert 'id="base-rule-text"' in response.text
+    assert 'id="performance-rule-text"' in response.text
+
+
 def test_new_achievement_form_allows_selecting_reporting_year(app):
     client = TestClient(app)
     client.post(

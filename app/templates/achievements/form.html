@@ -74,11 +74,17 @@
                 <input name="personal_role" value="{{ achievement.personal_role if achievement else '' }}" placeholder="例如：负责人、团队成员">
             </label>
             <label>
-                <span>申报积分</span>
+                <span>基本分</span>
+                <input type="number" step="0.01" min="0" name="base_score" value="{{ achievement.base_score if achievement else 0 }}">
+            </label>
+            <label>
+                <span>绩效分</span>
+                <input type="number" step="0.01" min="0" name="performance_score" value="{{ achievement.performance_score if achievement else 0 }}">
+            </label>
+            <label>
+                <span>申报积分（合计）</span>
                 <input type="number" step="0.01" min="0" name="claimed_score" value="{{ achievement.claimed_score if achievement else 0 }}">
             </label>
-            <input type="hidden" name="base_score" value="{{ achievement.base_score if achievement else 0 }}">
-            <input type="hidden" name="performance_score" value="{{ achievement.performance_score if achievement else 0 }}">
             <label class="span-2">
                 <span>当前进展或价值说明</span>
                 <textarea name="current_stage" rows="4" placeholder="过程性工作请说明当前阶段、已完成内容及后续计划">{{ achievement.current_stage if achievement else '' }}</textarea>
@@ -98,6 +104,8 @@
         <div class="guidance-grid">
             <div><span>对应规则</span><strong id="rule-text">请选择大类、小类和级别</strong></div>
             <div><span>赋分方式</span><strong id="assignment-text">个人申报</strong></div>
+            <div><span>基本分规则</span><strong id="base-rule-text">请选择大类和小类</strong></div>
+            <div><span>绩效分规则</span><strong id="performance-rule-text">请选择大类和小类</strong></div>
             <div class="span-2"><span>补充说明</span><p id="remark-text">系统仅提供申报参考，级别和积分最终以线下审核认定为准。</p></div>
         </div>
     </section>
@@ -149,8 +157,17 @@
     function updateGuidance() {
         const rule = rules.find((item) => item.category === categorySelect.value && item.subcategory === subcategorySelect.value);
         const fields = {"国家级": "national_rule", "省级": "provincial_rule", "市级": "city_rule", "校级": "school_rule", "学院级": "college_rule"};
-        const levelRule = rule ? (rule[fields[levelSelect.value]] || rule.base_rule || "未设置明确分值") : "请选择大类和小类";
-        document.getElementById("rule-text").textContent = levelRule;
+        const baseRule = rule ? (rule.base_rule || "未设置基本分") : "请选择大类和小类";
+        const levelRule = rule ? (rule[fields[levelSelect.value]] || "该级别未设置绩效分") : "请选择大类和小类";
+        const performanceRules = rule
+            ? Object.entries(fields)
+                .map(([level, field]) => rule[field] ? `${level}：${rule[field]}` : "")
+                .filter(Boolean)
+                .join("；") || "未设置分级绩效分"
+            : "请选择大类和小类";
+        document.getElementById("rule-text").textContent = rule ? `基本分：${baseRule}；当前级别绩效分：${levelRule}` : "请选择大类、小类和级别";
+        document.getElementById("base-rule-text").textContent = baseRule;
+        document.getElementById("performance-rule-text").textContent = performanceRules;
         document.getElementById("assignment-text").textContent = assignmentMode(rule);
         document.getElementById("remark-text").textContent = (rule && rule.remark) || "系统仅提供申报参考，级别和积分最终以线下审核认定为准。";
     }

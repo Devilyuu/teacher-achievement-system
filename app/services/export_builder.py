@@ -31,6 +31,8 @@ APPLICATION_HEADERS = [
     "申报级别",
     "审核认定级别",
     "本人角色",
+    "基本分",
+    "绩效分",
     "赋分方式",
     "申报积分",
     "最终认定积分",
@@ -61,7 +63,7 @@ def build_personal_export(db: Session, user: User, year: int) -> Path:
     catalog_path = export_dir / "04_材料目录.xlsx"
     zip_path = export_dir / f"{year}年度绩效申报材料_{user.full_name}.zip"
 
-    achievements = (
+    achievements = sort_achievements_for_export(
         db.query(Achievement)
         .filter(Achievement.user_id == user.id, Achievement.year == year)
         .order_by(Achievement.id)
@@ -79,6 +81,24 @@ def build_personal_export(db: Session, user: User, year: int) -> Path:
     _write_material_catalog(catalog_path, achievements)
     _write_zip(zip_path, application_path, catalog_path, achievements, user, year)
     return zip_path
+
+
+def sort_achievements_for_export(achievements: list[Achievement]) -> list[Achievement]:
+    return sorted(achievements, key=_achievement_sort_key)
+
+
+def _achievement_sort_key(achievement: Achievement) -> tuple[int, str, str, int]:
+    category_index = (
+        CATEGORY_ORDER.index(achievement.category)
+        if achievement.category in CATEGORY_ORDER
+        else len(CATEGORY_ORDER)
+    )
+    return (
+        category_index,
+        achievement.subcategory or "",
+        achievement.title or "",
+        achievement.id or 0,
+    )
 
 
 def _write_application_workbook(
@@ -106,6 +126,8 @@ def _write_application_workbook(
                 achievement.level,
                 "",
                 achievement.personal_role,
+                achievement.base_score,
+                achievement.performance_score,
                 assignment_mode(
                     rule_lookup.get((achievement.category, achievement.subcategory))
                 ),

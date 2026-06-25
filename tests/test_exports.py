@@ -39,6 +39,8 @@ APPLICATION_HEADERS = [
     "申报级别",
     "审核认定级别",
     "本人角色",
+    "基本分",
+    "绩效分",
     "赋分方式",
     "申报积分",
     "最终认定积分",
@@ -133,6 +135,21 @@ def _headers_from_zip(zip_path: Path, workbook_name: str, sheet_name: str) -> li
     return [cell.value for cell in sheet[1]]
 
 
+def _sheet_rows_from_zip(
+    zip_path: Path,
+    workbook_name: str,
+    sheet_name: str,
+) -> list[list[object]]:
+    with ZipFile(zip_path) as archive:
+        workbook_bytes = BytesIO(archive.read(workbook_name))
+    workbook = load_workbook(workbook_bytes)
+    sheet = workbook[sheet_name]
+    return [
+        [cell.value for cell in row]
+        for row in sheet.iter_rows(min_row=2)
+    ]
+
+
 def test_build_personal_export_creates_zip_workbooks_and_category_materials(app, tmp_path):
     year = 2026
     standard_source = tmp_path / "standard-proof.pdf"
@@ -210,6 +227,73 @@ def test_build_personal_export_creates_zip_workbooks_and_category_materials(app,
     )
     assert _headers_from_zip(zip_path, "01_个人项目申报表.xlsx", "个人项目申报表") == APPLICATION_HEADERS
     assert _headers_from_zip(zip_path, "04_材料目录.xlsx", "材料目录") == CATALOG_HEADERS
+
+
+def test_personal_export_orders_records_and_materials_by_category_order(app, tmp_path):
+    year = 2026
+    teacher_source = tmp_path / "teacher-development.pdf"
+    teaching_source = tmp_path / "teaching.pdf"
+    custom_source = tmp_path / "custom.pdf"
+    teacher_source.write_bytes(b"teacher development proof")
+    teaching_source.write_bytes(b"teaching proof")
+    custom_source.write_bytes(b"custom proof")
+
+    db = SessionLocal()
+    try:
+        user = _create_user(db, f"export-category-order-{uuid4().hex}")
+        custom = _add_achievement_with_material(
+            db,
+            user,
+            year,
+            "其他有价值工作（自定义）",
+            "自定义工作事项",
+            custom_source,
+            "3-1",
+        )
+        custom.title = "第三顺序成果"
+        teaching = _add_achievement_with_material(
+            db,
+            user,
+            year,
+            "教学",
+            "教学成果奖申报及获奖",
+            teaching_source,
+            "2-1",
+        )
+        teaching.title = "第二顺序成果"
+        teacher_development = _add_achievement_with_material(
+            db,
+            user,
+            year,
+            "教师发展",
+            "教师参加其他比赛\n（学院鼓励的 且备案的比赛）",
+            teacher_source,
+            "1-1",
+        )
+        teacher_development.title = "第一顺序成果"
+        db.commit()
+
+        zip_path = build_personal_export(db, user, year)
+    finally:
+        db.close()
+
+    rows = _sheet_rows_from_zip(zip_path, "01_个人项目申报表.xlsx", "个人项目申报表")
+    assert [row[4] for row in rows] == [
+        "第一顺序成果",
+        "第二顺序成果",
+        "第三顺序成果",
+    ]
+
+    with ZipFile(zip_path) as archive:
+        material_names = [
+            name
+            for name in archive.namelist()
+            if name.startswith("05_支撑材料/")
+        ]
+
+    assert "02_教师发展" in material_names[0]
+    assert "03_教学" in material_names[1]
+    assert "10_其他有价值工作（自定义）" in material_names[2]
 
 
 def test_export_route_requires_auth_and_authenticated_user_can_download(app, tmp_path):
