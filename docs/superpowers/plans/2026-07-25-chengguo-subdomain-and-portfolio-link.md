@@ -78,7 +78,7 @@ server {
     listen [::]:80;
     server_name chengguo.youpulab.com;
 
-    client_max_body_size 60m;
+    client_max_body_size 512m;
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/youpulab;
@@ -86,17 +86,12 @@ server {
     }
 
     location / {
-        proxy_pass http://127.0.0.1:8001;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 300;
-        proxy_send_timeout 300;
+        return 404;
     }
 }
 ```
+
+The bootstrap host exposes only the ACME challenge path. Every other HTTP request returns `404`, so the application is not served over HTTP before the certificate is installed.
 
 - [ ] **Step 2: Create the final HTTPS config**
 
@@ -108,13 +103,15 @@ server {
     listen [::]:80;
     server_name chengguo.youpulab.com;
 
+    client_max_body_size 512m;
+
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/youpulab;
         default_type "text/plain";
     }
 
     location / {
-        return 301 https://$host$request_uri;
+        return 301 https://chengguo.youpulab.com$request_uri;
     }
 }
 
@@ -128,12 +125,23 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    client_max_body_size 60m;
+    client_max_body_size 512m;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
 
     location /static/ {
         alias /opt/teacher-achievement-system/app/static/;
         expires 7d;
         add_header Cache-Control "public";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
     }
 
     location / {
@@ -143,14 +151,13 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 300;
-        proxy_send_timeout 300;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
     }
-
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 }
 ```
+
+The 512 MB Nginx limit applies to the aggregate request body so multi-file submissions can pass through. The application-level limit remains 50 MB per file.
 
 - [ ] **Step 3: Inspect the tracked configs**
 
@@ -160,7 +167,7 @@ Run:
 rg -n "server_name|proxy_pass|ssl_certificate|client_max_body_size" deploy/nginx
 ```
 
-Expected: both configs target only `chengguo.youpulab.com`, proxy to port 8001, and the final config references the dedicated certificate.
+Expected: both configs target only `chengguo.youpulab.com`, only the final config proxies to port 8001, and the final config references the dedicated certificate.
 
 - [ ] **Step 4: Commit the infrastructure templates**
 
@@ -186,7 +193,7 @@ ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.22
 
 Expected: `nginx -t` reports successful syntax and configuration.
 
-- [ ] **Step 2: Verify HTTP reaches the existing application**
+- [ ] **Step 2: Verify bootstrap HTTP exposes only ACME**
 
 Run:
 
@@ -194,7 +201,7 @@ Run:
 curl.exe -I http://chengguo.youpulab.com/login
 ```
 
-Expected: an HTTP response from Nginx and the FastAPI application, not the YoupuLab static site.
+Expected: Nginx returns `404`; the FastAPI application is not exposed through the bootstrap HTTP host.
 
 - [ ] **Step 3: Request the certificate**
 

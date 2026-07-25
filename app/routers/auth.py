@@ -51,6 +51,7 @@ def login(
     response.set_cookie(
         "user_id",
         create_auth_cookie(user.id),
+        secure=request.url.scheme == "https",
         httponly=True,
         samesite="lax",
     )
@@ -101,7 +102,12 @@ def change_password(
 
 
 @router.get("/logout")
-def logout():
+def logout(request: Request):
     response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
-    response.delete_cookie("user_id")
+    response.delete_cookie(
+        "user_id",
+        secure=request.url.scheme == "https",
+        httponly=True,
+        samesite="lax",
+    )
     return response

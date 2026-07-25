@@ -49,6 +49,28 @@ def test_valid_admin_login_redirects_and_sets_cookie(app):
     assert cookie_value
     assert cookie_value != "1"
     assert "httponly" in response.headers["set-cookie"].lower()
+    cookie_attributes = {
+        attribute.strip().lower()
+        for attribute in response.headers["set-cookie"].split(";")[1:]
+    }
+    assert "secure" not in cookie_attributes
+
+
+def test_https_login_sets_secure_cookie(app):
+    client = TestClient(app)
+
+    response = client.post(
+        "https://testserver/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    cookie_attributes = {
+        attribute.strip().lower()
+        for attribute in response.headers["set-cookie"].split(";")[1:]
+    }
+    assert "secure" in cookie_attributes
 
 
 def test_raw_user_id_cookie_is_rejected(app):
@@ -97,6 +119,28 @@ def test_logout_clears_cookie(app):
     assert response.status_code == 303
     assert response.headers["location"] == "/login"
     assert "user_id" not in client.cookies
+    cookie_attributes = {
+        attribute.strip().lower()
+        for attribute in response.headers["set-cookie"].split(";")[1:]
+    }
+    assert "httponly" in cookie_attributes
+    assert "samesite=lax" in cookie_attributes
+    assert "secure" not in cookie_attributes
+
+
+def test_https_logout_clears_cookie_with_secure_attribute(app):
+    client = TestClient(app)
+
+    response = client.get("https://testserver/logout", follow_redirects=False)
+
+    assert response.status_code == 303
+    cookie_attributes = {
+        attribute.strip().lower()
+        for attribute in response.headers["set-cookie"].split(";")[1:]
+    }
+    assert "httponly" in cookie_attributes
+    assert "samesite=lax" in cookie_attributes
+    assert "secure" in cookie_attributes
 
 
 def test_user_marked_for_password_change_is_redirected_after_login(app):

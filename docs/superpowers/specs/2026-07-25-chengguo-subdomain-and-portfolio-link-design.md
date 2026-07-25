@@ -38,10 +38,10 @@
 
 新增独立 Nginx 站点，仅匹配 `chengguo.youpulab.com`：
 
-- HTTP 端口用于证书校验，并在证书签发后跳转 HTTPS。
+- 证书引导阶段的 HTTP 站点仅暴露 `/.well-known/acme-challenge/`，其他路径返回 `404`，不通过 HTTP 暴露应用；证书签发后的最终 HTTP 站点仅保留 ACME 校验并将其他请求跳转到 HTTPS。
 - HTTPS 请求反向代理到 `127.0.0.1:8001`。
 - 转发 `Host`、客户端 IP、`X-Forwarded-For` 和 `X-Forwarded-Proto`。
-- 上传大小保持 60 MB，满足现有支撑材料上传限制。
+- Nginx 聚合请求体上限设置为 512 MB，允许一次提交多个有效文件；应用层单文件 50 MB 上限保持不变。
 - 代理读写超时保持 300 秒，兼容年度导出和材料打包。
 
 使用 Certbot 为 `chengguo.youpulab.com` 申请独立证书，并纳入现有自动续期机制。变更前后均执行 Nginx 配置检查。
