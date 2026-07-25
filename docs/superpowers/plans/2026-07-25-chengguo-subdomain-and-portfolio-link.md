@@ -30,7 +30,7 @@ Server:
 
 ### Task 1: Establish DNS
 
-- [ ] **Step 1: Add the DNSPod record**
+- [x] **Step 1: Add the DNSPod record**
 
 Create this DNS record in the `youpulab.com` zone:
 
@@ -41,7 +41,7 @@ Value: 124.221.239.254
 TTL: 600
 ```
 
-- [ ] **Step 2: Verify public resolution**
+- [x] **Step 2: Verify public resolution**
 
 Run:
 
@@ -51,7 +51,7 @@ Resolve-DnsName chengguo.youpulab.com -Type A
 
 Expected: an A record whose `IPAddress` is `124.221.239.254`.
 
-- [ ] **Step 3: Verify no existing conflicting server block**
+- [x] **Step 3: Verify no existing conflicting server block**
 
 Run:
 
@@ -68,7 +68,7 @@ Expected before rollout: no matching active server block.
 - Create: `deploy/nginx/chengguo-http.conf`
 - Create: `deploy/nginx/chengguo.youpulab.com.conf`
 
-- [ ] **Step 1: Create the certificate bootstrap config**
+- [x] **Step 1: Create the certificate bootstrap config**
 
 Create `deploy/nginx/chengguo-http.conf`:
 
@@ -91,7 +91,7 @@ server {
 
 The bootstrap host exposes only the ACME challenge path. Every other HTTP request returns `404`, so the application is not served over HTTP before the certificate is installed.
 
-- [ ] **Step 2: Create the final HTTPS config**
+- [x] **Step 2: Create the final HTTPS config**
 
 Create `deploy/nginx/chengguo.youpulab.com.conf`:
 
@@ -167,7 +167,7 @@ server {
 
 The application accepts at most 10 files per batch, with a 50 MB per-file limit and a 500 MB aggregate limit. Nginx allows 512 MB only on the exact `/materials/upload` route to leave room for multipart overhead; replacement uploads and every other HTTPS route use the 64 MB default.
 
-- [ ] **Step 3: Inspect the tracked configs**
+- [x] **Step 3: Inspect the tracked configs**
 
 Run:
 
@@ -177,7 +177,7 @@ rg -n "server_name|proxy_pass|ssl_certificate|client_max_body_size" deploy/nginx
 
 Expected: both configs target only `chengguo.youpulab.com`, only the final config proxies to port 8001, and the final config references the dedicated certificate.
 
-- [ ] **Step 4: Commit the infrastructure templates**
+- [x] **Step 4: Commit the infrastructure templates**
 
 Run:
 
@@ -190,7 +190,7 @@ Expected: one commit containing only the two Nginx templates.
 
 ### Task 3: Publish the Subdomain and Certificate
 
-- [ ] **Step 1: Upload and enable the bootstrap config**
+- [x] **Step 1: Upload and enable the bootstrap config**
 
 Run from the teacher achievement repository:
 
@@ -201,17 +201,17 @@ ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.22
 
 Expected: `nginx -t` reports successful syntax and configuration.
 
-- [ ] **Step 2: Verify bootstrap HTTP exposes only ACME**
+- [x] **Step 2: Verify bootstrap HTTP exposes only ACME**
 
 Run:
 
 ```powershell
-curl.exe -I http://chengguo.youpulab.com/login
+curl.exe -sS -o NUL -w "%{http_code}`n" http://chengguo.youpulab.com/login
 ```
 
 Expected: Nginx returns `404`; the FastAPI application is not exposed through the bootstrap HTTP host.
 
-- [ ] **Step 3: Request the certificate**
+- [x] **Step 3: Request the certificate**
 
 Run:
 
@@ -221,7 +221,7 @@ ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.22
 
 Expected: Certbot reports a valid certificate stored under `/etc/letsencrypt/live/chengguo.youpulab.com/`.
 
-- [ ] **Step 4: Upload and enable the final HTTPS config**
+- [x] **Step 4: Upload and enable the final HTTPS config**
 
 Run:
 
@@ -232,7 +232,7 @@ ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.22
 
 Expected: Nginx reload succeeds without restarting the FastAPI application.
 
-- [ ] **Step 5: Verify certificate renewal configuration**
+- [x] **Step 5: Verify certificate renewal configuration**
 
 Run:
 
@@ -244,13 +244,13 @@ Expected: the dry run succeeds for the YoupuLab and Chengguo certificates.
 
 ### Task 4: Validate the Achievement System Through HTTPS
 
-- [ ] **Step 1: Verify redirect and health**
+- [x] **Step 1: Verify redirect and health**
 
 Run:
 
 ```powershell
-curl.exe -I http://chengguo.youpulab.com/
-curl.exe -I https://chengguo.youpulab.com/login
+curl.exe -sS -o NUL -w "%{http_code} %{redirect_url}`n" http://chengguo.youpulab.com/
+curl.exe -sS -o NUL -w "%{http_code}`n" https://chengguo.youpulab.com/login
 curl.exe https://chengguo.youpulab.com/health
 ```
 
@@ -273,16 +273,33 @@ Export history loads
 Logout returns to /login on the same hostname
 ```
 
-- [ ] **Step 3: Verify existing routes remain available**
+- [x] **Step 3: Verify existing routes remain available**
 
 Run:
 
 ```powershell
-curl.exe -I https://www.youpulab.com/
-curl.exe -I http://124.221.239.254/login
+curl.exe -sS -o NUL -w "%{http_code}`n" https://www.youpulab.com/
+curl.exe -sS -o NUL -w "%{http_code} %{redirect_url}`n" http://124.221.239.254/login
 ```
 
-Expected: YoupuLab remains `200`; direct IP access still reaches the achievement system during the transition.
+Expected: YoupuLab remains `200`; direct IP access redirects to the HTTPS achievement-system hostname.
+
+- [x] **Step 4: Harden the public upload route and legacy IP entry**
+
+Tracked deployment files:
+
+```text
+deploy/nginx/chengguo-upload-limits.conf
+deploy/nginx/default-server.conf
+deploy/nginx/chengguo.youpulab.com.conf
+```
+
+Expected:
+
+- The legacy IP login route redirects to `https://chengguo.youpulab.com`.
+- The existing `/design/` application remains available.
+- Upload requests are streamed to the application instead of buffered to disk.
+- Per-IP upload concurrency and request frequency are limited, with rejected requests returning `429`.
 
 ### Task 5: Link YoupuLab to the Live Application
 
@@ -290,7 +307,7 @@ Expected: YoupuLab remains `200`; direct IP access still reaches the achievement
 
 - Modify: `C:\Users\lenovo\Desktop\youpulab\src\data\works.json`
 
-- [ ] **Step 1: Clone and verify the website repository**
+- [x] **Step 1: Clone and verify the website repository**
 
 Run:
 
@@ -301,7 +318,7 @@ git -C C:\Users\lenovo\Desktop\youpulab status --short
 
 Expected: the private repository clones successfully and the worktree is clean.
 
-- [ ] **Step 2: Update the shared work record**
+- [x] **Step 2: Update the shared work record**
 
 Change only the `teacher-stats` entry:
 
@@ -322,7 +339,7 @@ Change only the `teacher-stats` entry:
 }
 ```
 
-- [ ] **Step 3: Install and build**
+- [x] **Step 3: Install and build**
 
 Run:
 
@@ -335,7 +352,7 @@ Working directory: `C:\Users\lenovo\Desktop\youpulab`
 
 Expected: Astro build succeeds with no errors.
 
-- [ ] **Step 4: Verify both generated entry points**
+- [x] **Step 4: Verify both generated entry points**
 
 Run:
 
@@ -345,7 +362,7 @@ rg -n "chengguo\.youpulab\.com|已上线|在线体验" dist/index.html dist/work
 
 Expected: both files contain the public URL and live presentation.
 
-- [ ] **Step 5: Commit and push the website**
+- [x] **Step 5: Commit and push the website**
 
 Run:
 
@@ -359,7 +376,7 @@ Expected: the push succeeds and starts the existing GitHub Actions deployment wo
 
 ### Task 6: Final Production Verification
 
-- [ ] **Step 1: Check the YoupuLab deployment workflow**
+- [x] **Step 1: Check the YoupuLab deployment workflow**
 
 Run:
 
@@ -369,7 +386,7 @@ gh run list --repo Devilyuu/youpulab --workflow deploy.yml --limit 1
 
 Expected: the most recent workflow for the website commit completes successfully.
 
-- [ ] **Step 2: Verify the production pages**
+- [x] **Step 2: Verify the production pages**
 
 Open:
 
@@ -384,13 +401,13 @@ Expected on both pages:
 - The action reads “在线体验”.
 - The link target is `https://chengguo.youpulab.com`.
 
-- [ ] **Step 3: Verify the complete navigation**
+- [x] **Step 3: Verify the complete navigation**
 
 Click “在线体验” from each page.
 
 Expected: a new tab opens the HTTPS teacher achievement login page with a valid certificate.
 
-- [ ] **Step 4: Run regression checks**
+- [x] **Step 4: Run regression checks**
 
 Run in the teacher achievement repository:
 
