@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.config import MAX_BATCH_UPLOAD_FILES, MAX_BATCH_UPLOAD_MB
 from app.database import get_db
 from app.models import Achievement, Material, User
 from app.security import get_current_user
@@ -73,6 +74,22 @@ def upload_material(
     db: Session = Depends(get_db),
 ):
     achievement = _achievement_for_user(db, achievement_id, user)
+    if len(files) > MAX_BATCH_UPLOAD_FILES:
+        query = urlencode(
+            {
+                "uploaded": 0,
+                "failed": len(files),
+                "errors": (
+                    f"单次批量上传最多支持 {MAX_BATCH_UPLOAD_FILES} 个文件，"
+                    f"总大小不超过 {MAX_BATCH_UPLOAD_MB}MB"
+                ),
+            }
+        )
+        return RedirectResponse(
+            f"/achievements/{achievement.id}?{query}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     next_index = _next_material_index(achievement)
     saved_paths: list[str] = []
     uploaded_count = 0

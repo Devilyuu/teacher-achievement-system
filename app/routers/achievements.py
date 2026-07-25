@@ -5,7 +5,12 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.config import BASE_DIR, MAX_UPLOAD_MB
+from app.config import (
+    BASE_DIR,
+    MAX_BATCH_UPLOAD_FILES,
+    MAX_BATCH_UPLOAD_MB,
+    MAX_UPLOAD_MB,
+)
 from app.database import get_db
 from app.models import (
     Achievement,
@@ -304,6 +309,8 @@ def achievement_detail(
             "level_rule": rule_for_level(rule, achievement.level),
             "assignment_mode": assignment_mode(rule),
             "max_upload_mb": MAX_UPLOAD_MB,
+            "max_batch_upload_files": MAX_BATCH_UPLOAD_FILES,
+            "max_batch_upload_mb": MAX_BATCH_UPLOAD_MB,
             "preview_extensions": PREVIEW_EXTENSIONS,
             "readiness_reasons": missing_reasons(achievement),
         },

@@ -217,6 +217,55 @@ def test_authenticated_user_can_upload_multiple_materials_with_filename_names(ap
         db.close()
 
 
+def test_batch_upload_rejects_more_than_ten_files_without_storing_anything(app):
+    client = TestClient(app)
+    _login_admin(client)
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter_by(username="admin").one()
+        achievement = _complete_process_achievement(admin.id, "Oversized batch")
+        db.add(achievement)
+        db.commit()
+        admin_id = admin.id
+        achievement_id = achievement.id
+    finally:
+        db.close()
+
+    upload_dir = UPLOAD_DIR / "2026" / str(admin_id) / str(achievement_id)
+    existing_paths = set(upload_dir.iterdir()) if upload_dir.exists() else set()
+
+    response = client.post(
+        "/materials/upload",
+        data={"achievement_id": str(achievement_id)},
+        files=[
+            (
+                "file",
+                (f"proof-{index}.pdf", BytesIO(b"valid"), "application/pdf"),
+            )
+            for index in range(11)
+        ],
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith(f"/achievements/{achievement_id}")
+    assert "uploaded=0" in response.headers["location"]
+    assert "failed=11" in response.headers["location"]
+
+    detail_response = client.get(response.headers["location"])
+    assert "单次批量上传最多支持 10 个文件，总大小不超过 500MB" in detail_response.text
+
+    db = SessionLocal()
+    try:
+        assert db.query(Material).filter_by(achievement_id=achievement_id).count() == 0
+    finally:
+        db.close()
+
+    current_paths = set(upload_dir.iterdir()) if upload_dir.exists() else set()
+    assert current_paths == existing_paths
+
+
 def test_batch_upload_keeps_valid_files_and_reports_invalid_files(app):
     client = TestClient(app)
     _login_admin(client)
@@ -533,8 +582,9 @@ def test_material_detail_shows_batch_upload_controls_and_results(app):
 
     assert response.status_code == 200
     assert 'input type="file" name="file" multiple required' in response.text
-    assert "可一次选择多份文件" in response.text
-    assert "单个文件不超过 50MB" in response.text
+    assert "单次最多上传 10 个文件" in response.text
+    assert "每个文件不超过 50MB" in response.text
+    assert "总大小不超过 500MB" in response.text
     assert "已上传 2 份材料" in response.text
     assert "1 份材料上传失败" in response.text
     assert "bad.exe：Unsupported" in response.text

@@ -131,9 +131,19 @@ def test_logout_clears_cookie(app):
 def test_https_logout_clears_cookie_with_secure_attribute(app):
     client = TestClient(app)
 
+    login_response = client.post(
+        "https://testserver/login",
+        data={"username": "admin", "password": "admin123456"},
+        follow_redirects=False,
+    )
+
+    assert login_response.status_code == 303
+    assert client.cookies.get("user_id")
+
     response = client.get("https://testserver/logout", follow_redirects=False)
 
     assert response.status_code == 303
+    assert "user_id" not in client.cookies
     cookie_attributes = {
         attribute.strip().lower()
         for attribute in response.headers["set-cookie"].split(";")[1:]
@@ -141,6 +151,13 @@ def test_https_logout_clears_cookie_with_secure_attribute(app):
     assert "httponly" in cookie_attributes
     assert "samesite=lax" in cookie_attributes
     assert "secure" in cookie_attributes
+
+    protected_response = client.get(
+        "https://testserver/admin/users",
+        follow_redirects=False,
+    )
+    assert protected_response.status_code == 303
+    assert protected_response.headers["location"] == "/login"
 
 
 def test_user_marked_for_password_change_is_redirected_after_login(app):

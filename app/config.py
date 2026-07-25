@@ -13,6 +13,8 @@ SECRET_KEY = os.environ.get(
     "change-this-local-dev-secret",
 )
 MAX_UPLOAD_MB = 50
+MAX_BATCH_UPLOAD_FILES = 10
+MAX_BATCH_UPLOAD_MB = MAX_UPLOAD_MB * MAX_BATCH_UPLOAD_FILES
 ALLOWED_EXTENSIONS = {
     ".pdf",
     ".doc",

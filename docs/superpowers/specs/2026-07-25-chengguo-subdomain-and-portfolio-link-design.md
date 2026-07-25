@@ -41,7 +41,8 @@
 - 证书引导阶段的 HTTP 站点仅暴露 `/.well-known/acme-challenge/`，其他路径返回 `404`，不通过 HTTP 暴露应用；证书签发后的最终 HTTP 站点仅保留 ACME 校验并将其他请求跳转到 HTTPS。
 - HTTPS 请求反向代理到 `127.0.0.1:8001`。
 - 转发 `Host`、客户端 IP、`X-Forwarded-For` 和 `X-Forwarded-Proto`。
-- Nginx 聚合请求体上限设置为 512 MB，允许一次提交多个有效文件；应用层单文件 50 MB 上限保持不变。
+- 应用层单次批量上传最多 10 个文件，单文件不超过 50 MB，总大小不超过 500 MB。
+- Nginx 默认请求体上限为 64 MB，仅精确路径 `/materials/upload` 放宽到 512 MB，为 500 MB 批量上限预留 multipart 开销；材料替换和其他路由继续使用 64 MB 默认值。
 - 代理读写超时保持 300 秒，兼容年度导出和材料打包。
 
 使用 Certbot 为 `chengguo.youpulab.com` 申请独立证书，并纳入现有自动续期机制。变更前后均执行 Nginx 配置检查。

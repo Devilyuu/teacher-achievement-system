@@ -147,7 +147,7 @@
                 <input type="hidden" name="achievement_id" value="{{ achievement.id }}">
                 <label><span>材料说明</span><input type="text" name="description" placeholder="可选，同批文件共用"></label>
                 <label class="file-field"><span>选择文件</span><input type="file" name="file" multiple required></label>
-                <p class="upload-help"><i data-lucide="info"></i>可一次选择多份文件；材料名称将自动取文件名。支持 PDF、Word、Excel、图片和压缩包，单个文件不超过 {{ max_upload_mb }}MB。</p>
+                <p class="upload-help"><i data-lucide="info"></i>单次最多上传 {{ max_batch_upload_files }} 个文件，每个文件不超过 {{ max_upload_mb }}MB，总大小不超过 {{ max_batch_upload_mb }}MB。材料名称将自动取文件名，支持 PDF、Word、Excel、图片和压缩包。</p>
                 <button class="button secondary" type="submit"><i data-lucide="upload"></i>上传材料</button>
             </form>
         </section>

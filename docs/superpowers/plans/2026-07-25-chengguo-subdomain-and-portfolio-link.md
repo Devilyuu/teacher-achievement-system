@@ -78,8 +78,6 @@ server {
     listen [::]:80;
     server_name chengguo.youpulab.com;
 
-    client_max_body_size 512m;
-
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/youpulab;
         default_type "text/plain";
@@ -103,8 +101,6 @@ server {
     listen [::]:80;
     server_name chengguo.youpulab.com;
 
-    client_max_body_size 512m;
-
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/youpulab;
         default_type "text/plain";
@@ -125,7 +121,7 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
-    client_max_body_size 512m;
+    client_max_body_size 64m;
 
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
@@ -144,6 +140,18 @@ server {
         add_header Content-Security-Policy "frame-ancestors 'self'" always;
     }
 
+    location = /materials/upload {
+        client_max_body_size 512m;
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:8001;
         proxy_http_version 1.1;
@@ -157,7 +165,7 @@ server {
 }
 ```
 
-The 512 MB Nginx limit applies to the aggregate request body so multi-file submissions can pass through. The application-level limit remains 50 MB per file.
+The application accepts at most 10 files per batch, with a 50 MB per-file limit and a 500 MB aggregate limit. Nginx allows 512 MB only on the exact `/materials/upload` route to leave room for multipart overhead; replacement uploads and every other HTTPS route use the 64 MB default.
 
 - [ ] **Step 3: Inspect the tracked configs**
 
