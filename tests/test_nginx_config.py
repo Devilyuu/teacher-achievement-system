@@ -11,7 +11,7 @@ def test_upload_route_streams_requests_and_limits_abuse():
 
     assert "proxy_request_buffering off;" in upload_location
     assert "limit_conn chengguo_upload_conn 2;" in upload_location
-    assert "limit_req zone=chengguo_upload_rate" in upload_location
+    assert "limit_req zone=chengguo_upload_rate burst=2 nodelay;" in upload_location
     assert "limit_conn_status 429;" in upload_location
     assert "limit_req_status 429;" in upload_location
 
@@ -19,8 +19,15 @@ def test_upload_route_streams_requests_and_limits_abuse():
 def test_upload_limit_zones_are_declared_in_http_context_include():
     config = (NGINX_DIR / "chengguo-upload-limits.conf").read_text(encoding="utf-8")
 
-    assert "limit_conn_zone $binary_remote_addr zone=chengguo_upload_conn:" in config
-    assert "limit_req_zone $binary_remote_addr zone=chengguo_upload_rate:" in config
+    assert (
+        "limit_conn_zone $binary_remote_addr zone=chengguo_upload_conn:10m;"
+        in config
+    )
+    assert (
+        "limit_req_zone $binary_remote_addr "
+        "zone=chengguo_upload_rate:10m rate=6r/m;"
+        in config
+    )
 
 
 def test_default_http_server_redirects_teacher_routes_but_preserves_design_app():

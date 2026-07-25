@@ -142,6 +142,11 @@ server {
 
     location = /materials/upload {
         client_max_body_size 512m;
+        limit_conn chengguo_upload_conn 2;
+        limit_conn_status 429;
+        limit_req zone=chengguo_upload_rate burst=2 nodelay;
+        limit_req_status 429;
+        proxy_request_buffering off;
         proxy_pass http://127.0.0.1:8001;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -165,7 +170,7 @@ server {
 }
 ```
 
-The application accepts at most 10 files per batch, with a 50 MB per-file limit and a 500 MB aggregate limit. Nginx allows 512 MB only on the exact `/materials/upload` route to leave room for multipart overhead; replacement uploads and every other HTTPS route use the 64 MB default.
+The application accepts at most 10 files per batch, with a 50 MB per-file limit and a 500 MB aggregate limit. Nginx allows 512 MB only on the exact `/materials/upload` route to leave room for multipart overhead; replacement uploads and every other HTTPS route use the 64 MB default. The upload route streams request bodies to the application and uses the zones declared in `deploy/nginx/chengguo-upload-limits.conf`.
 
 - [x] **Step 3: Inspect the tracked configs**
 
@@ -221,23 +226,23 @@ ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.22
 
 Expected: Certbot reports a valid certificate stored under `/etc/letsencrypt/live/chengguo.youpulab.com/`.
 
-- [x] **Step 4: Upload and enable the final HTTPS config**
+- [x] **Step 4: Upload and enable the final HTTPS and hardening configs**
 
 Run:
 
 ```powershell
-scp -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" deploy/nginx/chengguo.youpulab.com.conf ubuntu@124.221.239.254:/tmp/chengguo.youpulab.com.conf
-ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.221.239.254 "sudo install -m 0644 /tmp/chengguo.youpulab.com.conf /etc/nginx/sites-available/chengguo && sudo nginx -t && sudo systemctl reload nginx"
+scp -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" deploy/nginx/chengguo-upload-limits.conf deploy/nginx/default-server.conf deploy/nginx/chengguo.youpulab.com.conf ubuntu@124.221.239.254:/tmp/
+ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.221.239.254 "sudo install -m 0644 /tmp/chengguo-upload-limits.conf /etc/nginx/conf.d/chengguo-upload-limits.conf && sudo install -m 0644 /tmp/default-server.conf /etc/nginx/sites-available/teacher-achievement && sudo install -m 0644 /tmp/chengguo.youpulab.com.conf /etc/nginx/sites-available/chengguo && sudo nginx -t && sudo systemctl reload nginx"
 ```
 
-Expected: Nginx reload succeeds without restarting the FastAPI application.
+Install the `conf.d` zone declarations before testing the virtual hosts that reference them. Expected: Nginx reload succeeds without restarting the FastAPI application; unmatched direct-IP HTTP routes redirect to the HTTPS hostname while `/design/` remains available.
 
 - [x] **Step 5: Verify certificate renewal configuration**
 
 Run:
 
 ```powershell
-ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.221.239.254 "sudo certbot renew --dry-run"
+ssh -i "$env:USERPROFILE\.ssh\teacher_achievement_tencent_ed25519" ubuntu@124.221.239.254 "sudo certbot renew --dry-run --no-random-sleep-on-renew"
 ```
 
 Expected: the dry run succeeds for the YoupuLab and Chengguo certificates.
@@ -292,6 +297,14 @@ Tracked deployment files:
 deploy/nginx/chengguo-upload-limits.conf
 deploy/nginx/default-server.conf
 deploy/nginx/chengguo.youpulab.com.conf
+```
+
+Deployment paths:
+
+```text
+/etc/nginx/conf.d/chengguo-upload-limits.conf
+/etc/nginx/sites-available/teacher-achievement
+/etc/nginx/sites-available/chengguo
 ```
 
 Expected:
