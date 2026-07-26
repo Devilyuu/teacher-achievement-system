@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models import Achievement, AchievementStatus, ExportRecord, User
 from app.security import get_current_user
 from app.services.export_history import generate_personal_export
-from app.services.reporting_year import default_reporting_year
+from app.services.reporting_year import get_user_default_year
 
 
 router = APIRouter(prefix="/exports", tags=["exports"])
@@ -51,7 +51,7 @@ def export_history(
         {
             "user": user,
             "records": record_rows,
-            "current_year": default_reporting_year(),
+            "current_year": get_user_default_year(db, user.id),
         },
     )
 

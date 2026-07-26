@@ -65,7 +65,7 @@ def test_dashboard_uses_designed_right_rail_for_year_workbench(app):
     assert 'data-lucide="clipboard-check"' in response.text
 
 
-def test_dashboard_defaults_to_previous_reporting_year(app):
+def test_dashboard_defaults_to_current_reporting_year(app):
     client = TestClient(app)
     client.post(
         "/login",
@@ -80,7 +80,7 @@ def test_dashboard_defaults_to_previous_reporting_year(app):
     assert f'href="/achievements/new?year={default_reporting_year()}"' in response.text
 
 
-def test_dashboard_offers_previous_year_and_carries_selected_year_to_new_record(app):
+def test_dashboard_carries_selected_year_to_new_record(app):
     client = TestClient(app)
     client.post(
         "/login",

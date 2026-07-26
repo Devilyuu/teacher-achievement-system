@@ -24,35 +24,35 @@ def test_personal_sync_is_disabled_without_a_configured_username(monkeypatch):
 
     monkeypatch.delenv("FEISHU_SYNC_USERNAME", raising=False)
 
-    assert can_use_personal_sync("tcyubin") is False
+    assert can_use_personal_sync("1867") is False
 
 
 def test_only_configured_username_can_use_personal_sync(monkeypatch):
     from app.services.personal_integration import can_use_personal_sync
 
-    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "tcyubin")
+    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "1867")
 
-    assert can_use_personal_sync("tcyubin") is True
+    assert can_use_personal_sync("1867") is True
     assert can_use_personal_sync("other") is False
 
 
 def test_feishu_is_ready_only_when_all_server_credentials_exist(monkeypatch):
     from app.services.personal_integration import integration_status
 
-    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "tcyubin")
+    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "1867")
     monkeypatch.setenv("FEISHU_APP_ID", "cli_test_app")
     monkeypatch.setenv("FEISHU_APP_SECRET", "cli_test_secret")
     monkeypatch.setenv("FEISHU_BASE_TOKEN", "base_token")
     monkeypatch.setenv("FEISHU_TABLE_ID", "table_id")
 
-    ready_status = integration_status("tcyubin")
+    ready_status = integration_status("1867")
 
     assert ready_status.user_enabled is True
     assert ready_status.feishu_ready is True
 
     monkeypatch.delenv("FEISHU_APP_SECRET")
 
-    assert integration_status("tcyubin").feishu_ready is False
+    assert integration_status("1867").feishu_ready is False
     assert "cli_test_secret" not in repr(ready_status)
 
 

@@ -23,8 +23,8 @@ Cover:
 
 ```python
 def test_only_configured_username_can_use_personal_sync(monkeypatch):
-    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "tcyubin")
-    assert can_use_personal_sync("tcyubin") is True
+    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "1867")
+    assert can_use_personal_sync("1867") is True
     assert can_use_personal_sync("other") is False
 
 
@@ -33,10 +33,10 @@ def test_feishu_is_ready_only_when_all_server_credentials_exist(monkeypatch):
     monkeypatch.setenv("FEISHU_APP_SECRET", "cli_test_secret")
     monkeypatch.setenv("FEISHU_BASE_TOKEN", "base_token")
     monkeypatch.setenv("FEISHU_TABLE_ID", "table_id")
-    assert integration_status("tcyubin").feishu_ready is True
+    assert integration_status("1867").feishu_ready is True
 
     monkeypatch.delenv("FEISHU_APP_SECRET")
-    assert integration_status("tcyubin").feishu_ready is False
+    assert integration_status("1867").feishu_ready is False
 ```
 
 - [ ] **Step 2: Run the tests and verify they fail**
@@ -50,7 +50,7 @@ Expected: failure because `app.services.personal_integration` does not exist.
 Use these environment variables:
 
 ```text
-FEISHU_SYNC_USERNAME=tcyubin
+FEISHU_SYNC_USERNAME=1867
 FEISHU_APP_ID=
 FEISHU_APP_SECRET=
 FEISHU_BASE_TOKEN=H53dbNZsQalrU6sC8NPcp60QnQf
@@ -318,11 +318,11 @@ git commit -m "feat: parse achievement descriptions"
 - Test: `tests/test_feishu_routes.py`
 - Test: `tests/test_layout_css.py`
 
-- [ ] **Step 1: Write failing access and response tests**
+- [x] **Step 1: Write failing access and response tests**
 
 Verify the configured user sees the quick-entry panel, other users do not, unauthorized API calls return `403`, valid text returns a structured draft, and invalid input returns a concise validation error.
 
-- [ ] **Step 2: Add the draft endpoint**
+- [x] **Step 2: Add the draft endpoint**
 
 Use:
 
@@ -332,15 +332,15 @@ POST /achievements/intelligent-draft
 
 Limit descriptions to 2,000 characters and return JSON only.
 
-- [ ] **Step 3: Add the quick-entry panel above the form**
+- [x] **Step 3: Add the quick-entry panel above the form**
 
 Include a textarea, `识别并预填` button, progress/error state, and concise “请确认” indicator. The existing form remains the only save action.
 
-- [ ] **Step 4: Prefill the existing form**
+- [x] **Step 4: Prefill the existing form**
 
 JavaScript applies only validated response fields, triggers existing category/subcategory guidance updates, and never automatically submits.
 
-- [ ] **Step 5: Run focused UI tests**
+- [x] **Step 5: Run focused UI tests**
 
 Run:
 
@@ -362,7 +362,7 @@ git commit -m "feat: add intelligent achievement entry"
 - Server: `/etc/teacher-achievement-system.env`
 - Feishu Base: app `H53dbNZsQalrU6sC8NPcp60QnQf`, table `tblh7YcuXoVeWqH4`
 
-- [ ] **Step 1: Create the missing Feishu field**
+- [x] **Step 1: Create the missing Feishu field**
 
 First re-list fields. Only if absent, run:
 
@@ -370,7 +370,7 @@ First re-list fields. Only if absent, run:
 lark-cli base +field-create --base-token H53dbNZsQalrU6sC8NPcp60QnQf --table-id tblh7YcuXoVeWqH4 --as user --json '{"name":"成果平台ID","type":"text"}'
 ```
 
-- [ ] **Step 2: Run all tests**
+- [x] **Step 2: Run all tests**
 
 Run: `.venv\Scripts\python.exe -m pytest -q`
 

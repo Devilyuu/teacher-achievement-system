@@ -24,6 +24,36 @@ def apply_schema_updates() -> None:
         connection.execute(
             text(
                 """
+                CREATE TABLE IF NOT EXISTS user_reporting_years (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    year INTEGER NOT NULL,
+                    is_default BOOLEAN NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE,
+                    CONSTRAINT uq_user_reporting_years_user_year
+                        UNIQUE (user_id, year)
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_user_reporting_years_user_id "
+                "ON user_reporting_years (user_id)"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_user_reporting_years_year "
+                "ON user_reporting_years (year)"
+            )
+        )
+
+        connection.execute(
+            text(
+                """
                 CREATE TABLE IF NOT EXISTS annual_submissions (
                     id INTEGER NOT NULL PRIMARY KEY,
                     user_id INTEGER NOT NULL,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Form, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
@@ -13,7 +13,18 @@ from app.services.annual_submission import (
     confirm_annual_submission,
     get_annual_submission_state,
 )
-from app.services.reporting_year import available_reporting_years, default_reporting_year
+from app.services.reporting_year import (
+    InvalidReportingYearError,
+    ReportingYearInUseError,
+    ReportingYearProtectedError,
+    add_user_reporting_year,
+    current_reporting_year,
+    get_user_default_year,
+    get_user_reporting_year_items,
+    get_user_reporting_years,
+    remove_user_reporting_year,
+    set_user_default_year,
+)
 
 
 router = APIRouter()
@@ -27,7 +38,7 @@ def dashboard(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    selected_year = year or default_reporting_year()
+    selected_year = year or get_user_default_year(db, user.id)
     base_query = db.query(Achievement).filter(
         Achievement.user_id == user.id,
         Achievement.year == selected_year,
@@ -44,16 +55,6 @@ def dashboard(
         if achievement_ids
         else 0
     )
-    available_years = [
-        row[0]
-        for row in (
-            db.query(Achievement.year)
-            .filter(Achievement.user_id == user.id)
-            .distinct()
-            .order_by(Achievement.year.desc())
-            .all()
-        )
-    ]
     category_counts: dict[str, int] = {}
     for achievement in achievements:
         category_counts[achievement.category] = category_counts.get(achievement.category, 0) + 1
@@ -74,10 +75,18 @@ def dashboard(
         {
             "user": user,
             "selected_year": selected_year,
-            "available_years": available_reporting_years(
-                available_years,
+            "available_years": get_user_reporting_years(
+                db,
+                user.id,
                 selected_year,
             ),
+            "managed_years": get_user_reporting_year_items(
+                db,
+                user.id,
+                selected_year,
+            ),
+            "year_action": request.query_params.get("year_action", ""),
+            "year_error": request.query_params.get("year_error", ""),
             "recent_achievements": achievements[:6],
             "pending_items": pending_items,
             "pending_total": len(pending_achievements),
@@ -101,6 +110,73 @@ def dashboard(
                 "needs_info_status": AchievementStatus.needs_info.value,
             },
         },
+    )
+
+
+@router.post("/reporting-years")
+def add_reporting_year_route(
+    year: int = Form(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        add_user_reporting_year(db, user.id, year)
+    except InvalidReportingYearError:
+        return RedirectResponse(
+            "/?year_error=invalid",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return RedirectResponse(
+        f"/?year={year}&year_action=added",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/reporting-years/{year}/default")
+def set_default_reporting_year_route(
+    year: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        set_user_default_year(db, user.id, year)
+    except InvalidReportingYearError:
+        return RedirectResponse(
+            "/?year_error=invalid",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return RedirectResponse(
+        f"/?year={year}&year_action=default",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/reporting-years/{year}/delete")
+def remove_reporting_year_route(
+    year: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        remove_user_reporting_year(db, user.id, year)
+    except ReportingYearInUseError:
+        return RedirectResponse(
+            f"/?year={year}&year_error=in_use",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    except ReportingYearProtectedError:
+        return RedirectResponse(
+            f"/?year={year}&year_error=protected",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    except InvalidReportingYearError:
+        return RedirectResponse(
+            "/?year_error=invalid",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    return RedirectResponse(
+        f"/?year={get_user_default_year(db, user.id)}&year_action=removed",
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 

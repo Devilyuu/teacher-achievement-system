@@ -22,6 +22,7 @@ from app.models import (
 )
 from app.security import get_current_user
 from app.services.achievement_readiness import missing_reasons
+from app.services.achievement_draft_parser import parse_achievement_draft
 from app.services.achievement_search import AchievementFilters, search_achievements
 from app.services.achievement_status import calculate_status
 from app.services.feishu_client import FeishuError
@@ -35,8 +36,8 @@ from app.services.performance_rule_guidance import (
     rule_for_level,
 )
 from app.services.reporting_year import (
-    available_reporting_years,
-    default_reporting_year,
+    get_user_default_year,
+    get_user_reporting_years,
 )
 
 
@@ -165,17 +166,12 @@ def _form_context(
     action: str = "/achievements",
     selected_year: int | None = None,
 ):
-    existing_years = [
-        row[0]
-        for row in (
-            db.query(Achievement.year)
-            .filter(Achievement.user_id == user.id)
-            .distinct()
-            .order_by(Achievement.year.desc())
-            .all()
-        )
-    ]
-    form_year = achievement.year if achievement else selected_year or default_reporting_year()
+    form_year = (
+        achievement.year
+        if achievement
+        else selected_year or get_user_default_year(db, user.id)
+    )
+    personal_status = integration_status(user.username)
     return {
         "request": request,
         "user": user,
@@ -185,7 +181,12 @@ def _form_context(
         "level_options": LEVEL_OPTIONS,
         "readiness_reasons": missing_reasons(achievement) if achievement else [],
         "selected_year": form_year,
-        "available_years": available_reporting_years(existing_years, form_year),
+        "available_years": get_user_reporting_years(
+            db,
+            user.id,
+            form_year,
+        ),
+        "personal_integration": personal_status,
         "action": action,
     }
 
@@ -234,17 +235,7 @@ def list_achievements(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    available_years = [
-        row[0]
-        for row in (
-            db.query(Achievement.year)
-            .filter(Achievement.user_id == user.id)
-            .distinct()
-            .order_by(Achievement.year.desc())
-            .all()
-        )
-    ]
-    selected_year = year or default_reporting_year()
+    selected_year = year or get_user_default_year(db, user.id)
     filters = AchievementFilters(
         year=selected_year,
         status=achievement_status.strip(),
@@ -262,8 +253,9 @@ def list_achievements(
             "user": user,
             "achievements": achievements,
             "achievement_groups": _group_achievements(achievements, active_rules),
-            "available_years": available_reporting_years(
-                available_years,
+            "available_years": get_user_reporting_years(
+                db,
+                user.id,
                 selected_year,
             ),
             "selected_year": selected_year,
@@ -339,6 +331,34 @@ def create_achievement(
         f"/achievements/{achievement.id}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+@router.post("/intelligent-draft")
+def create_intelligent_draft(
+    description: str = Form(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    personal_status = integration_status(user.username)
+    if not personal_status.user_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Intelligent entry is not available for this user",
+        )
+    try:
+        draft = parse_achievement_draft(
+            description,
+            _active_rules(db),
+        )
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="请输入 1 至 2000 个字符的成果描述",
+        ) from exc
+    return {
+        "draft": draft.model_dump(mode="json"),
+        "mode": "ai" if personal_status.ai_ready else "rule",
+    }
 
 
 @router.post("/{achievement_id}/feishu-sync")

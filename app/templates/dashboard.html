@@ -15,17 +15,85 @@
     </div>
 </header>
 
-<section class="toolbar">
-    <form method="get" action="/" class="year-filter">
-        <label for="year">统计年度</label>
-        <select id="year" name="year" onchange="this.form.submit()">
-            {% for year in available_years %}
-            <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }} 年</option>
-            {% endfor %}
-        </select>
-    </form>
+<section class="toolbar dashboard-year-toolbar">
+    <div class="dashboard-year-controls">
+        <form method="get" action="/" class="year-filter">
+            <label for="year">统计年度</label>
+            <select id="year" name="year" onchange="this.form.submit()">
+                {% for year in available_years %}
+                <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }} 年</option>
+                {% endfor %}
+            </select>
+        </form>
+        <details class="year-manager">
+            <summary class="button secondary">
+                <i data-lucide="calendar-cog"></i>管理年度
+            </summary>
+            <div class="year-manager-popover">
+                <div class="year-manager-heading">
+                    <div>
+                        <strong>我的填报年度</strong>
+                        <small>添加年度或设置登录后默认显示的年度</small>
+                    </div>
+                    <i data-lucide="calendar-range"></i>
+                </div>
+                <form method="post" action="/reporting-years" class="year-add-form">
+                    <label for="new-reporting-year">添加年度</label>
+                    <div>
+                        <input id="new-reporting-year" name="year" type="number" min="2000" max="2100" required placeholder="例如 2027">
+                        <button class="button primary" type="submit"><i data-lucide="plus"></i>添加</button>
+                    </div>
+                </form>
+                <div class="year-manager-list">
+                    {% for item in managed_years %}
+                    <div class="year-manager-item">
+                        <span class="year-manager-year">
+                            <strong>{{ item.year }} 年</strong>
+                            {% if item.is_default %}<em>默认</em>{% endif %}
+                            {% if item.achievement_count %}<small>{{ item.achievement_count }} 条成果</small>{% endif %}
+                        </span>
+                        <span class="year-manager-actions">
+                            {% if not item.is_default %}
+                            <form method="post" action="/reporting-years/{{ item.year }}/default">
+                                <button class="year-action-button" type="submit" title="设为默认年度">
+                                    <i data-lucide="star"></i><span>设为默认</span>
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if item.can_remove %}
+                            <form method="post" action="/reporting-years/{{ item.year }}/delete" onsubmit="return confirm('确定从年度列表中移除 {{ item.year }} 年吗？')">
+                                <button class="icon-button year-remove-button" type="submit" title="移除该年度">
+                                    <i data-lucide="trash-2"></i>
+                                </button>
+                            </form>
+                            {% elif item.achievement_count %}
+                            <span class="year-locked" title="该年度已有成果，不能移除"><i data-lucide="lock-keyhole"></i></span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="year-manager-note"><i data-lucide="info"></i>当前自然年始终保留；已有成果的年度不会被删除。</p>
+            </div>
+        </details>
+    </div>
     <a class="text-link" href="/achievements?year={{ selected_year }}">查看全部成果<i data-lucide="arrow-right"></i></a>
 </section>
+
+{% if year_action or year_error %}
+<div class="year-feedback {% if year_error %}error{% else %}success{% endif %}">
+    <i data-lucide="{% if year_error %}circle-alert{% else %}circle-check{% endif %}"></i>
+    <span>
+        {% if year_action == "added" %}年度已添加。
+        {% elif year_action == "default" %}默认年度已更新。
+        {% elif year_action == "removed" %}年度已从列表中移除。
+        {% elif year_error == "in_use" %}该年度已有成果记录，不能移除。
+        {% elif year_error == "protected" %}当前自然年为系统保留年度，不能移除。
+        {% elif year_error == "invalid" %}请输入 2000 至 2100 之间的年度。
+        {% endif %}
+    </span>
+</div>
+{% endif %}
 
 <div class="dashboard-workbench">
     <main class="dashboard-main">

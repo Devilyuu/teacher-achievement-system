@@ -53,6 +53,37 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class UserReportingYear(Base):
+    __tablename__ = "user_reporting_years"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "year",
+            name="uq_user_reporting_years_user_year",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+    )
+    year: Mapped[int] = mapped_column(Integer, index=True)
+    is_default: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="0",
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    user = relationship("User")
+
+
 class PerformanceRule(Base):
     __tablename__ = "performance_rules"
 
