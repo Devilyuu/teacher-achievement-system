@@ -208,6 +208,24 @@ def test_title_removes_leading_spoken_year_and_role_but_keeps_body():
     assert draft.current_stage == "建设中"
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "2025年担任负责人，建设在线精品课程",
+        "2025年建设在线精品课程，担任负责人",
+    ],
+)
+def test_title_removes_role_prefix_or_suffix_without_first_person(description):
+    draft = parse_achievement_draft(
+        description,
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.title == "建设在线精品课程"
+    assert draft.personal_role == "负责人"
+
+
 def test_parser_only_uses_active_rule_pairs():
     rules = [
         {
@@ -264,6 +282,29 @@ def test_conditional_rule_score_requires_condition_in_description(real_rules):
     assert "performance_score" in draft.uncertain_fields
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "校级专业教学资源库建设项目尚未验收通过",
+        "校级专业教学资源库建设项目未通过验收",
+        "校级专业教学资源库建设项目验收未通过",
+    ],
+)
+def test_real_conditional_rule_rejects_negated_acceptance(
+    description,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        description,
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.subcategory == "专业教学资源库建设申报立项/验收通过"
+    assert draft.performance_score == 0
+    assert "performance_score" in draft.uncertain_fields
+
+
 def test_conditional_rule_score_is_used_when_condition_is_explicit(real_rules):
     draft = parse_achievement_draft(
         "校级专业教学资源库建设项目验收通过",
@@ -291,6 +332,33 @@ def test_award_condition_accepts_an_explicit_special_prize():
     )
 
     assert draft.performance_score == 10
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "2025年校级测试项目未获奖",
+        "2025年校级测试项目没有获奖",
+        "2025年校级测试项目不符合获奖条件",
+    ],
+)
+def test_award_condition_rejects_negated_award_evidence(description):
+    rule = {
+        "category": "教学",
+        "subcategory": "测试项目",
+        "base_rule": "1/项",
+        "school_rule": "10/项（获奖）",
+        "is_active": True,
+    }
+
+    draft = parse_achievement_draft(
+        description,
+        [rule],
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 0
+    assert "performance_score" in draft.uncertain_fields
 
 
 def test_unlabelled_rank_list_is_not_inferred_from_award_order(real_rules):
@@ -511,6 +579,85 @@ def test_level_inference_requires_explicit_level_or_achievement_context(
 
 
 @pytest.mark.parametrize(
+    ("description", "expected_level"),
+    [
+        ("非国家级而是省级教学成果奖", "省级"),
+        ("不是国家级而是市级科研项目", "市级"),
+        ("并非省级而是校级建设项目", "校级"),
+        ("不属于市级而是学院级项目", "学院级"),
+        ("非国家级科研项目", ""),
+    ],
+)
+def test_level_parser_ignores_negated_candidates(description, expected_level):
+    draft = parse_achievement_draft(
+        description,
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.level == expected_level
+
+
+@pytest.mark.parametrize(
+    "region",
+    [
+        "北京市",
+        "天津市",
+        "上海市",
+        "重庆市",
+        "河北省",
+        "山西省",
+        "辽宁省",
+        "吉林省",
+        "黑龙江省",
+        "江苏省",
+        "浙江省",
+        "安徽省",
+        "福建省",
+        "江西省",
+        "山东省",
+        "河南省",
+        "湖北省",
+        "湖南省",
+        "广东省",
+        "海南省",
+        "四川省",
+        "贵州省",
+        "云南省",
+        "陕西省",
+        "甘肃省",
+        "青海省",
+        "台湾省",
+        "内蒙古自治区",
+        "广西壮族自治区",
+        "西藏自治区",
+        "宁夏回族自治区",
+        "新疆维吾尔自治区",
+        "香港特别行政区",
+        "澳门特别行政区",
+    ],
+)
+def test_province_level_regions_are_provincial_in_achievement_context(region):
+    draft = parse_achievement_draft(
+        f"{region}教学成果奖",
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.level == "省级"
+
+
+def test_ordinary_city_remains_city_level():
+    draft = parse_achievement_draft(
+        "常州市教学成果奖",
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.level == "市级"
+
+
+@pytest.mark.parametrize(
     "description",
     [
         "在线精品课程正在申报",
@@ -580,7 +727,7 @@ def test_ai_parser_uses_dynamic_openai_compatible_config_and_normalizes_total(
     )
 
 
-def test_ai_classification_is_adopted_but_scores_and_confidence_are_recomputed(
+def test_ai_classification_without_description_evidence_uses_custom_fallback(
     real_rules,
 ):
     def handler(request):
@@ -610,14 +757,50 @@ def test_ai_classification_is_adopted_but_scores_and_confidence_are_recomputed(
     )
 
     assert (draft.category, draft.subcategory) == (
-        "育人成效",
-        "指导学生大赛（包括技能、双创）",
+        "其他有价值工作（自定义）",
+        "自定义工作事项",
     )
-    assert draft.base_score == 3
+    assert draft.title == "跨部门育人支持工作"
+    assert draft.personal_role == "负责人"
+    assert draft.base_score == 0
     assert draft.performance_score == 0
-    assert draft.claimed_score == 3
-    assert draft.confidence != 0.99
-    assert "performance_score" in draft.uncertain_fields
+    assert draft.claimed_score == 0
+    assert draft.confidence < 0.5
+    assert {"category", "subcategory"} <= set(draft.uncertain_fields)
+
+
+def test_ai_classification_conflict_uses_strong_deterministic_rule(real_rules):
+    def handler(request):
+        return _chat_response(
+            json.dumps(
+                _ai_draft(
+                    title="AI整理的资源库成果",
+                    level="校级",
+                    personal_role="负责人",
+                )
+            )
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    draft = parse_achievement_draft(
+        "2025年校级专业教学资源库建设项目验收通过，担任负责人。",
+        real_rules,
+        integration_config=_config(
+            ai_ready=True,
+            ai_api_key="secret-key",
+        ),
+        client=client,
+    )
+
+    assert (draft.category, draft.subcategory) == (
+        "教学",
+        "专业教学资源库建设申报立项/验收通过",
+    )
+    assert draft.title == "AI整理的资源库成果"
+    assert draft.base_score == 5
+    assert draft.performance_score == 10
+    assert {"category", "subcategory"} <= set(draft.uncertain_fields)
+    assert draft.confidence < 0.5
 
 
 def test_ai_score_over_safe_limit_forces_validated_fallback(real_rules):
@@ -674,6 +857,44 @@ def test_ai_timeout_has_a_specific_safe_reason(real_rules):
     assert "secret" not in repr(draft)
 
 
+def test_ai_overflow_error_never_escapes_public_parser(real_rules):
+    def handler(request):
+        raise OverflowError("float overflow from huge model number")
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    draft = parse_achievement_draft(
+        "2025年学生技能提升工作",
+        real_rules,
+        integration_config=_config(
+            ai_ready=True,
+            ai_api_key="secret-key",
+        ),
+        client=client,
+    )
+
+    assert "ai_invalid_response" in draft.uncertain_fields
+    assert draft.claimed_score == 0
+
+
+def test_ai_network_error_has_a_specific_safe_reason(real_rules):
+    def handler(request):
+        raise httpx.ConnectError("internal network detail", request=request)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    draft = parse_achievement_draft(
+        "2025年学生技能提升工作",
+        real_rules,
+        integration_config=_config(
+            ai_ready=True,
+            ai_api_key="secret-key",
+        ),
+        client=client,
+    )
+
+    assert "ai_network_error" in draft.uncertain_fields
+    assert "ai_invalid_response" not in draft.uncertain_fields
+
+
 @pytest.mark.parametrize(
     "response_factory",
     [
@@ -687,16 +908,12 @@ def test_ai_timeout_has_a_specific_safe_reason(real_rules):
         lambda request: _chat_response(
             json.dumps(_ai_draft(base_score=float("inf")))
         ),
-        lambda request: (_ for _ in ()).throw(
-            httpx.ConnectError("offline", request=request)
-        ),
     ],
     ids=[
         "malformed-json",
         "unknown-category",
         "negative-score",
         "non-finite-score",
-        "network",
     ],
 )
 def test_invalid_or_unavailable_ai_falls_back_safely(response_factory):

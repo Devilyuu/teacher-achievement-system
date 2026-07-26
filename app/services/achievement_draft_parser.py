@@ -39,9 +39,45 @@ PROCESS_STAGE_KEYWORDS = (
 ACHIEVEMENT_ENTITY_PATTERN = (
     r"(?:竞赛|大赛|比赛|赛项|项目|课题|成果奖|奖项|获奖)"
 )
-PROVINCE_NAMES = (
-    "河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|"
-    "湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|台湾"
+PROVINCE_LEVEL_REGIONS = (
+    "北京市",
+    "天津市",
+    "上海市",
+    "重庆市",
+    "河北省",
+    "山西省",
+    "辽宁省",
+    "吉林省",
+    "黑龙江省",
+    "江苏省",
+    "浙江省",
+    "安徽省",
+    "福建省",
+    "江西省",
+    "山东省",
+    "河南省",
+    "湖北省",
+    "湖南省",
+    "广东省",
+    "海南省",
+    "四川省",
+    "贵州省",
+    "云南省",
+    "陕西省",
+    "甘肃省",
+    "青海省",
+    "台湾省",
+    "内蒙古自治区",
+    "广西壮族自治区",
+    "西藏自治区",
+    "宁夏回族自治区",
+    "新疆维吾尔自治区",
+    "香港特别行政区",
+    "澳门特别行政区",
+)
+MUNICIPALITIES = ("北京市", "天津市", "上海市", "重庆市")
+NEGATION_PATTERN = re.compile(
+    r"(?:尚未|未|没有|不是|并非|不属于|不符合|非).{0,2}$"
 )
 
 
@@ -213,21 +249,51 @@ def _extract_year(description: str) -> int | None:
 
 
 def _extract_level(description: str) -> str:
+    explicit_candidates = []
     for level in ("国家级", "省级", "市级", "学院级", "校级"):
-        if level in description:
-            return level
-    if re.search(rf"(?:全国|国家).{{0,20}}{ACHIEVEMENT_ENTITY_PATTERN}", description):
-        return "国家级"
-    if re.search(
-        rf"(?:{PROVINCE_NAMES})省.{{0,20}}{ACHIEVEMENT_ENTITY_PATTERN}",
-        description,
-    ):
-        return "省级"
-    if re.search(
-        rf"[\u4e00-\u9fff]{{2,8}}市.{{0,20}}{ACHIEVEMENT_ENTITY_PATTERN}",
-        description,
-    ):
-        return "市级"
+        explicit_candidates.extend(
+            (match.start(), level)
+            for match in re.finditer(level, description)
+            if not _is_negated(description, match.start())
+        )
+    if explicit_candidates:
+        return min(explicit_candidates)[1]
+
+    for match in re.finditer(r"(?:全国|国家)", description):
+        if (
+            not _is_negated(description, match.start())
+            and re.search(
+                ACHIEVEMENT_ENTITY_PATTERN,
+                description[match.end():match.end() + 20],
+            )
+        ):
+            return "国家级"
+
+    for region in PROVINCE_LEVEL_REGIONS:
+        start = description.find(region)
+        while start >= 0:
+            end = start + len(region)
+            if (
+                not _is_negated(description, start)
+                and re.search(
+                    ACHIEVEMENT_ENTITY_PATTERN,
+                    description[end:end + 20],
+                )
+            ):
+                return "省级"
+            start = description.find(region, start + 1)
+
+    for match in re.finditer(r"[\u4e00-\u9fff]{2,8}市", description):
+        if any(match.group(0).endswith(region) for region in MUNICIPALITIES):
+            continue
+        if (
+            not _is_negated(description, match.start())
+            and re.search(
+                ACHIEVEMENT_ENTITY_PATTERN,
+                description[match.end():match.end() + 20],
+            )
+        ):
+            return "市级"
     return ""
 
 
@@ -252,13 +318,14 @@ def _clean_title(description: str) -> str:
         title,
     )
     title = re.sub(
-        r"^我(?:是|作为|担任)(?:第一指导教师|第二指导教师|指导教师|负责人|"
+        r"^(?:我)?(?:是|作为|担任)(?:第一指导教师|第二指导教师|指导教师|负责人|"
         r"主持人|主持|成员)[，,；;：:\s]*",
         "",
         title,
     )
     title = re.sub(
-        r"[，,；;。.\s]*(?:我(?:是|作为|担任)?)(?:第一指导教师|第二指导教师|"
+        r"[，,；;。.\s]*(?:(?:我(?:是|作为|担任)?)|(?:担任|作为))"
+        r"(?:第一指导教师|第二指导教师|"
         r"指导教师|负责人|主持人|主持|成员)[。.\s]*$",
         "",
         title,
@@ -287,20 +354,38 @@ def _single_number(rule_text: str) -> float | None:
     return score
 
 
+def _is_negated(text: str, start: int, *, lookback: int = 5) -> bool:
+    prefix = text[max(0, start - lookback):start]
+    return NEGATION_PATTERN.search(prefix) is not None
+
+
+def _has_affirmed_phrase(description: str, phrases: Sequence[str]) -> bool:
+    for phrase in phrases:
+        start = description.find(phrase)
+        while start >= 0:
+            if not _is_negated(description, start):
+                return True
+            start = description.find(phrase, start + 1)
+    return False
+
+
 def _condition_is_met(condition: str, description: str) -> bool:
-    if (
-        "获奖" in condition
-        and "获奖" not in description
-        and not re.search(r"获得.{0,12}奖", description)
-    ):
-        return False
+    if "获奖" in condition:
+        award_is_affirmed = _has_affirmed_phrase(description, ("获奖",))
+        if not award_is_affirmed:
+            award_is_affirmed = any(
+                not _is_negated(description, match.start())
+                for match in re.finditer(r"获得.{0,12}奖", description)
+            )
+        if not award_is_affirmed:
+            return False
     requirements = (
         ("验收通过", ("验收通过", "通过验收", "验收合格")),
         ("立项", ("已立项", "获批立项", "立项")),
         ("结项", ("已结项", "结项", "结题")),
     )
     for marker, evidence in requirements:
-        if marker in condition and not any(word in description for word in evidence):
+        if marker in condition and not _has_affirmed_phrase(description, evidence):
             return False
     return True
 
@@ -474,18 +559,45 @@ def _validated_ai_draft(
     if selected_rule is None:
         raise ValueError("AI draft selected an unknown rule")
 
+    evidence_rule, evidence_is_custom_fallback = _match_rule(
+        description,
+        rules,
+    )
+    evidence_pair = (
+        (
+            str(_value(evidence_rule, "category")),
+            str(_value(evidence_rule, "subcategory")),
+        )
+        if evidence_rule is not None
+        else ("", "")
+    )
+    ai_pair = (draft.category, draft.subcategory)
+    classification_is_supported = (
+        evidence_rule is not None
+        and not evidence_is_custom_fallback
+        and evidence_pair == ai_pair
+    )
+    if not classification_is_supported:
+        selected_rule = evidence_rule
+
     verified_level = _extract_level(description)
     uncertain_fields = [
         field_name
         for field_name in draft.uncertain_fields
         if not field_name.startswith("ai_")
     ]
+    if not classification_is_supported:
+        uncertain_fields.extend(("category", "subcategory"))
     if draft.level != verified_level:
         uncertain_fields.append("level")
 
-    base_score = _score_from_rule_text(
-        str(_value(selected_rule, "base_rule")),
-        description,
+    base_score = (
+        _score_from_rule_text(
+            str(_value(selected_rule, "base_rule")),
+            description,
+        )
+        if selected_rule is not None
+        else None
     )
     level_rule_field = LEVEL_RULE_FIELDS.get(verified_level, "")
     performance_score = (
@@ -493,7 +605,7 @@ def _validated_ai_draft(
             str(_value(selected_rule, level_rule_field)),
             description,
         )
-        if level_rule_field
+        if selected_rule is not None and level_rule_field
         else None
     )
     if base_score is None:
@@ -501,15 +613,30 @@ def _validated_ai_draft(
     if performance_score is None:
         uncertain_fields.append("performance_score")
     uncertain_fields = list(dict.fromkeys(uncertain_fields))
+    if classification_is_supported:
+        confidence_base = 0.9
+    elif evidence_is_custom_fallback:
+        confidence_base = 0.45
+    else:
+        confidence_base = 0.55 if evidence_rule is not None else 0.4
 
     normalized = draft.model_dump()
     normalized.update(
         {
+            "category": evidence_pair[0] if not classification_is_supported else draft.category,
+            "subcategory": (
+                evidence_pair[1]
+                if not classification_is_supported
+                else draft.subcategory
+            ),
             "level": verified_level,
             "base_score": base_score or 0,
             "performance_score": performance_score or 0,
             "claimed_score": (base_score or 0) + (performance_score or 0),
-            "confidence": _calibrated_confidence(0.9, uncertain_fields),
+            "confidence": _calibrated_confidence(
+                confidence_base,
+                uncertain_fields,
+            ),
             "uncertain_fields": uncertain_fields,
         }
     )
@@ -519,7 +646,7 @@ def _validated_ai_draft(
 def _timeout_for_config(integration_config: Any) -> httpx.Timeout:
     try:
         seconds = float(integration_config.ai_timeout_seconds)
-    except (AttributeError, TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError, OverflowError):
         seconds = 30.0
     if not math.isfinite(seconds):
         seconds = 30.0
@@ -609,7 +736,20 @@ def parse_achievement_draft(
             rules,
             ai_reason="ai_timeout",
         )
-    except (httpx.HTTPError, KeyError, TypeError, ValueError, IndexError):
+    except httpx.RequestError:
+        return _deterministic_parse(
+            description,
+            rules,
+            ai_reason="ai_network_error",
+        )
+    except (
+        httpx.HTTPError,
+        KeyError,
+        TypeError,
+        ValueError,
+        OverflowError,
+        IndexError,
+    ):
         return _deterministic_parse(
             description,
             rules,
