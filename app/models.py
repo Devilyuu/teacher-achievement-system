@@ -164,6 +164,10 @@ class FeishuSyncRecord(Base):
         default="",
         server_default="",
     )
+    sync_claim_token: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,

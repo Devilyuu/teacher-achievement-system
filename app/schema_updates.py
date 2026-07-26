@@ -85,6 +85,7 @@ def apply_schema_updates() -> None:
                     last_synced_at DATETIME,
                     last_error TEXT NOT NULL DEFAULT '',
                     payload_hash VARCHAR(64) NOT NULL DEFAULT '',
+                    sync_claim_token VARCHAR(64),
                     created_at DATETIME NOT NULL,
                     updated_at DATETIME NOT NULL,
                     FOREIGN KEY(achievement_id)
@@ -102,6 +103,19 @@ def apply_schema_updates() -> None:
                 """
             )
         )
+        sync_columns = {
+            row[1]
+            for row in connection.execute(
+                text("PRAGMA table_info(feishu_sync_records)")
+            )
+        }
+        if "sync_claim_token" not in sync_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE feishu_sync_records "
+                    "ADD COLUMN sync_claim_token VARCHAR(64)"
+                )
+            )
         connection.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS "

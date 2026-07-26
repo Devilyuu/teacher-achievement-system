@@ -17,6 +17,7 @@ EXPECTED_SYNC_COLUMNS = {
     "last_synced_at",
     "last_error",
     "payload_hash",
+    "sync_claim_token",
     "created_at",
     "updated_at",
 }
@@ -55,6 +56,7 @@ def test_feishu_sync_record_has_required_columns_and_unique_foreign_key():
 
     assert EXPECTED_SYNC_COLUMNS <= set(table.columns.keys())
     assert table.c.last_synced_at.nullable
+    assert table.c.sync_claim_token.nullable
     assert {
         foreign_key.target_fullname
         for foreign_key in table.c.achievement_id.foreign_keys
@@ -233,6 +235,78 @@ def test_apply_schema_updates_is_idempotent_and_preserves_existing_data(
     assert EXPECTED_SYNC_COLUMNS <= columns
     assert indexes["ix_feishu_sync_records_achievement_id"]["unique"] == 1
     assert existing_title == "Existing result"
+
+    engine.dispose()
+
+
+def test_apply_schema_updates_adds_claim_token_to_existing_sync_table(
+    tmp_path,
+    monkeypatch,
+):
+    database_path = tmp_path / "existing-sync.sqlite3"
+    engine = create_engine(f"sqlite:///{database_path}")
+    with engine.begin() as connection:
+        connection.execute(
+            text("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY)")
+        )
+        connection.execute(
+            text("CREATE TABLE achievements (id INTEGER NOT NULL PRIMARY KEY)")
+        )
+        connection.execute(text("INSERT INTO achievements (id) VALUES (1)"))
+        connection.execute(
+            text(
+                """
+                CREATE TABLE feishu_sync_records (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    achievement_id INTEGER NOT NULL,
+                    feishu_record_id VARCHAR(255),
+                    sync_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                    last_synced_at DATETIME,
+                    last_error TEXT NOT NULL DEFAULT '',
+                    payload_hash VARCHAR(64) NOT NULL DEFAULT '',
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO feishu_sync_records (
+                    id,
+                    achievement_id,
+                    created_at,
+                    updated_at
+                ) VALUES (
+                    1,
+                    1,
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+
+    monkeypatch.setattr(schema_updates, "engine", engine)
+
+    schema_updates.apply_schema_updates()
+    schema_updates.apply_schema_updates()
+
+    columns = {
+        column["name"]: column
+        for column in inspect(engine).get_columns("feishu_sync_records")
+    }
+    with engine.connect() as connection:
+        existing_row = connection.execute(
+            text(
+                "SELECT achievement_id, sync_claim_token "
+                "FROM feishu_sync_records WHERE id = 1"
+            )
+        ).one()
+
+    assert columns["sync_claim_token"]["nullable"] is True
+    assert existing_row == (1, None)
 
     engine.dispose()
 

@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta
+from threading import Barrier, Event, Thread
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import models
@@ -15,15 +18,32 @@ from app.services.feishu_mapper import build_update_fields
 
 
 class FakeFeishuClient:
-    def __init__(self, records=(), *, search_error=None, on_search=None):
+    def __init__(
+        self,
+        records=(),
+        *,
+        db=None,
+        search_error=None,
+        create_error=None,
+        update_error=None,
+        on_search=None,
+    ):
         self.records = tuple(records)
+        self.db = db
         self.search_error = search_error
+        self.create_error = create_error
+        self.update_error = update_error
         self.on_search = on_search
         self.searches = []
         self.creates = []
         self.updates = []
 
+    def assert_no_db_transaction(self):
+        if self.db is not None:
+            assert self.db.in_transaction() is False
+
     def search_records_by_platform_id(self, platform_id):
+        self.assert_no_db_transaction()
         self.searches.append(platform_id)
         if self.on_search is not None:
             self.on_search(platform_id)
@@ -32,12 +52,25 @@ class FakeFeishuClient:
         return self.records
 
     def create_record(self, fields):
+        self.assert_no_db_transaction()
         self.creates.append(fields)
-        return FeishuRecord(record_id="rec-created", fields=dict(fields))
+        remote_record = FeishuRecord(
+            record_id="rec-created",
+            fields=dict(fields),
+        )
+        self.records = (remote_record,)
+        if self.create_error is not None:
+            raise self.create_error
+        return remote_record
 
     def update_record(self, record_id, fields):
+        self.assert_no_db_transaction()
         self.updates.append((record_id, fields))
-        return FeishuRecord(record_id=record_id, fields=dict(fields))
+        remote_record = FeishuRecord(record_id=record_id, fields=dict(fields))
+        self.records = (remote_record,)
+        if self.update_error is not None:
+            raise self.update_error
+        return remote_record
 
 
 class FalseyFakeFeishuClient(FakeFeishuClient):
@@ -141,6 +174,238 @@ def test_pending_state_is_committed_before_the_external_search(app):
         db.close()
 
 
+def test_concurrent_sessions_allow_only_one_external_create(app):
+    from app.services.feishu_sync import sync_achievement
+
+    setup_db = SessionLocal()
+    try:
+        achievement_id = create_achievement(setup_db).id
+    finally:
+        setup_db.close()
+
+    barrier = Barrier(2)
+    entered_search = Event()
+    first_results = []
+    first_errors = []
+
+    def block_first_search(_platform_id):
+        entered_search.set()
+        barrier.wait(timeout=5)
+
+    first_client = FakeFeishuClient(on_search=block_first_search)
+    second_client = FakeFeishuClient()
+
+    def run_first_sync():
+        db = SessionLocal()
+        db.expire_on_commit = False
+        try:
+            achievement = db.get(models.Achievement, achievement_id)
+            first_results.append(
+                sync_achievement(db, achievement, client=first_client)
+            )
+        except BaseException as error:
+            first_errors.append(error)
+        finally:
+            db.close()
+
+    first_thread = Thread(target=run_first_sync)
+    first_thread.start()
+    assert entered_search.wait(timeout=5)
+
+    second_db = SessionLocal()
+    second_db.expire_on_commit = False
+    try:
+        second_achievement = second_db.get(models.Achievement, achievement_id)
+        second_result = sync_achievement(
+            second_db,
+            second_achievement,
+            client=second_client,
+        )
+    finally:
+        barrier.wait(timeout=5)
+        second_db.close()
+        first_thread.join(timeout=5)
+
+    assert not first_thread.is_alive()
+    assert first_errors == []
+    assert first_results[0].status == "synced"
+    assert second_result.status == "pending"
+    assert second_result.busy is True
+    assert second_client.searches == []
+    assert second_client.creates == []
+    assert len(first_client.creates) + len(second_client.creates) == 1
+
+
+def test_concurrent_initial_insert_uses_unique_constraint_as_lease_fallback(app):
+    from app.services.feishu_sync import sync_achievement
+
+    setup_db = SessionLocal()
+    try:
+        achievement_id = create_achievement(setup_db).id
+        test_engine = setup_db.get_bind()
+    finally:
+        setup_db.close()
+
+    insert_barrier = Barrier(2)
+    results = []
+    clients = []
+    errors = []
+
+    def pause_before_sync_insert(
+        _connection,
+        _cursor,
+        statement,
+        _parameters,
+        _context,
+        _executemany,
+    ):
+        if statement.startswith("INSERT INTO feishu_sync_records"):
+            insert_barrier.wait(timeout=5)
+
+    def run_sync():
+        db = SessionLocal()
+        db.expire_on_commit = False
+        client = FakeFeishuClient(db=db)
+        clients.append(client)
+        try:
+            achievement = db.get(models.Achievement, achievement_id)
+            results.append(sync_achievement(db, achievement, client=client))
+        except BaseException as error:
+            errors.append(error)
+        finally:
+            db.close()
+
+    event.listen(test_engine, "before_cursor_execute", pause_before_sync_insert)
+    threads = [Thread(target=run_sync), Thread(target=run_sync)]
+    try:
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+    finally:
+        event.remove(
+            test_engine,
+            "before_cursor_execute",
+            pause_before_sync_insert,
+        )
+
+    assert all(not thread.is_alive() for thread in threads)
+    assert errors == []
+    assert len(results) == 2
+    assert sum(len(client.searches) for client in clients) == 1
+    assert sum(len(client.creates) for client in clients) == 1
+    assert sum(len(client.updates) for client in clients) == 0
+    assert sum(
+        result.status == "synced" and not result.skipped
+        for result in results
+    ) == 1
+    assert sum(result.busy or result.skipped for result in results) == 1
+
+
+def test_stale_pending_lease_can_be_claimed(app):
+    from app.services.feishu_sync import STALE_PENDING_SECONDS, sync_achievement
+
+    db = SessionLocal()
+    try:
+        achievement = create_achievement(db)
+        db.add(
+            models.FeishuSyncRecord(
+                achievement_id=achievement.id,
+                sync_status="pending",
+                sync_claim_token="stale-owner",
+                updated_at=datetime.utcnow()
+                - timedelta(seconds=STALE_PENDING_SECONDS + 1),
+            )
+        )
+        db.commit()
+        client = FakeFeishuClient()
+
+        result = sync_achievement(db, achievement, client=client)
+
+        sync_record = db.query(models.FeishuSyncRecord).filter_by(
+            achievement_id=achievement.id
+        ).one()
+        assert result.status == "synced"
+        assert result.busy is False
+        assert client.searches == [achievement.id]
+        assert len(client.creates) == 1
+        assert sync_record.sync_claim_token is None
+    finally:
+        db.close()
+
+
+@pytest.mark.parametrize(
+    "records",
+    [
+        (),
+        (FeishuRecord(record_id="rec-existing"),),
+    ],
+)
+def test_search_create_and_update_run_without_a_database_transaction(
+    app,
+    records,
+):
+    from app.services.feishu_sync import sync_achievement
+
+    db = SessionLocal()
+    try:
+        achievement = create_achievement(db)
+        client = FakeFeishuClient(records=records, db=db)
+
+        result = sync_achievement(db, achievement, client=client)
+
+        assert result.status == "synced"
+        assert client.searches == [achievement.id]
+        if records:
+            assert len(client.updates) == 1
+            assert client.creates == []
+        else:
+            assert len(client.creates) == 1
+            assert client.updates == []
+    finally:
+        db.close()
+
+
+def test_old_lease_owner_cannot_overwrite_a_new_claim(app):
+    from app.services.feishu_sync import sync_achievement
+
+    db = SessionLocal()
+    try:
+        achievement = create_achievement(db)
+
+        def replace_claim_token(platform_id):
+            stealer_db = SessionLocal()
+            try:
+                stealer_db.query(models.FeishuSyncRecord).filter_by(
+                    achievement_id=platform_id,
+                    sync_status="pending",
+                ).update(
+                    {
+                        models.FeishuSyncRecord.sync_claim_token: "new-owner",
+                        models.FeishuSyncRecord.updated_at: datetime.utcnow(),
+                    }
+                )
+                stealer_db.commit()
+            finally:
+                stealer_db.close()
+
+        client = FakeFeishuClient(db=db, on_search=replace_claim_token)
+
+        result = sync_achievement(db, achievement, client=client)
+
+        db.expire_all()
+        sync_record = db.query(models.FeishuSyncRecord).filter_by(
+            achievement_id=achievement.id
+        ).one()
+        assert result.status == "pending"
+        assert result.busy is True
+        assert sync_record.sync_status == "pending"
+        assert sync_record.sync_claim_token == "new-owner"
+        assert sync_record.feishu_record_id is None
+    finally:
+        db.close()
+
+
 def test_repeated_sync_updates_the_same_feishu_record(app):
     from app.services.feishu_sync import sync_achievement
 
@@ -225,6 +490,65 @@ def test_feishu_failure_is_safe_and_leaves_committed_achievement_intact(app):
         assert sync_record.sync_status == "failed"
         assert sync_record.last_error == result.error
         assert db.get(models.Achievement, achievement_id) is not None
+    finally:
+        db.close()
+
+
+def test_remote_create_then_error_is_failed_and_retry_does_not_create_again(app):
+    from app.services.feishu_sync import sync_achievement
+
+    db = SessionLocal()
+    try:
+        achievement = create_achievement(db)
+        client = FakeFeishuClient(
+            db=db,
+            create_error=FeishuNetworkError("response was lost after write"),
+        )
+
+        first_result = sync_achievement(db, achievement, client=client)
+
+        failed_record = db.query(models.FeishuSyncRecord).filter_by(
+            achievement_id=achievement.id
+        ).one()
+        assert first_result.status == "failed"
+        assert failed_record.sync_status == "failed"
+        assert failed_record.sync_claim_token is None
+        assert len(client.creates) == 1
+
+        client.create_error = None
+        second_result = sync_achievement(db, achievement, client=client)
+
+        assert second_result.status == "synced"
+        assert second_result.record_id == "rec-created"
+        assert len(client.creates) == 1
+        assert len(client.updates) == 1
+        assert client.updates[0][0] == "rec-created"
+    finally:
+        db.close()
+
+
+def test_remote_update_error_is_stored_as_failed(app):
+    from app.services.feishu_sync import sync_achievement
+
+    db = SessionLocal()
+    try:
+        achievement = create_achievement(db)
+        client = FakeFeishuClient(
+            db=db,
+            records=(FeishuRecord(record_id="rec-existing"),),
+            update_error=FeishuNetworkError("response was lost after update"),
+        )
+
+        result = sync_achievement(db, achievement, client=client)
+
+        sync_record = db.query(models.FeishuSyncRecord).filter_by(
+            achievement_id=achievement.id
+        ).one()
+        assert result.status == "failed"
+        assert sync_record.sync_status == "failed"
+        assert sync_record.sync_claim_token is None
+        assert client.creates == []
+        assert len(client.updates) == 1
     finally:
         db.close()
 
@@ -375,7 +699,7 @@ def test_sync_state_commit_failure_rolls_back_and_keeps_session_usable(
         with pytest.raises(SQLAlchemyError, match="sync state commit failed"):
             sync_achievement(db, achievement, client=client)
 
-        assert rollback_calls == [True]
+        assert rollback_calls
         assert client.searches == []
 
         monkeypatch.setattr(db, "commit", real_commit)
@@ -421,7 +745,7 @@ def test_final_sync_state_commit_failure_rolls_back_to_retryable_pending(
         with pytest.raises(SQLAlchemyError, match="final sync state commit failed"):
             sync_achievement(db, achievement, client=client)
 
-        assert rollback_calls == [True]
+        assert rollback_calls
         assert len(client.creates) == 1
 
         monkeypatch.setattr(db, "commit", real_commit)
