@@ -376,7 +376,10 @@ def test_award_condition_accepts_generic_award_events(award_event):
     [
         "2025年校级测试项目未获奖",
         "2025年校级测试项目没有获奖",
+        "2025年校级测试项目没获奖",
+        "2025年校级测试项目没能获奖",
         "2025年校级测试项目尚未最终获奖",
+        "2025年校级测试项目尚未能够获奖",
         "2025年校级测试项目不符合获奖条件",
     ],
 )
@@ -416,6 +419,9 @@ def test_unlabelled_rank_list_is_not_inferred_from_award_order(real_rules):
     [
         "指导学生参加省级职业技能竞赛，未获得二等奖",
         "指导学生参加省级职业技能竞赛，没有获得三等奖",
+        "指导学生参加省级职业技能竞赛，没获得二等奖",
+        "指导学生参加省级职业技能竞赛，没能获得二等奖",
+        "指导学生参加省级职业技能竞赛，尚未能够获得二等奖",
     ],
 )
 def test_negated_award_rank_does_not_select_labelled_score(

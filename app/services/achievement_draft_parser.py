@@ -133,8 +133,8 @@ AWARD_EVENT_PATTERN = re.compile(
     rf")"
 )
 AWARD_EVENT_NEGATION_PATTERN = re.compile(
-    r"(?:未能|尚未|没有|并未|未曾|不曾|未)"
-    r"(?:(?:最终|成功|正式|实际|真正|顺利|能)){0,2}$"
+    r"(?:未能|没能|尚未|没有|并未|未曾|不曾|未|没)"
+    r"(?:(?:最终|成功|正式|实际|真正|顺利|能够|能)){0,2}$"
 )
 AWARD_MODIFIER_TOKENS = (
     "国家级",
