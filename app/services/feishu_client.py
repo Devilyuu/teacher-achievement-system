@@ -62,6 +62,13 @@ class FeishuRecord:
     fields: dict[str, Any] = field(default_factory=dict, repr=False)
 
 
+@dataclass(frozen=True)
+class TokenCacheEntry:
+    token: str = field(repr=False)
+    cache_key: bytes = field(repr=False)
+    expires_at: float
+
+
 class FeishuClient:
     def __init__(
         self,
@@ -80,9 +87,7 @@ class FeishuClient:
             transport=transport,
             timeout=timeout,
         )
-        self._cached_tenant_access_token: str | None = None
-        self._cached_token_key: bytes | None = None
-        self._cached_token_expires_at = 0.0
+        self._token_cache_entry: TokenCacheEntry | None = None
         self._token_lock = Lock()
 
     def close(self) -> None:
@@ -242,20 +247,22 @@ class FeishuClient:
                 )
 
             refresh_margin = min(60.0, float(expires_in) * 0.1)
-            self._cached_tenant_access_token = token
-            self._cached_token_key = cache_key
-            self._cached_token_expires_at = (
-                monotonic() + float(expires_in) - refresh_margin
+            expires_at = monotonic() + float(expires_in) - refresh_margin
+            self._token_cache_entry = TokenCacheEntry(
+                token=token,
+                cache_key=cache_key,
+                expires_at=expires_at,
             )
             return token
 
     def _valid_cached_token(self, cache_key: bytes) -> str | None:
+        entry = self._token_cache_entry
         if (
-            self._cached_tenant_access_token is not None
-            and self._cached_token_key == cache_key
-            and monotonic() < self._cached_token_expires_at
+            entry is not None
+            and entry.cache_key == cache_key
+            and monotonic() < entry.expires_at
         ):
-            return self._cached_tenant_access_token
+            return entry.token
         return None
 
     @staticmethod

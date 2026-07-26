@@ -192,6 +192,94 @@ def test_concurrent_token_requests_share_one_authentication(feishu_config):
     assert token_requests == 1
 
 
+def test_config_switch_cannot_mix_token_cache_state(monkeypatch):
+    from app.services.feishu_client import FeishuClient
+
+    app_1 = SimpleNamespace(
+        feishu_ready=True,
+        feishu_app_id="app-1",
+        feishu_app_secret="secret-1",
+        feishu_base_token="base_test",
+        feishu_table_id="table_test",
+    )
+    app_2 = SimpleNamespace(
+        feishu_ready=True,
+        feishu_app_id="app-2",
+        feishu_app_secret="secret-2",
+        feishu_base_token="base_test",
+        feishu_table_id="table_test",
+    )
+    thread_config = threading.local()
+    comparison_started = threading.Event()
+    release_reader = threading.Event()
+    control = SimpleNamespace(armed=False, reader_ident=None)
+
+    class ControlledCacheKey:
+        def __init__(self, app_id):
+            self.app_id = app_id
+
+        def __eq__(self, other):
+            should_pause = (
+                control.armed
+                and threading.get_ident() == control.reader_ident
+                and self.app_id == "app-1"
+                and isinstance(other, ControlledCacheKey)
+                and other.app_id == "app-1"
+            )
+            if should_pause:
+                comparison_started.set()
+                if not release_reader.wait(timeout=2):
+                    raise AssertionError("timed out waiting to resume App1 cache read")
+            return (
+                isinstance(other, ControlledCacheKey)
+                and self.app_id == other.app_id
+            )
+
+    class ControlledClient(FeishuClient):
+        def _token_cache_key(self, integration_config):
+            return ControlledCacheKey(integration_config.feishu_app_id)
+
+    monkeypatch.setattr(
+        config,
+        "get_personal_integration_config",
+        lambda: thread_config.value,
+    )
+
+    def handler(request):
+        request_body = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "tenant_access_token": f"token-{request_body['app_id']}",
+                "expire": 7200,
+            },
+        )
+
+    client = ControlledClient(transport=httpx.MockTransport(handler))
+    thread_config.value = app_1
+    assert client.get_tenant_access_token() == "token-app-1"
+    control.armed = True
+
+    def read_app_1_token():
+        thread_config.value = app_1
+        control.reader_ident = threading.get_ident()
+        return client.get_tenant_access_token()
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        app_1_future = executor.submit(read_app_1_token)
+        assert comparison_started.wait(timeout=2)
+        thread_config.value = app_2
+        try:
+            app_2_token = client.get_tenant_access_token()
+        finally:
+            release_reader.set()
+        app_1_token = app_1_future.result(timeout=2)
+
+    assert app_1_token == "token-app-1"
+    assert app_2_token == "token-app-2"
+
+
 def test_search_posts_exact_platform_id_filter_and_returns_one_match(feishu_config):
     from app.services.feishu_client import FeishuClient, FeishuRecord
 
