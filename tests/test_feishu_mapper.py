@@ -111,6 +111,7 @@ def test_create_fields_map_owned_values_and_initial_sync_defaults():
         "成果平台ID": "42",
         "成果名称": "省级教学成果奖",
         "成果年度": "2026",
+        "成果类型": "获奖荣誉",
         "成果大类": "教学建设与改革",
         "成果细类": "教学成果奖",
         "级别": "省级",
@@ -133,6 +134,39 @@ def test_update_fields_never_include_sync_external_or_material_fields():
     assert fields["成果名称"] == "省级教学成果奖"
     assert EXTERNAL_FIELDS.isdisjoint(fields)
     assert "secret-proof.pdf" not in repr(fields)
+
+
+@pytest.mark.parametrize(
+    ("category", "subcategory", "title", "expected_type"),
+    [
+        ("教学", "教学成果奖申报及获奖", "省级教学成果奖", "获奖荣誉"),
+        ("教学", "公共课教学改革", "公共课改革项目", "课题项目"),
+        ("科研与社会服务工作", "横向课题及项目", "横向课题", "横向课题"),
+        ("科研与社会服务工作", "论文发表", "EI 收录论文", "论文著作"),
+        ("育人成效", "指导学生大赛（包括技能、双创）", "学生竞赛获奖", "指导学生"),
+        ("教学", "教材编写出版", "校企合作教材", "教材及课程"),
+        ("科研与社会服务工作", "发明专利", "发明专利授权", "知识产权"),
+        ("科研与社会服务工作", "社会培训服务工作", "行业讲座培训", "培训讲座"),
+        ("科研与社会服务工作", "社会服务", "行业服务项目", "社会服务"),
+    ],
+)
+def test_achievement_type_matches_existing_feishu_group_values(
+    category,
+    subcategory,
+    title,
+    expected_type,
+):
+    from app.services.feishu_mapper import build_update_fields
+
+    fields = build_update_fields(
+        achievement(
+            category=category,
+            subcategory=subcategory,
+            title=title,
+        )
+    )
+
+    assert fields["成果类型"] == expected_type
 
 
 @pytest.mark.parametrize(

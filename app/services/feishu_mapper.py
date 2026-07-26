@@ -126,6 +126,58 @@ LOCAL_CATEGORY_FALLBACKS = (
     ("社会服务", "社会服务与培训"),
 )
 
+SUBCATEGORY_TYPES = {
+    "教科研考核优秀": "获奖荣誉",
+    "年度考核优秀": "获奖荣誉",
+    "记功表彰": "获奖荣誉",
+    "综合表彰": "获奖荣誉",
+    "教学论文获奖": "获奖荣誉",
+    "教学成果奖": "获奖荣誉",
+    "教师教学竞赛": "获奖荣誉",
+    "科研获奖": "获奖荣誉",
+    "教改课题": "课题项目",
+    "公共课教学改革": "课题项目",
+    "产教融合课题": "课题项目",
+    "师资建设课题": "课题项目",
+    "专业建设": "课题项目",
+    "社科课题": "课题项目",
+    "软科学课题": "课题项目",
+    "产学研项目": "课题项目",
+    "纵向课题": "课题项目",
+    "横向课题": "横向课题",
+    "期刊论文": "论文著作",
+    "EI论文": "论文著作",
+    "专著": "论文著作",
+    "研究报告": "论文著作",
+    "学生竞赛获奖": "指导学生",
+    "优秀毕业设计": "指导学生",
+    "创新创业项目": "指导学生",
+    "学生作品展演": "指导学生",
+    "教材建设项目": "教材及课程",
+    "课程建设": "教材及课程",
+    "教学资源建设": "教材及课程",
+    "发明专利": "知识产权",
+    "实用新型专利": "知识产权",
+    "软件著作权": "知识产权",
+    "成果转化": "知识产权",
+    "社会服务": "社会服务",
+    "技术服务": "社会服务",
+    "行业服务": "社会服务",
+    "讲座培训": "培训讲座",
+}
+
+CATEGORY_TYPE_FALLBACKS = {
+    "综合荣誉": "获奖荣誉",
+    "教学建设与改革": "课题项目",
+    "科研项目": "课题项目",
+    "论文著作": "论文著作",
+    "指导学生": "指导学生",
+    "教材与课程": "教材及课程",
+    "知识产权与成果转化": "知识产权",
+    "社会服务与培训": "社会服务",
+    "其他成果": "其他成果",
+}
+
 
 def _text(value: Any) -> str:
     if value is None:
@@ -187,6 +239,13 @@ def _readable_status(status: Any) -> str:
     return STATUS_LABELS.get(value, value)
 
 
+def _achievement_type(category: str, subcategory: str) -> str:
+    return SUBCATEGORY_TYPES.get(
+        subcategory,
+        CATEGORY_TYPE_FALLBACKS.get(category, "其他成果"),
+    )
+
+
 def _notes_for(achievement: Any) -> str:
     parts = (
         _text(getattr(achievement, "current_stage", "")),
@@ -197,11 +256,13 @@ def _notes_for(achievement: Any) -> str:
 
 def build_update_fields(achievement: Any) -> dict[str, Any]:
     subcategory = _subcategory_for(achievement)
+    category = _category_for(achievement, subcategory)
     return {
         "成果平台ID": _text(achievement.id),
         "成果名称": _text(achievement.title),
         "成果年度": _text(achievement.year),
-        "成果大类": _category_for(achievement, subcategory),
+        "成果类型": _achievement_type(category, subcategory),
+        "成果大类": category,
         "成果细类": subcategory,
         "级别": _text(getattr(achievement, "level", "")),
         "本人角色": _text(getattr(achievement, "personal_role", "")),
