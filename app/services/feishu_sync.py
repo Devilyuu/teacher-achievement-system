@@ -5,7 +5,7 @@ from hashlib import sha256
 from typing import Any, Protocol
 from uuid import uuid4
 
-from sqlalchemy import and_, not_, or_, select, update
+from sqlalchemy import and_, func, not_, or_, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,12 @@ class FeishuSyncClient(Protocol):
         platform_id: int | str,
     ) -> tuple[FeishuRecord, ...]: ...
 
-    def create_record(self, fields: dict[str, Any]) -> FeishuRecord: ...
+    def create_record(
+        self,
+        fields: dict[str, Any],
+        *,
+        client_token: str,
+    ) -> FeishuRecord: ...
 
     def update_record(
         self,
@@ -216,6 +221,69 @@ def _finish_claim(
     return True
 
 
+def _renew_claim(
+    db: Session,
+    *,
+    achievement_id: int,
+    claim_token: str,
+) -> bool:
+    renewed = db.execute(
+        update(FeishuSyncRecord)
+        .where(
+            FeishuSyncRecord.achievement_id == achievement_id,
+            FeishuSyncRecord.sync_status == "pending",
+            FeishuSyncRecord.sync_claim_token == claim_token,
+        )
+        .values(updated_at=datetime.utcnow())
+        .execution_options(synchronize_session=False)
+    )
+    if renewed.rowcount != 1:
+        db.rollback()
+        return False
+    _commit_sync_state(db)
+    return True
+
+
+def _prepare_create(
+    db: Session,
+    *,
+    achievement_id: int,
+    claim_token: str,
+) -> str | None:
+    generated_client_token = str(uuid4())
+    prepared = db.execute(
+        update(FeishuSyncRecord)
+        .where(
+            FeishuSyncRecord.achievement_id == achievement_id,
+            FeishuSyncRecord.sync_status == "pending",
+            FeishuSyncRecord.sync_claim_token == claim_token,
+        )
+        .values(
+            create_client_token=func.coalesce(
+                FeishuSyncRecord.create_client_token,
+                generated_client_token,
+            ),
+            updated_at=datetime.utcnow(),
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if prepared.rowcount != 1:
+        db.rollback()
+        return None
+    client_token = db.scalar(
+        select(FeishuSyncRecord.create_client_token).where(
+            FeishuSyncRecord.achievement_id == achievement_id,
+            FeishuSyncRecord.sync_status == "pending",
+            FeishuSyncRecord.sync_claim_token == claim_token,
+        )
+    )
+    if client_token is None:
+        db.rollback()
+        return None
+    _commit_sync_state(db)
+    return client_token
+
+
 def sync_achievement(
     db: Session,
     achievement: Achievement,
@@ -252,12 +320,28 @@ def sync_achievement(
                 return _busy_result()
             return SyncResult(status="conflict", error=error)
         if records:
+            if not _renew_claim(
+                db,
+                achievement_id=achievement_id,
+                claim_token=claim_token,
+            ):
+                return _busy_result()
             remote_record = active_client.update_record(
                 records[0].record_id,
                 update_fields,
             )
         else:
-            remote_record = active_client.create_record(create_fields)
+            create_client_token = _prepare_create(
+                db,
+                achievement_id=achievement_id,
+                claim_token=claim_token,
+            )
+            if create_client_token is None:
+                return _busy_result()
+            remote_record = active_client.create_record(
+                create_fields,
+                client_token=create_client_token,
+            )
 
         if not _finish_claim(
             db,

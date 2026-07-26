@@ -171,12 +171,19 @@ class FeishuClient:
 
         raise FeishuResponseError("Feishu search exceeded its page limit")
 
-    def create_record(self, fields: dict[str, Any]) -> FeishuRecord:
+    def create_record(
+        self,
+        fields: dict[str, Any],
+        *,
+        client_token: str | None = None,
+    ) -> FeishuRecord:
         integration_config = self._configuration_snapshot()
+        params = {"client_token": client_token} if client_token else None
         response = self._authorized_request(
             integration_config,
             "POST",
             self._records_url(integration_config),
+            params=params,
             json={"fields": fields},
         )
         return self._record_from_write_response(response)

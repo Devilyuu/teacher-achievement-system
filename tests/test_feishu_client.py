@@ -482,7 +482,10 @@ def test_create_posts_fields_and_returns_typed_record(feishu_config):
 
     client = FeishuClient(transport=httpx.MockTransport(handler))
 
-    result = client.create_record({"成果名称": "新成果"})
+    result = client.create_record(
+        {"成果名称": "新成果"},
+        client_token="fe599b60-450f-46ff-b2ef-9f6675625b97",
+    )
 
     assert result == FeishuRecord(
         record_id="rec_created",
@@ -491,6 +494,9 @@ def test_create_posts_fields_and_returns_typed_record(feishu_config):
     assert record_requests[0].method == "POST"
     assert record_requests[0].url.path.endswith(
         "/apps/base_test/tables/table_test/records"
+    )
+    assert record_requests[0].url.params["client_token"] == (
+        "fe599b60-450f-46ff-b2ef-9f6675625b97"
     )
     assert json.loads(record_requests[0].content) == {
         "fields": {"成果名称": "新成果"}
