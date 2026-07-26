@@ -1,4 +1,5 @@
 import importlib
+from types import SimpleNamespace
 
 from app import config
 
@@ -71,20 +72,79 @@ def test_ai_readiness_reflects_environment_changes_immediately(monkeypatch):
     assert "test-ai-secret" not in repr(ready_status)
 
 
+def test_personal_integration_service_uses_the_config_snapshot(monkeypatch):
+    from app.services.personal_integration import (
+        can_use_personal_sync,
+        integration_status,
+    )
+
+    snapshot = SimpleNamespace(
+        allows_username=lambda username: username == "snapshot-user",
+        feishu_ready=True,
+        ai_ready=False,
+    )
+    monkeypatch.setattr(
+        config,
+        "get_personal_integration_config",
+        lambda: snapshot,
+        raising=False,
+    )
+    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "environment-user")
+    monkeypatch.delenv("FEISHU_APP_ID", raising=False)
+    monkeypatch.setenv("ACHIEVEMENT_AI_API_KEY", "environment-ai-key")
+
+    status = integration_status("snapshot-user")
+
+    assert can_use_personal_sync("snapshot-user") is True
+    assert status.user_enabled is True
+    assert status.feishu_ready is True
+    assert status.ai_ready is False
+
+
+def test_personal_integration_config_snapshot_reads_current_environment(monkeypatch):
+    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "first-user")
+
+    first_snapshot = config.get_personal_integration_config()
+
+    monkeypatch.setenv("FEISHU_SYNC_USERNAME", "second-user")
+
+    second_snapshot = config.get_personal_integration_config()
+
+    assert first_snapshot.sync_username == "first-user"
+    assert second_snapshot.sync_username == "second-user"
+
+
+def test_personal_integration_config_snapshot_does_not_expose_secrets(monkeypatch):
+    monkeypatch.setenv("FEISHU_APP_SECRET", "feishu-secret-value")
+    monkeypatch.setenv("ACHIEVEMENT_AI_API_KEY", "ai-secret-value")
+
+    snapshot = config.get_personal_integration_config()
+
+    assert "feishu-secret-value" not in repr(snapshot)
+    assert "ai-secret-value" not in repr(snapshot)
+
+
 def test_personal_integration_config_has_safe_defaults(monkeypatch):
-    for variable in FEISHU_ENVIRONMENT_VARIABLES + AI_ENVIRONMENT_VARIABLES:
-        monkeypatch.delenv(variable, raising=False)
-
-    reloaded = importlib.reload(config)
-
     try:
-        assert reloaded.FEISHU_SYNC_USERNAME == ""
-        assert reloaded.FEISHU_APP_ID == ""
-        assert reloaded.FEISHU_APP_SECRET == ""
-        assert reloaded.FEISHU_BASE_TOKEN == ""
-        assert reloaded.FEISHU_TABLE_ID == ""
-        assert reloaded.ACHIEVEMENT_AI_API_KEY == ""
-        assert reloaded.ACHIEVEMENT_AI_BASE_URL == "https://api.deepseek.com"
-        assert reloaded.ACHIEVEMENT_AI_MODEL == "deepseek-chat"
+        with monkeypatch.context() as integration_environment:
+            for variable in FEISHU_ENVIRONMENT_VARIABLES + AI_ENVIRONMENT_VARIABLES:
+                integration_environment.delenv(variable, raising=False)
+
+            reloaded = importlib.reload(config)
+            snapshot = reloaded.get_personal_integration_config()
+
+            assert snapshot.sync_username == ""
+            assert snapshot.feishu_app_id == ""
+            assert snapshot.feishu_app_secret == ""
+            assert snapshot.feishu_base_token == ""
+            assert snapshot.feishu_table_id == ""
+            assert snapshot.ai_api_key == ""
+            assert snapshot.ai_base_url == "https://api.deepseek.com"
+            assert snapshot.ai_model == "deepseek-chat"
     finally:
         importlib.reload(config)
+
+
+def test_config_does_not_cache_personal_integration_environment_values():
+    for variable in FEISHU_ENVIRONMENT_VARIABLES + AI_ENVIRONMENT_VARIABLES:
+        assert not hasattr(config, variable)

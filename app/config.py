@@ -1,5 +1,87 @@
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
+
+
+DEFAULT_FEISHU_SYNC_USERNAME = ""
+DEFAULT_FEISHU_APP_ID = ""
+DEFAULT_FEISHU_APP_SECRET = ""
+DEFAULT_FEISHU_BASE_TOKEN = ""
+DEFAULT_FEISHU_TABLE_ID = ""
+DEFAULT_ACHIEVEMENT_AI_API_KEY = ""
+DEFAULT_ACHIEVEMENT_AI_BASE_URL = "https://api.deepseek.com"
+DEFAULT_ACHIEVEMENT_AI_MODEL = "deepseek-chat"
+
+
+@dataclass(frozen=True)
+class PersonalIntegrationConfig:
+    sync_username: str
+    feishu_app_id: str = field(repr=False)
+    feishu_app_secret: str = field(repr=False)
+    feishu_base_token: str = field(repr=False)
+    feishu_table_id: str = field(repr=False)
+    ai_api_key: str = field(repr=False)
+    ai_base_url: str
+    ai_model: str
+
+    def allows_username(self, username: str) -> bool:
+        return bool(self.sync_username) and username == self.sync_username
+
+    @property
+    def feishu_ready(self) -> bool:
+        return all(
+            (
+                self.feishu_app_id,
+                self.feishu_app_secret,
+                self.feishu_base_token,
+                self.feishu_table_id,
+            )
+        )
+
+    @property
+    def ai_ready(self) -> bool:
+        return all((self.ai_api_key, self.ai_base_url, self.ai_model))
+
+
+def _environment_value(name: str, default: str) -> str:
+    return os.environ.get(name, default).strip()
+
+
+def get_personal_integration_config() -> PersonalIntegrationConfig:
+    return PersonalIntegrationConfig(
+        sync_username=_environment_value(
+            "FEISHU_SYNC_USERNAME",
+            DEFAULT_FEISHU_SYNC_USERNAME,
+        ),
+        feishu_app_id=_environment_value(
+            "FEISHU_APP_ID",
+            DEFAULT_FEISHU_APP_ID,
+        ),
+        feishu_app_secret=_environment_value(
+            "FEISHU_APP_SECRET",
+            DEFAULT_FEISHU_APP_SECRET,
+        ),
+        feishu_base_token=_environment_value(
+            "FEISHU_BASE_TOKEN",
+            DEFAULT_FEISHU_BASE_TOKEN,
+        ),
+        feishu_table_id=_environment_value(
+            "FEISHU_TABLE_ID",
+            DEFAULT_FEISHU_TABLE_ID,
+        ),
+        ai_api_key=_environment_value(
+            "ACHIEVEMENT_AI_API_KEY",
+            DEFAULT_ACHIEVEMENT_AI_API_KEY,
+        ),
+        ai_base_url=_environment_value(
+            "ACHIEVEMENT_AI_BASE_URL",
+            DEFAULT_ACHIEVEMENT_AI_BASE_URL,
+        ),
+        ai_model=_environment_value(
+            "ACHIEVEMENT_AI_MODEL",
+            DEFAULT_ACHIEVEMENT_AI_MODEL,
+        ),
+    )
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,20 +93,6 @@ USER_IMPORT_DIR = DATA_DIR / "imports" / "users"
 SECRET_KEY = os.environ.get(
     "TEACHER_ACHIEVEMENT_SECRET_KEY",
     "change-this-local-dev-secret",
-)
-FEISHU_SYNC_USERNAME = os.environ.get("FEISHU_SYNC_USERNAME", "")
-FEISHU_APP_ID = os.environ.get("FEISHU_APP_ID", "")
-FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
-FEISHU_BASE_TOKEN = os.environ.get("FEISHU_BASE_TOKEN", "")
-FEISHU_TABLE_ID = os.environ.get("FEISHU_TABLE_ID", "")
-ACHIEVEMENT_AI_API_KEY = os.environ.get("ACHIEVEMENT_AI_API_KEY", "")
-ACHIEVEMENT_AI_BASE_URL = os.environ.get(
-    "ACHIEVEMENT_AI_BASE_URL",
-    "https://api.deepseek.com",
-)
-ACHIEVEMENT_AI_MODEL = os.environ.get(
-    "ACHIEVEMENT_AI_MODEL",
-    "deepseek-chat",
 )
 MAX_UPLOAD_MB = 50
 MAX_BATCH_UPLOAD_FILES = 10
