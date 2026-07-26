@@ -118,6 +118,99 @@ def test_map_remote_record_reads_rich_text_and_marks_process_work(real_rules):
     assert mapped.notes == "已完成初稿"
 
 
+@pytest.mark.parametrize(
+    ("major", "minor", "status", "expected_pair"),
+    [
+        (
+            "科研项目",
+            "软科学课题",
+            "已立项",
+            ("科研与社会服务工作", "纵向课题（教科研）"),
+        ),
+        (
+            "教学建设与改革",
+            "公共课教学改革",
+            "已立项",
+            ("科研与社会服务工作", "纵向课题（教科研）"),
+        ),
+        (
+            "科研项目",
+            "产学研项目",
+            "已结项",
+            ("科研与社会服务工作", "纵向课题（教科研）"),
+        ),
+        (
+            "论文著作",
+            "专著",
+            "",
+            ("教学", "教材编写出版(含双语专业、公开刊号的作品集合、专著)"),
+        ),
+        (
+            "社会服务与培训",
+            "其他",
+            "已登报",
+            ("师德师风及党建思政工作", "宣传工作"),
+        ),
+        (
+            "指导学生",
+            "优秀毕业设计",
+            "",
+            ("育人成效", "毕业设计（论文）优秀评选"),
+        ),
+        (
+            "社会服务与培训",
+            "行业服务",
+            "已完赛",
+            ("其他有价值工作（自定义）", "自定义工作事项"),
+        ),
+    ],
+)
+def test_map_remote_record_translates_feishu_taxonomy(
+    real_rules,
+    major,
+    minor,
+    status,
+    expected_pair,
+):
+    from app.services.feishu_reverse_sync import map_remote_record
+
+    record = FeishuRecord(
+        record_id="rec_taxonomy",
+        fields={
+            "成果名称": "仅用于验证飞书分类映射的成果",
+            "成果年度": "2026",
+            "成果大类": major,
+            "成果细类": minor,
+            "状态": status,
+        },
+    )
+
+    mapped = map_remote_record(record, year=2026, rules=real_rules)
+
+    assert (mapped.category, mapped.subcategory) == expected_pair
+
+
+def test_map_remote_record_treats_pending_publication_as_process_work(real_rules):
+    from app.services.feishu_reverse_sync import map_remote_record
+
+    mapped = map_remote_record(
+        FeishuRecord(
+            record_id="rec_pending_paper",
+            fields={
+                "成果名称": "AIGC教师能力提升研究",
+                "成果年度": "2026",
+                "成果大类": "论文著作",
+                "成果细类": "期刊论文",
+                "状态": "已过稿（拟刊发）",
+            },
+        ),
+        year=2026,
+        rules=real_rules,
+    )
+
+    assert mapped.claim_nature == "过程性工作"
+
+
 class RecordingFeishuClient:
     def __init__(self, *, fail_updates=0):
         self.updated = []

@@ -22,10 +22,15 @@ from app.services.feishu_client import FeishuError, FeishuRecord
 PROCESS_STATUS_TERMS = (
     "申报中",
     "拟申报",
+    "拟刊发",
     "在研",
     "建设中",
     "执行中",
     "未入选",
+    "待完善",
+    "待写",
+    "待立项",
+    "申报立项中",
 )
 LEVEL_ALIASES = {
     "国家级": "国家级",
@@ -36,6 +41,88 @@ LEVEL_ALIASES = {
     "校级": "校级",
     "单位级": "校级",
     "学院级": "学院级",
+}
+FEISHU_TAXONOMY_MAP = {
+    ("综合荣誉", "教科研考核优秀"): ("教师发展", "教师综合性荣誉"),
+    ("综合荣誉", "年度考核优秀"): ("教师发展", "教师综合性荣誉"),
+    ("综合荣誉", "记功表彰"): ("教师发展", "教师综合性荣誉"),
+    ("教学建设与改革", "教学论文获奖"): (
+        "科研与社会服务工作",
+        "科研表彰",
+    ),
+    ("教学建设与改革", "教学成果奖"): (
+        "教学",
+        "教学成果奖申报及获奖",
+    ),
+    ("科研项目", "科研获奖"): ("科研与社会服务工作", "科研表彰"),
+    ("科研项目", "社科课题"): (
+        "科研与社会服务工作",
+        "纵向课题（教科研）",
+    ),
+    ("科研项目", "软科学课题"): (
+        "科研与社会服务工作",
+        "纵向课题（教科研）",
+    ),
+    ("科研项目", "产学研项目"): (
+        "科研与社会服务工作",
+        "纵向课题（教科研）",
+    ),
+    ("科研项目", "纵向课题"): (
+        "科研与社会服务工作",
+        "纵向课题（教科研）",
+    ),
+    ("教学建设与改革", "产教融合课题"): (
+        "科研与社会服务工作",
+        "纵向课题（教科研）",
+    ),
+    ("教学建设与改革", "公共课教学改革"): (
+        "科研与社会服务工作",
+        "纵向课题（教科研）",
+    ),
+    ("教学建设与改革", "师资建设课题"): (
+        "科研与社会服务工作",
+        "纵向课题（教科研）",
+    ),
+    ("教学建设与改革", "教改课题"): (
+        "教学",
+        "教学项目（包括劳动教育、思政教育等案例）申报及获奖",
+    ),
+    ("教材与课程", "教材建设项目"): (
+        "教学",
+        "教材编写出版(含双语专业、公开刊号的作品集合、专著)",
+    ),
+    ("论文著作", "期刊论文"): (
+        "科研与社会服务工作",
+        "普通期刊发表",
+    ),
+    ("论文著作", "EI论文"): (
+        "科研与社会服务工作",
+        "普通期刊发表",
+    ),
+    ("论文著作", "专著"): (
+        "教学",
+        "教材编写出版(含双语专业、公开刊号的作品集合、专著)",
+    ),
+    ("社会服务与培训", "讲座培训"): (
+        "科研与社会服务工作",
+        "社会培训服务工作",
+    ),
+    ("社会服务与培训", "行业服务"): (
+        "其他有价值工作（自定义）",
+        "自定义工作事项",
+    ),
+    ("指导学生", "优秀毕业设计"): (
+        "育人成效",
+        "毕业设计（论文）优秀评选",
+    ),
+    ("指导学生", "创新创业项目"): (
+        "育人成效",
+        "指导学生大赛（包括技能、双创）",
+    ),
+    ("指导学生", "学生竞赛获奖"): (
+        "育人成效",
+        "指导学生大赛（包括技能、双创）",
+    ),
 }
 
 
@@ -159,12 +246,14 @@ def map_remote_record(
 
     status = _field_text(fields.get("状态"))
     notes = _field_text(fields.get("备注"))
+    remote_category = _field_text(fields.get("成果大类"))
+    remote_subcategory = _field_text(fields.get("成果细类"))
     category_context = " ".join(
         value
         for value in (
             title,
-            _field_text(fields.get("成果大类")),
-            _field_text(fields.get("成果细类")),
+            remote_category,
+            remote_subcategory,
             status,
             notes,
         )
@@ -174,6 +263,20 @@ def map_remote_record(
         category_context,
         rules,
         integration_config=SimpleNamespace(ai_ready=False),
+    )
+    mapped_pair = FEISHU_TAXONOMY_MAP.get(
+        (remote_category, remote_subcategory)
+    )
+    if (
+        mapped_pair is None
+        and remote_category == "社会服务与培训"
+        and remote_subcategory == "其他"
+        and "登报" in f"{status} {notes}"
+    ):
+        mapped_pair = ("师德师风及党建思政工作", "宣传工作")
+    category, subcategory = mapped_pair or (
+        parsed.category,
+        parsed.subcategory,
     )
     raw_level = _field_text(fields.get("级别"))
     level = LEVEL_ALIASES.get(raw_level, parsed.level)
@@ -187,8 +290,8 @@ def map_remote_record(
         record_id=record.record_id,
         title=title,
         year=remote_year,
-        category=parsed.category,
-        subcategory=parsed.subcategory,
+        category=category,
+        subcategory=subcategory,
         claim_nature=claim_nature,
         level=level,
         personal_role=_field_text(fields.get("本人角色")),
