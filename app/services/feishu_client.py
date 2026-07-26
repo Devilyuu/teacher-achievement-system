@@ -1,4 +1,7 @@
 from dataclasses import dataclass, field
+from hashlib import sha256
+from threading import Lock
+from time import monotonic
 from typing import Any
 from urllib.parse import quote
 
@@ -77,6 +80,10 @@ class FeishuClient:
             transport=transport,
             timeout=timeout,
         )
+        self._cached_tenant_access_token: str | None = None
+        self._cached_token_key: bytes | None = None
+        self._cached_token_expires_at = 0.0
+        self._token_lock = Lock()
 
     def close(self) -> None:
         if self._owns_client:
@@ -200,21 +207,64 @@ class FeishuClient:
         return integration_config
 
     def _get_tenant_access_token(self, integration_config: Any) -> str:
-        response = self._request(
-            "POST",
-            f"{self._base_url}/open-apis/auth/v3/tenant_access_token/internal",
-            json={
-                "app_id": integration_config.feishu_app_id,
-                "app_secret": integration_config.feishu_app_secret,
-            },
-            authentication_request=True,
-        )
-        token = response.get("tenant_access_token")
-        if not isinstance(token, str) or not token:
-            raise FeishuResponseError(
-                "Feishu authentication response has an invalid shape"
+        cache_key = self._token_cache_key(integration_config)
+        cached_token = self._valid_cached_token(cache_key)
+        if cached_token is not None:
+            return cached_token
+
+        with self._token_lock:
+            cached_token = self._valid_cached_token(cache_key)
+            if cached_token is not None:
+                return cached_token
+
+            response = self._request(
+                "POST",
+                f"{self._base_url}/open-apis/auth/v3/tenant_access_token/internal",
+                json={
+                    "app_id": integration_config.feishu_app_id,
+                    "app_secret": integration_config.feishu_app_secret,
+                },
+                authentication_request=True,
             )
-        return token
+            token = response.get("tenant_access_token")
+            if not isinstance(token, str) or not token:
+                raise FeishuResponseError(
+                    "Feishu authentication response has an invalid shape"
+                )
+            expires_in = response.get("expire")
+            if (
+                isinstance(expires_in, bool)
+                or not isinstance(expires_in, (int, float))
+                or expires_in <= 0
+            ):
+                raise FeishuResponseError(
+                    "Feishu authentication response has an invalid expiration"
+                )
+
+            refresh_margin = min(60.0, float(expires_in) * 0.1)
+            self._cached_tenant_access_token = token
+            self._cached_token_key = cache_key
+            self._cached_token_expires_at = (
+                monotonic() + float(expires_in) - refresh_margin
+            )
+            return token
+
+    def _valid_cached_token(self, cache_key: bytes) -> str | None:
+        if (
+            self._cached_tenant_access_token is not None
+            and self._cached_token_key == cache_key
+            and monotonic() < self._cached_token_expires_at
+        ):
+            return self._cached_tenant_access_token
+        return None
+
+    @staticmethod
+    def _token_cache_key(integration_config: Any) -> bytes:
+        digest = sha256()
+        digest.update(integration_config.feishu_app_id.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(integration_config.feishu_app_secret.encode("utf-8"))
+        return digest.digest()
 
     def _authorized_request(
         self,
@@ -265,7 +315,7 @@ class FeishuClient:
             raise FeishuResponseError("Feishu response has an invalid shape")
 
         code = payload.get("code")
-        if not isinstance(code, int):
+        if type(code) is not int:
             raise FeishuResponseError("Feishu response is missing a valid code")
         if code != 0:
             self._raise_api_error(

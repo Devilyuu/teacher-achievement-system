@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -66,6 +68,9 @@ EXTERNAL_FIELDS = {
     "支撑材料",
     "材料",
 }
+PERFORMANCE_RULES_PATH = (
+    Path(__file__).resolve().parents[1] / "app" / "data" / "performance_rules.json"
+)
 
 
 def achievement(**overrides):
@@ -84,6 +89,17 @@ def achievement(**overrides):
     }
     values.update(overrides)
     return SimpleNamespace(**values)
+
+
+def real_subcategory_containing(*keywords):
+    catalog = json.loads(PERFORMANCE_RULES_PATH.read_text(encoding="utf-8"))
+    matches = [
+        rule["subcategory"]
+        for rule in catalog["rules"]
+        if all(keyword in rule["subcategory"] for keyword in keywords)
+    ]
+    assert len(matches) == 1
+    return matches[0]
 
 
 def test_create_fields_map_owned_values_and_initial_sync_defaults():
@@ -155,6 +171,79 @@ def test_keyword_mapping_is_deterministic_and_uses_only_existing_options(
     assert fields["成果细类"] == expected_subcategory
     assert fields["成果大类"] in ALLOWED_CATEGORIES
     assert fields["成果细类"] in ALLOWED_SUBCATEGORIES
+
+
+@pytest.mark.parametrize(
+    ("title", "expected_subcategory"),
+    [
+        ("实用新型专利授权", "实用新型专利"),
+        ("软件著作权登记", "软件著作权"),
+        ("知识产权成果登记", "实用新型专利"),
+    ],
+)
+def test_patent_combination_subcategory_prefers_specific_title(
+    title,
+    expected_subcategory,
+):
+    from app.services.feishu_mapper import build_update_fields
+
+    real_subcategory = real_subcategory_containing("实用新型", "软著")
+    assert real_subcategory == "实用新型、外观专利授权，软著登记"
+
+    fields = build_update_fields(
+        achievement(
+            category="科研与社会服务工作",
+            subcategory=real_subcategory,
+            title=title,
+        )
+    )
+
+    assert fields["成果细类"] == expected_subcategory
+
+
+@pytest.mark.parametrize(
+    ("title", "expected_subcategory"),
+    [
+        ("正式出版校本教材", "教材建设项目"),
+        ("个人学术专著出版", "专著"),
+        ("正式出版成果", "教材建设项目"),
+    ],
+)
+def test_book_combination_subcategory_prefers_specific_title(
+    title,
+    expected_subcategory,
+):
+    from app.services.feishu_mapper import build_update_fields
+
+    real_subcategory = real_subcategory_containing("教材编写出版", "专著")
+    assert real_subcategory == "教材编写出版(含双语专业、公开刊号的作品集合、专著)"
+
+    fields = build_update_fields(
+        achievement(
+            category="教学",
+            subcategory=real_subcategory,
+            title=title,
+        )
+    )
+
+    assert fields["成果细类"] == expected_subcategory
+
+
+def test_specific_title_precedes_an_exact_local_subcategory():
+    from app.services.feishu_mapper import build_update_fields
+
+    real_subcategory = real_subcategory_containing("发明专利")
+    assert real_subcategory == "发明专利"
+
+    fields = build_update_fields(
+        achievement(
+            category="科研与社会服务工作",
+            subcategory=real_subcategory,
+            title="软件著作权登记",
+        )
+    )
+
+    assert fields["成果细类"] == "软件著作权"
 
 
 def test_unmatched_subcategory_falls_back_to_other_without_inventing_an_option():

@@ -61,7 +61,20 @@ KEYWORD_SUBCATEGORIES = (
     ("优秀毕业设计", ("优秀毕业设计", "毕业设计（论文）优秀", "毕业设计优秀")),
     ("创新创业项目", ("创新创业项目", "双创项目")),
     ("学生作品展演", ("学生作品展演", "学生作品展", "作品展布展")),
-    ("教材建设项目", ("教材编写", "教材建设", "教材奖", "自编教材", "合作教材")),
+    (
+        "教材建设项目",
+        (
+            "教材编写",
+            "教材建设",
+            "教材奖",
+            "自编教材",
+            "合作教材",
+            "校本教材",
+            "规划教材",
+            "教材出版",
+            "教材",
+        ),
+    ),
     ("教学资源建设", ("教学资源", "资源库", "虚拟仿真")),
     ("课程建设", ("课程建设", "新开课程", "在线课程", "微课")),
     ("公共课教学改革", ("公共课教学改革", "公共课改革")),
@@ -86,6 +99,11 @@ KEYWORD_SUBCATEGORIES = (
     ("行业服务", ("行业服务", "行业产教融合共同体", "产业教授")),
     ("社会服务", ("社会服务",)),
 )
+
+LOCAL_SUBCATEGORY_MAPPINGS = {
+    "实用新型、外观专利授权，软著登记": "实用新型专利",
+    "教材编写出版(含双语专业、公开刊号的作品集合、专著)": "教材建设项目",
+}
 
 STATUS_LABELS = {
     "draft": "草稿",
@@ -117,17 +135,33 @@ def _text(value: Any) -> str:
     return str(value).strip()
 
 
-def _subcategory_for(achievement: Any) -> str:
-    subcategory = _text(achievement.subcategory)
-    if subcategory in SUBCATEGORY_CATEGORIES:
-        return subcategory
-
-    searchable = f"{subcategory} {_text(achievement.title)}".casefold()
+def _keyword_subcategory(value: Any) -> str | None:
+    searchable = _text(value).casefold()
     for option, keywords in KEYWORD_SUBCATEGORIES:
         if any(keyword.casefold() in searchable for keyword in keywords):
             return option
     if re.search(r"\bei\b", searchable):
         return "EI论文"
+    return None
+
+
+def _subcategory_for(achievement: Any) -> str:
+    subcategory = _text(achievement.subcategory)
+
+    title_match = _keyword_subcategory(achievement.title)
+    if title_match is not None:
+        return title_match
+
+    if subcategory in SUBCATEGORY_CATEGORIES:
+        return subcategory
+
+    explicit_match = LOCAL_SUBCATEGORY_MAPPINGS.get(subcategory)
+    if explicit_match is not None:
+        return explicit_match
+
+    subcategory_match = _keyword_subcategory(subcategory)
+    if subcategory_match is not None:
+        return subcategory_match
     return "其他"
 
 

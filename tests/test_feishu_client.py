@@ -1,4 +1,7 @@
+from concurrent.futures import ThreadPoolExecutor
 import json
+import threading
+import time
 import traceback
 from types import SimpleNamespace
 
@@ -60,6 +63,133 @@ def test_token_request_uses_current_config_and_bounded_timeouts(
     }
     timeout = requests[0].extensions["timeout"]
     assert all(value is not None and 0 < value <= 10 for value in timeout.values())
+
+
+def test_consecutive_record_operations_reuse_one_token_request(feishu_config):
+    from app.services.feishu_client import FeishuClient
+
+    token_requests = 0
+
+    def handler(request):
+        nonlocal token_requests
+        if request.url.path.endswith("/tenant_access_token/internal"):
+            token_requests += 1
+            return token_response()
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "record": {
+                        "record_id": "rec_cached",
+                        "fields": {},
+                    }
+                },
+            },
+        )
+
+    client = FeishuClient(transport=httpx.MockTransport(handler))
+
+    client.create_record({"成果名称": "首次写入"})
+    client.update_record("rec_cached", {"成果名称": "再次写入"})
+
+    assert token_requests == 1
+
+
+def test_token_refreshes_before_feishu_expiration(monkeypatch, feishu_config):
+    from app.services import feishu_client
+
+    current_time = [0.0]
+    token_requests = 0
+    monkeypatch.setattr(
+        feishu_client,
+        "monotonic",
+        lambda: current_time[0],
+        raising=False,
+    )
+
+    def handler(request):
+        nonlocal token_requests
+        token_requests += 1
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "tenant_access_token": f"tenant-token-{token_requests}",
+                "expire": 100,
+            },
+        )
+
+    client = feishu_client.FeishuClient(transport=httpx.MockTransport(handler))
+
+    assert client.get_tenant_access_token() == "tenant-token-1"
+    current_time[0] = 89
+    assert client.get_tenant_access_token() == "tenant-token-1"
+    current_time[0] = 91
+    assert client.get_tenant_access_token() == "tenant-token-2"
+    assert token_requests == 2
+
+
+def test_token_cache_refreshes_when_app_id_or_secret_changes(feishu_config):
+    from app.services.feishu_client import FeishuClient
+
+    token_request_bodies = []
+
+    def handler(request):
+        token_request_bodies.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "tenant_access_token": f"tenant-token-{len(token_request_bodies)}",
+                "expire": 7200,
+            },
+        )
+
+    client = FeishuClient(transport=httpx.MockTransport(handler))
+
+    assert client.get_tenant_access_token() == "tenant-token-1"
+    feishu_config.feishu_app_id = "changed-app-id"
+    assert client.get_tenant_access_token() == "tenant-token-2"
+    feishu_config.feishu_app_secret = "changed-secret-value"
+    assert client.get_tenant_access_token() == "tenant-token-3"
+
+    assert [body["app_id"] for body in token_request_bodies] == [
+        "cli_test_app",
+        "changed-app-id",
+        "changed-app-id",
+    ]
+    cache_state = repr(client.__dict__)
+    assert "super-secret-value" not in cache_state
+    assert "changed-secret-value" not in cache_state
+
+
+def test_concurrent_token_requests_share_one_authentication(feishu_config):
+    from app.services.feishu_client import FeishuClient
+
+    worker_count = 8
+    start_barrier = threading.Barrier(worker_count)
+    count_lock = threading.Lock()
+    token_requests = 0
+
+    def handler(request):
+        nonlocal token_requests
+        with count_lock:
+            token_requests += 1
+        time.sleep(0.05)
+        return token_response()
+
+    client = FeishuClient(transport=httpx.MockTransport(handler))
+
+    def load_token():
+        start_barrier.wait()
+        return client.get_tenant_access_token()
+
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        tokens = list(executor.map(lambda _: load_token(), range(worker_count)))
+
+    assert tokens == ["tenant-test-token"] * worker_count
+    assert token_requests == 1
 
 
 def test_search_posts_exact_platform_id_filter_and_returns_one_match(feishu_config):
@@ -427,6 +557,26 @@ def test_malformed_json_raises_response_error_without_full_body(feishu_config):
         FeishuClient(transport=httpx.MockTransport(handler)).get_tenant_access_token()
 
     assert body_secret not in repr(caught.value)
+
+
+@pytest.mark.parametrize("code", [False, True])
+def test_boolean_response_code_is_rejected_as_malformed(feishu_config, code):
+    from app.services.feishu_client import FeishuClient, FeishuResponseError
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            json={
+                "code": code,
+                "tenant_access_token": "must-not-be-accepted",
+                "expire": 7200,
+            },
+        )
+
+    with pytest.raises(FeishuResponseError):
+        FeishuClient(
+            transport=httpx.MockTransport(handler)
+        ).get_tenant_access_token()
 
 
 def test_malformed_success_shape_raises_response_error(feishu_config):
