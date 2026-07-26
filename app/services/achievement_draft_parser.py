@@ -1,7 +1,7 @@
 import json
 import math
 import re
-from typing import Any, Sequence
+from typing import Annotated, Any, Sequence
 
 import httpx
 from pydantic import (
@@ -17,12 +17,32 @@ from app.models import ClaimNature
 from app.services.performance_rule_guidance import LEVEL_OPTIONS
 
 
-AI_TIMEOUT = httpx.Timeout(connect=2.0, read=5.0, write=5.0, pool=2.0)
+MAX_SCORE = 100_000.0
 LEVEL_VALUES = {option["value"] for option in LEVEL_OPTIONS}
 LEVEL_RULE_FIELDS = {
     option["value"]: option["rule_field"]
     for option in LEVEL_OPTIONS
 }
+CUSTOM_RULE_PAIR = (
+    "其他有价值工作（自定义）",
+    "自定义工作事项",
+)
+PROCESS_STAGE_KEYWORDS = (
+    "申报中",
+    "正在申报",
+    "拟申报",
+    "申报阶段",
+    "在研",
+    "执行中",
+    "建设中",
+)
+ACHIEVEMENT_ENTITY_PATTERN = (
+    r"(?:竞赛|大赛|比赛|赛项|项目|课题|成果奖|奖项|获奖)"
+)
+PROVINCE_NAMES = (
+    "河北|山西|辽宁|吉林|黑龙江|江苏|浙江|安徽|福建|江西|山东|河南|"
+    "湖北|湖南|广东|海南|四川|贵州|云南|陕西|甘肃|青海|台湾"
+)
 
 
 class AchievementDraft(BaseModel):
@@ -37,12 +57,15 @@ class AchievementDraft(BaseModel):
     level: str = Field(default="", max_length=80)
     personal_role: str = Field(default="", max_length=80)
     current_stage: str = Field(default="", max_length=2000)
-    base_score: float = Field(default=0, ge=0)
-    performance_score: float = Field(default=0, ge=0)
-    claimed_score: float = Field(default=0, ge=0)
+    base_score: float = Field(default=0, ge=0, le=MAX_SCORE)
+    performance_score: float = Field(default=0, ge=0, le=MAX_SCORE)
+    claimed_score: float = Field(default=0, ge=0, le=MAX_SCORE)
     notes: str = Field(default="", max_length=2000)
     confidence: float = Field(ge=0, le=1)
-    uncertain_fields: list[str] = Field(default_factory=list, max_length=32)
+    uncertain_fields: list[Annotated[str, Field(max_length=32)]] = Field(
+        default_factory=list,
+        max_length=32,
+    )
 
     @field_validator("level")
     @classmethod
@@ -51,15 +74,29 @@ class AchievementDraft(BaseModel):
             raise ValueError("level must be one of the configured level options")
         return value
 
-    @model_validator(mode="after")
-    def normalize_claimed_score(self) -> "AchievementDraft":
-        expected_total = self.base_score + self.performance_score
-        if not math.isclose(self.claimed_score, expected_total):
-            self.claimed_score = expected_total
-            self.uncertain_fields = list(dict.fromkeys(
-                [*self.uncertain_fields, "claimed_score"]
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_claimed_score(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        scores = {}
+        for field_name in ("base_score", "performance_score", "claimed_score"):
+            score = float(normalized.get(field_name, 0))
+            if not math.isfinite(score) or not 0 <= score <= MAX_SCORE:
+                raise ValueError(f"{field_name} is outside the safe score range")
+            scores[field_name] = score
+        expected_total = scores["base_score"] + scores["performance_score"]
+        if not math.isfinite(expected_total) or expected_total > MAX_SCORE:
+            raise ValueError("combined score is outside the safe score range")
+        if not math.isclose(scores["claimed_score"], expected_total):
+            uncertain_fields = list(normalized.get("uncertain_fields", []))
+            normalized["uncertain_fields"] = list(dict.fromkeys(
+                [*uncertain_fields, "claimed_score"]
             ))
-        return self
+        normalized.update(scores)
+        normalized["claimed_score"] = expected_total
+        return normalized
 
 
 def _value(rule: Any, field_name: str, default: Any = "") -> Any:
@@ -100,32 +137,74 @@ def _normalized_match_text(value: str) -> str:
     return re.sub(r"\W+", "", value.replace("竞赛", "大赛").replace("比赛", "大赛"))
 
 
-def _bigrams(value: str) -> set[str]:
-    return {value[index:index + 2] for index in range(len(value) - 1)}
-
-
-def _match_rule(description: str, rules: Sequence[Any]) -> Any | None:
+def _semantic_rule_score(description: str, rule: Any) -> int:
     normalized_description = _normalized_match_text(description)
-    description_bigrams = _bigrams(normalized_description)
-    ranked: list[tuple[int, Any]] = []
-    for rule in rules:
-        category = str(_value(rule, "category"))
-        subcategory = str(_value(rule, "subcategory"))
-        normalized_subcategory = _normalized_match_text(subcategory)
-        score = len(description_bigrams & _bigrams(normalized_subcategory))
-        if normalized_subcategory and normalized_subcategory in normalized_description:
-            score += 20
-        if category and category in description:
-            score += 5
-        if "指导学生" in description and "指导学生" in subcategory:
-            score += 10
-        ranked.append((score, rule))
+    subcategory = str(_value(rule, "subcategory"))
+    normalized_subcategory = _normalized_match_text(subcategory)
+    if (
+        normalized_subcategory
+        and normalized_subcategory in normalized_description
+    ):
+        return 200 + len(normalized_subcategory)
+
+    main_phrase = re.split(r"[（(、/\n]", subcategory, maxsplit=1)[0]
+    normalized_main_phrase = _normalized_match_text(main_phrase)
+    if (
+        len(normalized_main_phrase) >= 4
+        and normalized_main_phrase in normalized_description
+    ):
+        return 100 + len(normalized_main_phrase)
+
+    if (
+        "指导学生大赛" in subcategory
+        and "指导学生" in description
+        and any(word in description for word in ("竞赛", "大赛", "比赛", "赛项"))
+    ):
+        return 180
+    if (
+        "专业教学资源库" in subcategory
+        and "专业教学资源库" in description
+    ):
+        return 180
+    if (
+        "精品在线开放课程" in subcategory
+        and any(word in description for word in ("在线精品课程", "在线开放课程"))
+    ):
+        return 170
+    return 0
+
+
+def _match_rule(
+    description: str,
+    rules: Sequence[Any],
+) -> tuple[Any | None, bool]:
+    ranked = [
+        (_semantic_rule_score(description, rule), rule)
+        for rule in rules
+        if (
+            str(_value(rule, "category")),
+            str(_value(rule, "subcategory")),
+        )
+        != CUSTOM_RULE_PAIR
+    ]
     ranked.sort(key=lambda item: item[0], reverse=True)
-    if not ranked or ranked[0][0] < 2:
-        return None
-    if len(ranked) > 1 and ranked[0][0] == ranked[1][0]:
-        return None
-    return ranked[0][1]
+    if ranked and ranked[0][0] > 0:
+        if len(ranked) == 1 or ranked[0][0] > ranked[1][0]:
+            return ranked[0][1], False
+
+    custom_rule = next(
+        (
+            rule
+            for rule in rules
+            if (
+                str(_value(rule, "category")),
+                str(_value(rule, "subcategory")),
+            )
+            == CUSTOM_RULE_PAIR
+        ),
+        None,
+    )
+    return custom_rule, custom_rule is not None
 
 
 def _extract_year(description: str) -> int | None:
@@ -134,16 +213,21 @@ def _extract_year(description: str) -> int | None:
 
 
 def _extract_level(description: str) -> str:
-    if any(marker in description for marker in ("国家级", "全国", "国家")):
+    for level in ("国家级", "省级", "市级", "学院级", "校级"):
+        if level in description:
+            return level
+    if re.search(rf"(?:全国|国家).{{0,20}}{ACHIEVEMENT_ENTITY_PATTERN}", description):
         return "国家级"
-    if "省级" in description or re.search(r"[\u4e00-\u9fff]{2,8}省", description):
+    if re.search(
+        rf"(?:{PROVINCE_NAMES})省.{{0,20}}{ACHIEVEMENT_ENTITY_PATTERN}",
+        description,
+    ):
         return "省级"
-    if "市级" in description or re.search(r"[\u4e00-\u9fff]{2,8}市", description):
+    if re.search(
+        rf"[\u4e00-\u9fff]{{2,8}}市.{{0,20}}{ACHIEVEMENT_ENTITY_PATTERN}",
+        description,
+    ):
         return "市级"
-    if any(marker in description for marker in ("学院级", "学院")):
-        return "学院级"
-    if any(marker in description for marker in ("校级", "学校")):
-        return "校级"
     return ""
 
 
@@ -163,7 +247,7 @@ def _extract_role(description: str) -> str:
 def _clean_title(description: str) -> str:
     title = description.strip()
     title = re.sub(
-        r"^(?:19|20)\d{2}年(?:度)?[，,；;：:\s]*",
+        r"^(?:于)?(?:19|20)\d{2}年(?:度)?[，,；;：:\s]*",
         "",
         title,
     )
@@ -186,7 +270,7 @@ def _current_stage(description: str) -> str:
     return next(
         (
             keyword
-            for keyword in ("申报中", "在研", "执行中")
+            for keyword in PROCESS_STAGE_KEYWORDS
             if keyword in description
         ),
         "",
@@ -197,10 +281,35 @@ def _single_number(rule_text: str) -> float | None:
     numbers = re.findall(r"(?<![\d.])\d+(?:\.\d+)?", rule_text)
     if len(numbers) != 1:
         return None
-    return float(numbers[0])
+    score = float(numbers[0])
+    if not math.isfinite(score) or not 0 <= score <= MAX_SCORE:
+        return None
+    return score
 
 
-def _award_score(rule_text: str, description: str) -> float | None:
+def _condition_is_met(condition: str, description: str) -> bool:
+    if (
+        "获奖" in condition
+        and "获奖" not in description
+        and not re.search(r"获得.{0,12}奖", description)
+    ):
+        return False
+    requirements = (
+        ("验收通过", ("验收通过", "通过验收", "验收合格")),
+        ("立项", ("已立项", "获批立项", "立项")),
+        ("结项", ("已结项", "结项", "结题")),
+    )
+    for marker, evidence in requirements:
+        if marker in condition and not any(word in description for word in evidence):
+            return False
+    return True
+
+
+def _score_from_rule_text(rule_text: str, description: str) -> float | None:
+    conditions = re.findall(r"[（(]([^）)]*)[）)]", rule_text)
+    if any(not _condition_is_met(condition, description) for condition in conditions):
+        return None
+
     award_rank = next(
         (
             rank
@@ -220,36 +329,60 @@ def _award_score(rule_text: str, description: str) -> float | None:
             rule_text,
         )
         if match:
-            return float(match.group(1))
-        numbers = re.findall(r"(?<![\d.])\d+(?:\.\d+)?", rule_text)
-        rank_index = {"一": 0, "二": 1, "三": 2}.get(award_rank)
-        if rank_index is not None and len(numbers) == 3:
-            return float(numbers[rank_index])
+            score = float(match.group(1))
+            if math.isfinite(score) and 0 <= score <= MAX_SCORE:
+                return score
+            return None
     return _single_number(rule_text)
 
 
-def _deterministic_parse(description: str, rules: Sequence[Any]) -> AchievementDraft:
+def _calibrated_confidence(
+    base_confidence: float,
+    uncertain_fields: Sequence[str],
+) -> float:
+    field_uncertainty_count = sum(
+        not field_name.startswith("ai_")
+        for field_name in uncertain_fields
+    )
+    return round(
+        max(0.1, min(0.95, base_confidence - 0.04 * field_uncertainty_count)),
+        2,
+    )
+
+
+def _deterministic_parse(
+    description: str,
+    rules: Sequence[Any],
+    *,
+    ai_reason: str,
+) -> AchievementDraft:
     year = _extract_year(description)
     level = _extract_level(description)
     role = _extract_role(description)
-    rule = _match_rule(description, rules)
+    rule, used_custom_fallback = _match_rule(description, rules)
     category = str(_value(rule, "category")) if rule else ""
     subcategory = str(_value(rule, "subcategory")) if rule else ""
-    base_score = _single_number(str(_value(rule, "base_rule"))) if rule else None
+    base_score = (
+        _score_from_rule_text(str(_value(rule, "base_rule")), description)
+        if rule
+        else None
+    )
     level_rule = LEVEL_RULE_FIELDS.get(level, "")
     performance_score = (
-        _award_score(str(_value(rule, level_rule)), description)
+        _score_from_rule_text(str(_value(rule, level_rule)), description)
         if rule and level_rule
         else None
     )
     title = _clean_title(description)
-    uncertain_fields = ["ai_unavailable"]
+    uncertain_fields = [ai_reason]
     if not title:
         title = description.strip(" ，,；;。.")
         uncertain_fields.append("title")
     if len(title) > 255:
         title = title[:255]
         uncertain_fields.append("title")
+    if used_custom_fallback:
+        uncertain_fields.extend(("category", "subcategory"))
     for field_name, value in (
         ("year", year),
         ("category", category),
@@ -266,6 +399,10 @@ def _deterministic_parse(description: str, rules: Sequence[Any]) -> AchievementD
 
     base_score = base_score or 0
     performance_score = performance_score or 0
+    uncertain_fields = list(dict.fromkeys(uncertain_fields))
+    base_confidence = (
+        0.45 if used_custom_fallback else (0.9 if rule else 0.4)
+    )
     return AchievementDraft(
         year=year,
         title=title,
@@ -273,7 +410,7 @@ def _deterministic_parse(description: str, rules: Sequence[Any]) -> AchievementD
         subcategory=subcategory,
         claim_nature=(
             ClaimNature.process
-            if any(word in description for word in ("申报中", "在研", "执行中"))
+            if any(word in description for word in PROCESS_STAGE_KEYWORDS)
             else ClaimNature.result
         ),
         date_range=f"{year}年" if year else "",
@@ -284,7 +421,10 @@ def _deterministic_parse(description: str, rules: Sequence[Any]) -> AchievementD
         performance_score=performance_score,
         claimed_score=base_score + performance_score,
         notes="",
-        confidence=0.85 if rule else 0.35,
+        confidence=_calibrated_confidence(
+            base_confidence,
+            uncertain_fields,
+        ),
         uncertain_fields=uncertain_fields,
     )
 
@@ -313,18 +453,78 @@ def _ai_prompt(description: str, rules: Sequence[Any]) -> list[dict[str, str]]:
 def _validated_ai_draft(
     content: str,
     rules: Sequence[Any],
+    description: str,
 ) -> AchievementDraft:
     payload = json.loads(content)
     if not isinstance(payload, dict):
         raise ValueError("AI draft must be a JSON object")
     draft = AchievementDraft.model_validate(payload)
-    allowed_pairs = {
-        (str(_value(rule, "category")), str(_value(rule, "subcategory")))
-        for rule in rules
-    }
-    if (draft.category, draft.subcategory) not in allowed_pairs:
+    selected_rule = next(
+        (
+            rule
+            for rule in rules
+            if (
+                str(_value(rule, "category")),
+                str(_value(rule, "subcategory")),
+            )
+            == (draft.category, draft.subcategory)
+        ),
+        None,
+    )
+    if selected_rule is None:
         raise ValueError("AI draft selected an unknown rule")
-    return draft
+
+    verified_level = _extract_level(description)
+    uncertain_fields = [
+        field_name
+        for field_name in draft.uncertain_fields
+        if not field_name.startswith("ai_")
+    ]
+    if draft.level != verified_level:
+        uncertain_fields.append("level")
+
+    base_score = _score_from_rule_text(
+        str(_value(selected_rule, "base_rule")),
+        description,
+    )
+    level_rule_field = LEVEL_RULE_FIELDS.get(verified_level, "")
+    performance_score = (
+        _score_from_rule_text(
+            str(_value(selected_rule, level_rule_field)),
+            description,
+        )
+        if level_rule_field
+        else None
+    )
+    if base_score is None:
+        uncertain_fields.append("base_score")
+    if performance_score is None:
+        uncertain_fields.append("performance_score")
+    uncertain_fields = list(dict.fromkeys(uncertain_fields))
+
+    normalized = draft.model_dump()
+    normalized.update(
+        {
+            "level": verified_level,
+            "base_score": base_score or 0,
+            "performance_score": performance_score or 0,
+            "claimed_score": (base_score or 0) + (performance_score or 0),
+            "confidence": _calibrated_confidence(0.9, uncertain_fields),
+            "uncertain_fields": uncertain_fields,
+        }
+    )
+    return AchievementDraft.model_validate(normalized)
+
+
+def _timeout_for_config(integration_config: Any) -> httpx.Timeout:
+    try:
+        seconds = float(integration_config.ai_timeout_seconds)
+    except (AttributeError, TypeError, ValueError):
+        seconds = 30.0
+    if not math.isfinite(seconds):
+        seconds = 30.0
+    seconds = min(120.0, max(5.0, seconds))
+    return httpx.Timeout(seconds)
 
 
 def _parse_with_ai(
@@ -352,14 +552,14 @@ def _parse_with_ai(
             url,
             headers=headers,
             json=request_payload,
-            timeout=AI_TIMEOUT,
+            timeout=_timeout_for_config(integration_config),
         )
         response.raise_for_status()
         response_payload = response.json()
         content = response_payload["choices"][0]["message"]["content"]
         if not isinstance(content, str):
             raise ValueError("AI response content must be JSON text")
-        return _validated_ai_draft(content, rules)
+        return _validated_ai_draft(content, rules, description)
     finally:
         if owns_client:
             http_client.close()
@@ -379,7 +579,6 @@ def parse_achievement_draft(
         raise ValueError("description must contain 1 to 2000 characters")
 
     rules = _active_rules(active_rules)
-    fallback = _deterministic_parse(description, rules)
     integration_config = (
         integration_config
         if integration_config is not None
@@ -391,7 +590,11 @@ def parse_achievement_draft(
         getattr(integration_config, "ai_model", ""),
     )
     if not getattr(integration_config, "ai_ready", False) or not all(ai_values):
-        return fallback
+        return _deterministic_parse(
+            description,
+            rules,
+            ai_reason="ai_not_configured",
+        )
 
     try:
         return _parse_with_ai(
@@ -400,8 +603,18 @@ def parse_achievement_draft(
             integration_config,
             client,
         )
+    except httpx.TimeoutException:
+        return _deterministic_parse(
+            description,
+            rules,
+            ai_reason="ai_timeout",
+        )
     except (httpx.HTTPError, KeyError, TypeError, ValueError, IndexError):
-        return fallback
+        return _deterministic_parse(
+            description,
+            rules,
+            ai_reason="ai_invalid_response",
+        )
 
 
 parse = parse_achievement_draft

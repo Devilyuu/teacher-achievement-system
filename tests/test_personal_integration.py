@@ -15,6 +15,7 @@ AI_ENVIRONMENT_VARIABLES = (
     "ACHIEVEMENT_AI_API_KEY",
     "ACHIEVEMENT_AI_BASE_URL",
     "ACHIEVEMENT_AI_MODEL",
+    "ACHIEVEMENT_AI_TIMEOUT_SECONDS",
 )
 
 
@@ -141,8 +142,23 @@ def test_personal_integration_config_has_safe_defaults(monkeypatch):
             assert snapshot.ai_api_key == ""
             assert snapshot.ai_base_url == "https://api.deepseek.com"
             assert snapshot.ai_model == "deepseek-chat"
+            assert snapshot.ai_timeout_seconds == 30
     finally:
         importlib.reload(config)
+
+
+def test_ai_timeout_is_dynamic_and_bounded(monkeypatch):
+    monkeypatch.setenv("ACHIEVEMENT_AI_TIMEOUT_SECONDS", "47.5")
+    assert config.get_personal_integration_config().ai_timeout_seconds == 47.5
+
+    monkeypatch.setenv("ACHIEVEMENT_AI_TIMEOUT_SECONDS", "1")
+    assert config.get_personal_integration_config().ai_timeout_seconds == 5
+
+    monkeypatch.setenv("ACHIEVEMENT_AI_TIMEOUT_SECONDS", "999")
+    assert config.get_personal_integration_config().ai_timeout_seconds == 120
+
+    monkeypatch.setenv("ACHIEVEMENT_AI_TIMEOUT_SECONDS", "not-a-number")
+    assert config.get_personal_integration_config().ai_timeout_seconds == 30
 
 
 def test_config_does_not_cache_personal_integration_environment_values():

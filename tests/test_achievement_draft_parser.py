@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
@@ -10,6 +11,14 @@ from app.services.achievement_draft_parser import (
     AchievementDraft,
     parse_achievement_draft,
 )
+
+
+@pytest.fixture(scope="module")
+def real_rules():
+    rules_path = (
+        Path(__file__).parents[1] / "app" / "data" / "performance_rules.json"
+    )
+    return json.loads(rules_path.read_text(encoding="utf-8"))["rules"]
 
 
 def _rule(**overrides) -> PerformanceRule:
@@ -37,6 +46,7 @@ def _config(**overrides):
         "ai_api_key": "",
         "ai_base_url": "https://ai.example.test/v1",
         "ai_model": "test-model",
+        "ai_timeout_seconds": 30,
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -94,7 +104,41 @@ def test_deterministic_parser_maps_provincial_student_competition():
     assert draft.performance_score == 8
     assert draft.claimed_score == 11
     assert 0 <= draft.confidence <= 1
-    assert "ai_unavailable" in draft.uncertain_fields
+    assert "ai_not_configured" in draft.uncertain_fields
+
+
+def test_real_rules_keep_competition_example_mapping(real_rules):
+    draft = parse_achievement_draft(
+        "2025年指导学生参加江苏省职业技能竞赛数字艺术赛项，"
+        "获得二等奖，我是第一指导教师。",
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert (draft.category, draft.subcategory) == (
+        "育人成效",
+        "指导学生大赛（包括技能、双创）",
+    )
+    assert draft.level == "省级"
+    assert draft.personal_role == "第一指导教师"
+    assert draft.base_score == 3
+    assert draft.performance_score == 8
+    assert draft.claimed_score == 11
+
+
+def test_real_rules_use_uncertain_custom_fallback_for_weak_skill_words(real_rules):
+    draft = parse_achievement_draft(
+        "2025年学生技能提升工作",
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert (draft.category, draft.subcategory) == (
+        "其他有价值工作（自定义）",
+        "自定义工作事项",
+    )
+    assert {"category", "subcategory"} <= set(draft.uncertain_fields)
+    assert draft.confidence < 0.5
 
 
 def test_deterministic_parser_marks_missing_year_and_process_stage():
@@ -151,6 +195,19 @@ def test_title_removes_year_and_leading_spoken_role_without_rewriting_content():
     assert draft.personal_role == "负责人"
 
 
+def test_title_removes_leading_spoken_year_and_role_but_keeps_body():
+    draft = parse_achievement_draft(
+        "于2025年，我担任负责人，在线精品课程建设中。",
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.title == "在线精品课程建设中"
+    assert draft.personal_role == "负责人"
+    assert draft.claim_nature == ClaimNature.process
+    assert draft.current_stage == "建设中"
+
+
 def test_parser_only_uses_active_rule_pairs():
     rules = [
         {
@@ -191,6 +248,60 @@ def test_ambiguous_rule_score_stays_zero_and_is_marked_uncertain():
     assert draft.base_score == 3
     assert draft.performance_score == 0
     assert draft.claimed_score == 3
+    assert "performance_score" in draft.uncertain_fields
+
+
+def test_conditional_rule_score_requires_condition_in_description(real_rules):
+    draft = parse_achievement_draft(
+        "校级专业教学资源库建设项目申报中",
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.subcategory == "专业教学资源库建设申报立项/验收通过"
+    assert draft.base_score == 5
+    assert draft.performance_score == 0
+    assert "performance_score" in draft.uncertain_fields
+
+
+def test_conditional_rule_score_is_used_when_condition_is_explicit(real_rules):
+    draft = parse_achievement_draft(
+        "校级专业教学资源库建设项目验收通过",
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.subcategory == "专业教学资源库建设申报立项/验收通过"
+    assert draft.performance_score == 10
+
+
+def test_award_condition_accepts_an_explicit_special_prize():
+    rule = {
+        "category": "教学",
+        "subcategory": "测试项目",
+        "base_rule": "1/项",
+        "school_rule": "10/项（获奖）",
+        "is_active": True,
+    }
+
+    draft = parse_achievement_draft(
+        "2025年校级测试项目获得特等奖",
+        [rule],
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 10
+
+
+def test_unlabelled_rank_list_is_not_inferred_from_award_order(real_rules):
+    draft = parse_achievement_draft(
+        "指导学生参加市级职业技能竞赛并获得二等奖，担任第一指导教师",
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.subcategory == "指导学生大赛（包括技能、双创）"
+    assert draft.performance_score == 0
     assert "performance_score" in draft.uncertain_fields
 
 
@@ -238,6 +349,102 @@ def test_draft_model_normalizes_inconsistent_claimed_score():
     assert "claimed_score" in draft.uncertain_fields
 
 
+@pytest.mark.parametrize(
+    ("base_score", "performance_score", "claimed_score"),
+    [
+        (1e308, 1e308, 0),
+        (100001, 0, 100001),
+        (60000, 60000, 120000),
+    ],
+)
+def test_draft_model_rejects_non_finite_or_unreasonable_scores(
+    base_score,
+    performance_score,
+    claimed_score,
+):
+    with pytest.raises(ValueError):
+        AchievementDraft(
+            year=2025,
+            title="测试成果",
+            category="教学",
+            subcategory="测试",
+            claim_nature=ClaimNature.result,
+            date_range="2025年",
+            level="",
+            personal_role="",
+            current_stage="",
+            base_score=base_score,
+            performance_score=performance_score,
+            claimed_score=claimed_score,
+            notes="",
+            confidence=0.5,
+            uncertain_fields=[],
+        )
+
+
+def test_draft_model_limits_each_uncertain_field_name():
+    with pytest.raises(ValueError):
+        AchievementDraft(
+            year=2025,
+            title="测试成果",
+            category="教学",
+            subcategory="测试",
+            claim_nature=ClaimNature.result,
+            date_range="2025年",
+            level="",
+            personal_role="",
+            current_stage="",
+            base_score=0,
+            performance_score=0,
+            claimed_score=0,
+            notes="",
+            confidence=0.5,
+            uncertain_fields=["x" * 33],
+        )
+
+
+def test_draft_model_limits_uncertain_field_count():
+    with pytest.raises(ValueError):
+        AchievementDraft(
+            year=2025,
+            title="测试成果",
+            category="教学",
+            subcategory="测试",
+            claim_nature=ClaimNature.result,
+            date_range="2025年",
+            level="",
+            personal_role="",
+            current_stage="",
+            base_score=0,
+            performance_score=0,
+            claimed_score=0,
+            notes="",
+            confidence=0.5,
+            uncertain_fields=[f"field_{index}" for index in range(33)],
+        )
+
+
+def test_unreasonable_score_in_lightweight_rule_is_not_emitted():
+    rule = {
+        "category": "教学",
+        "subcategory": "在线精品课程建设项目",
+        "base_rule": "999999/项",
+        "school_rule": "999999/项",
+        "is_active": True,
+    }
+
+    draft = parse_achievement_draft(
+        "2025年校级在线精品课程建设项目",
+        [rule],
+        integration_config=_config(),
+    )
+
+    assert draft.base_score == 0
+    assert draft.performance_score == 0
+    assert {"base_score", "performance_score"} <= set(draft.uncertain_fields)
+    assert "Infinity" not in draft.model_dump_json()
+
+
 @pytest.mark.parametrize("description", ["", " " * 4, "成" * 2001])
 def test_parser_rejects_descriptions_outside_length_limit(description):
     with pytest.raises(ValueError, match="1 to 2000"):
@@ -282,6 +489,46 @@ def test_deterministic_parser_extracts_supported_levels(
     assert draft.level == expected_level
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "服务全省教师发展",
+        "在学校参加培训",
+    ],
+)
+def test_level_inference_requires_explicit_level_or_achievement_context(
+    description,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        description,
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.level == ""
+    assert "level" in draft.uncertain_fields
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "在线精品课程正在申报",
+        "在线精品课程拟申报",
+        "在线精品课程处于申报阶段",
+        "在线精品课程建设中",
+    ],
+)
+def test_process_nature_covers_common_in_progress_phrases(description):
+    draft = parse_achievement_draft(
+        description,
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.claim_nature == ClaimNature.process
+
+
 def test_ai_parser_uses_dynamic_openai_compatible_config_and_normalizes_total(
     monkeypatch,
 ):
@@ -295,6 +542,7 @@ def test_ai_parser_uses_dynamic_openai_compatible_config_and_normalizes_total(
         ai_ready=True,
         ai_api_key="secret-test-key",
         ai_base_url="https://gateway.example.test/v1/",
+        ai_timeout_seconds=47.5,
     )
     monkeypatch.setattr(
         config,
@@ -313,7 +561,8 @@ def test_ai_parser_uses_dynamic_openai_compatible_config_and_normalizes_total(
     assert draft.title == "AI整理后的竞赛成果"
     assert draft.claimed_score == 11
     assert "claimed_score" in draft.uncertain_fields
-    assert "ai_unavailable" not in draft.uncertain_fields
+    assert draft.confidence != 0.94
+    assert "ai_not_configured" not in draft.uncertain_fields
     assert requests[0].url == (
         "https://gateway.example.test/v1/chat/completions"
     )
@@ -324,10 +573,105 @@ def test_ai_parser_uses_dynamic_openai_compatible_config_and_normalizes_total(
     prompt = json.dumps(payload["messages"], ensure_ascii=False)
     assert "指导学生大赛（包括技能、双创）" in prompt
     assert "uncertain_fields" in prompt
+    assert "secret-test-key" not in prompt
     assert all(
-        value is not None and 0 < value <= 8
+        value == 47.5
         for value in requests[0].extensions["timeout"].values()
     )
+
+
+def test_ai_classification_is_adopted_but_scores_and_confidence_are_recomputed(
+    real_rules,
+):
+    def handler(request):
+        return _chat_response(
+            json.dumps(
+                _ai_draft(
+                    title="跨部门育人支持工作",
+                    level="",
+                    personal_role="负责人",
+                    base_score=99999,
+                    performance_score=1,
+                    claimed_score=100000,
+                    confidence=0.99,
+                )
+            )
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    draft = parse_achievement_draft(
+        "2025年完成跨部门育人支持工作，担任负责人。",
+        real_rules,
+        integration_config=_config(
+            ai_ready=True,
+            ai_api_key="secret-key",
+        ),
+        client=client,
+    )
+
+    assert (draft.category, draft.subcategory) == (
+        "育人成效",
+        "指导学生大赛（包括技能、双创）",
+    )
+    assert draft.base_score == 3
+    assert draft.performance_score == 0
+    assert draft.claimed_score == 3
+    assert draft.confidence != 0.99
+    assert "performance_score" in draft.uncertain_fields
+
+
+def test_ai_score_over_safe_limit_forces_validated_fallback(real_rules):
+    def handler(request):
+        return _chat_response(
+            json.dumps(
+                _ai_draft(
+                    base_score=999999,
+                    performance_score=0,
+                    claimed_score=999999,
+                )
+            )
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    draft = parse_achievement_draft(
+        "2025年学生技能提升工作",
+        real_rules,
+        integration_config=_config(
+            ai_ready=True,
+            ai_api_key="secret-key",
+        ),
+        client=client,
+    )
+
+    assert (draft.category, draft.subcategory) == (
+        "其他有价值工作（自定义）",
+        "自定义工作事项",
+    )
+    assert draft.claimed_score == 0
+    assert "ai_invalid_response" in draft.uncertain_fields
+
+
+def test_ai_timeout_has_a_specific_safe_reason(real_rules):
+    def handler(request):
+        raise httpx.ReadTimeout(
+            "secret internal timeout detail",
+            request=request,
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    draft = parse_achievement_draft(
+        "2025年学生技能提升工作",
+        real_rules,
+        integration_config=_config(
+            ai_ready=True,
+            ai_api_key="secret-key",
+        ),
+        client=client,
+    )
+
+    assert "ai_timeout" in draft.uncertain_fields
+    assert "ai_invalid_response" not in draft.uncertain_fields
+    assert "secret" not in repr(draft)
 
 
 @pytest.mark.parametrize(
@@ -374,5 +718,5 @@ def test_invalid_or_unavailable_ai_falls_back_safely(response_factory):
     assert draft.subcategory == "指导学生大赛（包括技能、双创）"
     assert draft.base_score == 3
     assert draft.performance_score == 8
-    assert "ai_unavailable" in draft.uncertain_fields
+    assert "ai_invalid_response" in draft.uncertain_fields
     assert "must-not-leak" not in repr(draft)

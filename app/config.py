@@ -11,6 +11,9 @@ DEFAULT_FEISHU_TABLE_ID = ""
 DEFAULT_ACHIEVEMENT_AI_API_KEY = ""
 DEFAULT_ACHIEVEMENT_AI_BASE_URL = "https://api.deepseek.com"
 DEFAULT_ACHIEVEMENT_AI_MODEL = "deepseek-chat"
+DEFAULT_ACHIEVEMENT_AI_TIMEOUT_SECONDS = 30.0
+MIN_ACHIEVEMENT_AI_TIMEOUT_SECONDS = 5.0
+MAX_ACHIEVEMENT_AI_TIMEOUT_SECONDS = 120.0
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,7 @@ class PersonalIntegrationConfig:
     ai_api_key: str = field(repr=False)
     ai_base_url: str
     ai_model: str
+    ai_timeout_seconds: float
 
     def allows_username(self, username: str) -> bool:
         return bool(self.sync_username) and username == self.sync_username
@@ -45,6 +49,21 @@ class PersonalIntegrationConfig:
 
 def _environment_value(name: str, default: str) -> str:
     return os.environ.get(name, default).strip()
+
+
+def _bounded_float_environment(
+    name: str,
+    default: float,
+    minimum: float,
+    maximum: float,
+) -> float:
+    try:
+        value = float(os.environ.get(name, str(default)).strip())
+    except ValueError:
+        return default
+    if not value == value:
+        return default
+    return min(maximum, max(minimum, value))
 
 
 def get_personal_integration_config() -> PersonalIntegrationConfig:
@@ -80,6 +99,12 @@ def get_personal_integration_config() -> PersonalIntegrationConfig:
         ai_model=_environment_value(
             "ACHIEVEMENT_AI_MODEL",
             DEFAULT_ACHIEVEMENT_AI_MODEL,
+        ),
+        ai_timeout_seconds=_bounded_float_environment(
+            "ACHIEVEMENT_AI_TIMEOUT_SECONDS",
+            DEFAULT_ACHIEVEMENT_AI_TIMEOUT_SECONDS,
+            MIN_ACHIEVEMENT_AI_TIMEOUT_SECONDS,
+            MAX_ACHIEVEMENT_AI_TIMEOUT_SECONDS,
         ),
     )
 
