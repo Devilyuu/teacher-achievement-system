@@ -43,13 +43,15 @@ from app.services.reporting_year import (
 router = APIRouter(prefix="/achievements", tags=["achievements"])
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
-FEISHU_NOTICES = {
-    "not-ready": "飞书同步尚未配置完整，请联系管理员补充服务器端配置。",
-    "sync-complete": "飞书同步已完成。",
-    "sync-pending": "同步任务正在处理中，请稍后再查看。",
-    "sync-failed": "飞书同步未完成，本地成果不受影响，可稍后重试。",
-    "sync-conflict": "飞书中存在重复记录，请先人工处理后再重试。",
+FEISHU_STATUS_NOTICES = {
+    "synced": "飞书同步已完成。",
+    "pending": "同步任务正在处理中，请稍后再查看。",
+    "failed": "飞书同步未完成，本地成果不受影响，可稍后重试。",
+    "conflict": "飞书中存在重复记录，请先人工处理后再重试。",
 }
+FEISHU_NOT_CONFIGURED_NOTICE = (
+    "飞书同步尚未配置完整，请联系管理员补充服务器端配置。"
+)
 
 
 def _active_rules(db: Session) -> list[PerformanceRule]:
@@ -132,6 +134,27 @@ def _sync_after_local_commit(
     except FeishuError:
         db.rollback()
         return SyncResult(status="failed")
+
+
+def _feishu_attempt_notice(
+    request: Request,
+    *,
+    user_enabled: bool,
+    feishu_ready: bool,
+    sync_record: FeishuSyncRecord | None,
+) -> str | None:
+    if (
+        not user_enabled
+        or request.query_params.get("feishu") != "attempted"
+    ):
+        return None
+    if not feishu_ready:
+        return FEISHU_NOT_CONFIGURED_NOTICE
+    sync_status = sync_record.sync_status if sync_record else "pending"
+    return FEISHU_STATUS_NOTICES.get(
+        sync_status,
+        FEISHU_STATUS_NOTICES["pending"],
+    )
 
 
 def _form_context(
@@ -333,24 +356,16 @@ def retry_feishu_sync(
         )
     if not personal_status.feishu_ready:
         return RedirectResponse(
-            f"/achievements/{achievement.id}?feishu=not-ready",
+            f"/achievements/{achievement.id}?feishu=attempted",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
     try:
-        result = sync_achievement(db, achievement)
+        sync_achievement(db, achievement)
     except FeishuError:
         db.rollback()
-        notice = "sync-failed"
-    else:
-        notice = {
-            "synced": "sync-complete",
-            "pending": "sync-pending",
-            "failed": "sync-failed",
-            "conflict": "sync-conflict",
-        }.get(result.status, "sync-failed")
     return RedirectResponse(
-        f"/achievements/{achievement.id}?feishu={notice}",
+        f"/achievements/{achievement.id}?feishu=attempted",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -388,8 +403,11 @@ def achievement_detail(
             "readiness_reasons": missing_reasons(achievement),
             "personal_integration": personal_status,
             "feishu_sync_record": sync_record,
-            "feishu_notice": FEISHU_NOTICES.get(
-                request.query_params.get("feishu", "")
+            "feishu_notice": _feishu_attempt_notice(
+                request,
+                user_enabled=personal_status.user_enabled,
+                feishu_ready=personal_status.feishu_ready,
+                sync_record=sync_record,
             ),
         },
     )
