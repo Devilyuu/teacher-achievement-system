@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">系统管理</p>
+        <h1>用户管理</h1>
+        <p class="muted">创建教师账号、控制登录状态并在需要时重置密码。</p>
+    </div>
+</header>
+
+{% if error %}<div class="page-message error"><i data-lucide="circle-alert"></i>{{ error }}</div>{% endif %}
+{% if success %}<div class="page-message success"><i data-lucide="circle-check-big"></i>{{ success }}</div>{% endif %}
+
+<section class="panel user-create-panel">
+    <div class="section-heading">
+        <span class="section-icon blue"><i data-lucide="user-plus"></i></span>
+        <div><h2>创建账号</h2><p>新用户首次登录后必须修改初始密码</p></div>
+    </div>
+    <form method="post" action="/admin/users" class="user-create-form">
+        <label><span>用户名</span><input type="text" name="username" required></label>
+        <label><span>姓名</span><input type="text" name="full_name" required></label>
+        <label><span>部门</span><input type="text" name="department" required></label>
+        <label>
+            <span>角色</span>
+            <select name="role" required>
+                {% for role in roles %}<option value="{{ role }}">{{ role_names[role] }}</option>{% endfor %}
+            </select>
+        </label>
+        <label><span>初始密码</span><input type="password" name="password" minlength="8" required></label>
+        <button class="button primary" type="submit"><i data-lucide="plus"></i>创建账号</button>
+    </form>
+</section>
+
+<section class="panel user-import-panel">
+    <div class="user-import-heading">
+        <div class="section-heading">
+            <span class="section-icon green"><i data-lucide="sheet"></i></span>
+            <div><h2>Excel 批量导入</h2><p>第一步下载标准模板，填写后上传预检</p></div>
+        </div>
+        <a class="button secondary" href="/admin/users/import-template.xlsx"><i data-lucide="file-down"></i>下载标准模板</a>
+    </div>
+    <form method="post" action="/admin/users/import-preview" enctype="multipart/form-data" class="user-import-form">
+        <label><span>账号文件</span><input type="file" name="file" accept=".xlsx" required></label>
+        <button class="button primary" type="submit"><i data-lucide="scan-search"></i>上传并预检</button>
+    </form>
+</section>
+
+<section class="panel table-panel user-table-panel">
+    <div class="panel-heading user-table-heading">
+        <div><h2>账号列表</h2><p>共 {{ users|length }} 个账号</p></div>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead><tr><th>教师</th><th>部门</th><th>角色</th><th>密码状态</th><th>账号状态</th><th>操作</th></tr></thead>
+            <tbody>
+            {% for listed_user in users %}
+                <tr>
+                    <td><strong>{{ listed_user.full_name }}</strong><small>{{ listed_user.username }}</small></td>
+                    <td>{{ listed_user.department or "未设置" }}</td>
+                    <td>{{ role_names[listed_user.role] }}</td>
+                    <td>
+                        {% if listed_user.must_change_password %}
+                        <span class="status status-待完善">待用户修改</span>
+                        {% else %}
+                        <span class="status status-可申报">正常</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="account-state {{ 'active' if listed_user.is_active else 'inactive' }}">{{ "已启用" if listed_user.is_active else "已停用" }}</span>
+                    </td>
+                    <td>
+                        <div class="user-actions">
+                            <details class="reset-details">
+                                <summary class="icon-button" title="重置密码"><i data-lucide="key-round"></i></summary>
+                                <form method="post" action="/admin/users/{{ listed_user.id }}/reset-password" class="reset-popover">
+                                    <label><span>新密码</span><input type="password" name="new_password" minlength="8" required></label>
+                                    <button class="button primary" type="submit">确认重置</button>
+                                </form>
+                            </details>
+                            <form method="post" action="/admin/users/{{ listed_user.id }}/toggle-active">
+                                <button class="icon-button" type="submit" title="{{ '停用账号' if listed_user.is_active else '启用账号' }}" {% if listed_user.id == user.id %}disabled{% endif %}>
+                                    <i data-lucide="{{ 'user-round-x' if listed_user.is_active else 'user-round-check' }}"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

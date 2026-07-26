@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}{{ achievement.title or "成果详情" }}{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <a class="back-link" href="/admin/summary?year={{ achievement.year }}"><i data-lucide="arrow-left"></i>返回年度汇总</a>
+        <p class="eyebrow">教师成果 · 管理员只读</p>
+        <h1>{{ achievement.title or "未填写成果名称" }}</h1>
+        <div class="title-meta">
+            <span class="status status-{{ achievement.status }}">{{ achievement.status }}</span>
+            <span>{{ achievement.user.full_name }} · {{ achievement.user.department or "未设置部门" }}</span>
+        </div>
+    </div>
+</header>
+
+<div class="detail-layout">
+    <div class="detail-main">
+        <section class="panel detail-panel">
+            <div class="section-heading">
+                <span class="section-icon blue"><i data-lucide="clipboard-list"></i></span>
+                <div><h2>申报信息</h2><p>教师原始填报内容</p></div>
+            </div>
+            <dl class="detail-grid">
+                <div><dt>年度</dt><dd>{{ achievement.year }}</dd></div>
+                <div><dt>教师</dt><dd>{{ achievement.user.full_name }}</dd></div>
+                <div><dt>大类</dt><dd>{{ achievement.category }}</dd></div>
+                <div><dt>小类</dt><dd>{{ achievement.subcategory }}</dd></div>
+                <div><dt>申报性质</dt><dd>{{ achievement.claim_nature }}</dd></div>
+                <div><dt>申报级别</dt><dd>{{ achievement.level or "不适用或待确认" }}</dd></div>
+                <div><dt>本人角色</dt><dd>{{ achievement.personal_role or "未填写" }}</dd></div>
+                <div><dt>申报积分</dt><dd class="score">{{ achievement.claimed_score }}</dd></div>
+                <div class="span-2"><dt>当前进展或价值说明</dt><dd>{{ achievement.current_stage or "未填写" }}</dd></div>
+                <div class="span-2"><dt>备注</dt><dd>{{ achievement.notes or "无" }}</dd></div>
+            </dl>
+        </section>
+
+        <section class="panel material-panel">
+            <div class="section-heading">
+                <span class="section-icon violet"><i data-lucide="paperclip"></i></span>
+                <div><h2>支撑材料</h2><p>只读查看材料登记情况</p></div>
+            </div>
+            {% if achievement.materials %}
+            <div class="material-list">
+                {% for material in achievement.materials %}
+                <div class="material-item">
+                    <span class="file-icon"><i data-lucide="file-text"></i></span>
+                    <div class="material-copy"><strong>{{ material.display_name }}</strong><small>{{ material.original_filename }} · {{ material.file_size }} B</small></div>
+                    <span class="material-no">{{ material.material_no }}</span>
+                    {% if material.file_ext|lower in preview_extensions %}
+                    <div class="material-actions">
+                        <a class="icon-button" href="/admin/materials/{{ material.id }}/preview" target="_blank" title="预览材料">
+                            <i data-lucide="eye"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="inline-empty"><i data-lucide="file-warning"></i><span>尚未上传支撑材料。</span></div>
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="detail-side">
+        <section class="panel rule-card">
+            <div class="section-heading">
+                <span class="section-icon green"><i data-lucide="scale"></i></span>
+                <div><h2>规则参考</h2><p>不替代线下审核</p></div>
+            </div>
+            <div class="rule-row"><span>对应规则</span><strong>{{ level_rule or "未设置明确分值" }}</strong></div>
+            <div class="rule-row"><span>赋分方式</span><strong>{{ assignment_mode }}</strong></div>
+            {% if rule and rule.remark %}<p class="rule-remark">{{ rule.remark }}</p>{% endif %}
+            <div class="review-note"><i data-lucide="lock-keyhole"></i><span>管理员当前仅查看，不在系统中修改教师填报或进行审核认定。</span></div>
+        </section>
+    </aside>
+</div>
+{% endblock %}

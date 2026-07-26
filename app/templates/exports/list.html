@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}导出记录{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">个人年度归档</p>
+        <h1>导出记录</h1>
+        <p class="muted">每个年度仅保留最新生成的申报清单与支撑材料包。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button primary" href="/exports/{{ current_year }}/review">
+            <i data-lucide="package-plus"></i>生成 {{ current_year }} 年度材料
+        </a>
+    </div>
+</header>
+
+{% if records %}
+<section class="panel export-history-panel">
+    <div class="export-history-heading">
+        <div class="section-heading">
+            <span class="section-icon violet"><i data-lucide="archive"></i></span>
+            <div><h2>年度材料包</h2><p>重新生成会覆盖该年度旧版本</p></div>
+        </div>
+        <span class="record-count">共 {{ records|length }} 个年度</span>
+    </div>
+
+    <div class="export-record-list">
+        {% for row in records %}
+        <article class="export-record">
+            <div class="export-year">
+                <span class="export-year-icon"><i data-lucide="calendar-days"></i></span>
+                <div>
+                    <strong>{{ row.record.year }} 年度</strong>
+                    <small>{{ row.record.generated_at.strftime("%Y-%m-%d %H:%M") }} 生成</small>
+                </div>
+            </div>
+            <div class="export-metrics">
+                <span><i data-lucide="list-checks"></i>{{ row.record.achievement_count }} 项成果</span>
+                <span><i data-lucide="paperclip"></i>{{ row.record.material_count }} 份材料</span>
+                <span><i data-lucide="hard-drive"></i>{{ row.file_size_display }}</span>
+            </div>
+            <div class="export-file-state {% if not row.file_exists %}missing{% endif %}">
+                <i data-lucide="{% if row.file_exists %}circle-check{% else %}triangle-alert{% endif %}"></i>
+                <span>{% if row.file_exists %}最新文件可下载{% else %}文件缺失，需重新生成{% endif %}</span>
+            </div>
+            <div class="export-actions">
+                {% if row.file_exists %}
+                <a class="button secondary" href="/exports/records/{{ row.record.id }}/download">
+                    <i data-lucide="download"></i>下载最新版本
+                </a>
+                {% endif %}
+                <a class="button ghost" href="/exports/{{ row.record.year }}/review">
+                    <i data-lucide="refresh-cw"></i>重新生成并下载
+                </a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<section class="panel">
+    <div class="empty-state">
+        <span class="empty-icon"><i data-lucide="package-open"></i></span>
+        <h2>还没有导出记录</h2>
+        <p>生成年度材料后，最新版本会保存在这里，后续可以随时回来下载。</p>
+        <a class="button primary" href="/exports/{{ current_year }}/review">
+            <i data-lucide="package-plus"></i>生成 {{ current_year }} 年度材料
+        </a>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

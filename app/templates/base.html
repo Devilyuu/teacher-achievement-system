@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}教师成果管理系统{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}?v=20260726-1">
+    <script src="{{ url_for('static', path='vendor/lucide.min.js') }}"></script>
+</head>
+<body>
+    <div class="app-shell">
+        {% if user %}
+        <aside class="sidebar">
+            <a class="brand" href="/">
+                <span class="brand-mark"><i data-lucide="layers-3"></i></span>
+                <span>教师成果库</span>
+            </a>
+            <nav class="side-nav" aria-label="主导航">
+                <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">
+                    <i data-lucide="layout-dashboard"></i><span>年度首页</span>
+                </a>
+                <a href="/achievements" class="{% if request.url.path.startswith('/achievements') and request.url.path != '/achievements/new' %}active{% endif %}">
+                    <i data-lucide="library-big"></i><span>成果管理</span>
+                </a>
+                <a href="/achievements/new" class="{% if request.url.path == '/achievements/new' %}active{% endif %}">
+                    <i data-lucide="square-plus"></i><span>新增填报</span>
+                </a>
+                <a href="/exports" class="{% if request.url.path.startswith('/exports') %}active{% endif %}">
+                    <i data-lucide="archive"></i><span>导出记录</span>
+                </a>
+                <a href="/trial-guide" class="{% if request.url.path.startswith('/trial-guide') %}active{% endif %}">
+                    <i data-lucide="route"></i><span>试用指引</span>
+                </a>
+                <a href="/feedback" class="{% if request.url.path.startswith('/feedback') %}active{% endif %}">
+                    <i data-lucide="message-square-warning"></i><span>试用反馈</span>
+                </a>
+                {% if user.role == "admin" %}
+                <div class="nav-label">系统管理</div>
+                <a href="/admin/summary" class="{% if request.url.path.startswith('/admin/summary') or request.url.path.startswith('/admin/achievements') %}active{% endif %}"><i data-lucide="chart-no-axes-combined"></i><span>年度汇总</span></a>
+                <a href="/admin/trial" class="{% if request.url.path.startswith('/admin/trial') %}active{% endif %}"><i data-lucide="radar"></i><span>试用看板</span></a>
+                <a href="/admin/users" class="{% if request.url.path.startswith('/admin/users') %}active{% endif %}"><i data-lucide="users"></i><span>用户管理</span></a>
+                <a href="/admin/rules" class="{% if request.url.path.startswith('/admin/rules') %}active{% endif %}"><i data-lucide="book-open-check"></i><span>绩效规则</span></a>
+                <a href="/admin/backup" class="{% if request.url.path.startswith('/admin/backup') %}active{% endif %}"><i data-lucide="database-backup"></i><span>系统备份</span></a>
+                {% endif %}
+            </nav>
+            <div class="sidebar-user">
+                <span class="avatar">{{ user.full_name[:1] }}</span>
+                <span class="user-copy"><strong>{{ user.full_name }}</strong><small>{{ user.department or "未设置部门" }}</small></span>
+                <a class="icon-button" href="/change-password" title="修改密码"><i data-lucide="key-round"></i></a>
+                <a class="icon-button" href="/logout" title="退出登录"><i data-lucide="log-out"></i></a>
+            </div>
+        </aside>
+        <script>
+            if (window.lucide) window.lucide.createIcons();
+        </script>
+        {% endif %}
+        <main class="{% if user %}workspace{% else %}login-workspace{% endif %}">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script>
+        if (window.lucide) window.lucide.createIcons();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

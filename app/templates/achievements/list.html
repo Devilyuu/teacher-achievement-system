@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}成果管理{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">个人成果库</p>
+        <h1>{{ selected_year }} 年度成果</h1>
+        <p class="muted">成果按绩效大类顺序归集，同类记录集中查看。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button secondary" href="/exports/{{ selected_year }}/review">
+            <i data-lucide="archive-restore"></i>导出年度材料
+        </a>
+        <a class="button primary" href="/achievements/new?year={{ selected_year }}">
+            <i data-lucide="plus"></i>新增成果
+        </a>
+    </div>
+</header>
+
+<section class="panel achievement-filter-panel">
+    <form method="get" action="/achievements" class="achievement-filter-form">
+        <label>
+            <span>查看年度</span>
+            <select name="year">
+            {% for year in available_years %}
+            <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }} 年</option>
+            {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>成果状态</span>
+            <select name="status">
+                <option value="">全部状态</option>
+                {% for item_status in statuses %}
+                <option value="{{ item_status }}" {% if item_status == filters.status %}selected{% endif %}>{{ item_status }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>大类</span>
+            <select id="achievement-category" name="category">
+                <option value="">全部大类</option>
+                {% for item_category in category_options %}
+                <option value="{{ item_category }}" {% if item_category == filters.category %}selected{% endif %}>{{ item_category }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>小类</span>
+            <select id="achievement-subcategory" name="subcategory">
+                <option value="">全部小类</option>
+                {% for rule in rules %}
+                <option value="{{ rule.subcategory }}" data-category="{{ rule.category }}" {% if rule.subcategory == filters.subcategory %}selected{% endif %}>{{ rule.subcategory }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="achievement-keyword">
+            <span>关键词</span>
+            <input type="search" name="q" value="{{ filters.keyword }}" placeholder="搜索成果名称、进展或备注">
+        </label>
+        <button class="button primary" type="submit"><i data-lucide="search"></i>查询</button>
+        <a class="button ghost" href="/achievements?year={{ selected_year }}">重置</a>
+    </form>
+</section>
+
+<section class="toolbar achievement-result-toolbar">
+    <span class="record-count">共 {{ achievements|length }} 条记录，{{ achievement_groups|length }} 个大类</span>
+</section>
+
+{% if achievement_groups %}
+<div class="category-sections">
+    {% for group in achievement_groups %}
+    <section class="category-section">
+        <div class="panel table-panel category-section-panel">
+        <header class="category-section-header">
+            <span class="category-section-icon"><i data-lucide="folder-kanban"></i></span>
+            <div>
+                <h2>{{ group.category }}</h2>
+                <p>{{ group.achievements|length }} 条成果记录</p>
+            </div>
+        </header>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>成果名称</th>
+                        <th>小类</th>
+                        <th>申报级别</th>
+                        <th>申报积分</th>
+                        <th>材料</th>
+                        <th>状态</th>
+                        <th aria-label="操作"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for achievement in group.achievements %}
+                    <tr>
+                        <td>
+                            <a class="record-title" href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a>
+                            <small>{{ achievement.claim_nature }}</small>
+                        </td>
+                        <td>{{ achievement.subcategory }}</td>
+                        <td>{{ achievement.level or "未选择" }}</td>
+                        <td><strong>{{ achievement.claimed_score }}</strong></td>
+                        <td>{{ achievement.materials|length }} 份</td>
+                        <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
+                        <td><a class="icon-button" href="/achievements/{{ achievement.id }}/edit" title="编辑"><i data-lucide="pencil"></i></a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% else %}
+<section class="panel table-panel">
+    <div class="empty-state">
+        {% if is_filtered %}
+        <span class="empty-icon"><i data-lucide="search-x"></i></span>
+        <h2>没有符合条件的成果</h2>
+        <p>可以调整关键词、类别或状态后重新查询。</p>
+        <a class="button secondary" href="/achievements?year={{ selected_year }}"><i data-lucide="rotate-ccw"></i>清除筛选</a>
+        {% else %}
+        <span class="empty-icon"><i data-lucide="folder-open"></i></span>
+        <h2>该年度还没有成果记录</h2>
+        <p>成果和过程性工作都可以先记录，支撑材料可以稍后补充。</p>
+        <a class="button primary" href="/achievements/new?year={{ selected_year }}"><i data-lucide="plus"></i>新增成果</a>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (() => {
+        const categorySelect = document.getElementById("achievement-category");
+        const subcategorySelect = document.getElementById("achievement-subcategory");
+        if (!categorySelect || !subcategorySelect) return;
+
+        const applyCategory = (resetMismatch) => {
+            const category = categorySelect.value;
+            const selected = subcategorySelect.value;
+            let selectedMatches = !selected;
+
+            Array.from(subcategorySelect.options).forEach((option) => {
+                if (!option.dataset.category) return;
+                const matches = !category || option.dataset.category === category;
+                option.hidden = !matches;
+                option.disabled = !matches;
+                if (option.value === selected && matches) selectedMatches = true;
+            });
+
+            if (resetMismatch && !selectedMatches) {
+                subcategorySelect.value = "";
+            }
+        };
+
+        applyCategory(false);
+        categorySelect.addEventListener("change", () => applyCategory(true));
+    })();
+</script>
+{% endblock %}

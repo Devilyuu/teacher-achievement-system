@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}{{ achievement.title }}{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <a class="back-link" href="/achievements?year={{ achievement.year }}"><i data-lucide="arrow-left"></i>返回 {{ achievement.year }} 年成果</a>
+        <h1>{{ achievement.title }}</h1>
+        <div class="title-meta">
+            <span class="status status-{{ achievement.status }}">{{ achievement.status }}</span>
+            <span>{{ achievement.category }} / {{ achievement.subcategory }}</span>
+        </div>
+    </div>
+    <a class="button secondary" href="/achievements/{{ achievement.id }}/edit"><i data-lucide="pencil"></i>编辑</a>
+</header>
+
+<div class="detail-layout">
+    <div class="detail-main">
+        {% if achievement.status == "待完善" and readiness_reasons %}
+        <section class="panel readiness-panel">
+            <div class="section-heading">
+                <span class="section-icon amber"><i data-lucide="circle-alert"></i></span>
+                <div><h2>待完善原因</h2><p>以下为系统根据当前填报信息自动生成的自查提示，不代表线下审核意见。</p></div>
+            </div>
+            <ul class="readiness-list">
+                {% for reason in readiness_reasons %}
+                <li><i data-lucide="dot"></i><span>{{ reason }}</span></li>
+                {% endfor %}
+            </ul>
+            {% if "材料" in readiness_reasons | join("；") %}
+            <p class="readiness-material-note"><i data-lucide="paperclip"></i>材料可在下方支撑材料区域上传、替换或重命名。</p>
+            {% endif %}
+            <div class="readiness-actions">
+                <a class="button secondary" href="/achievements/{{ achievement.id }}/edit"><i data-lucide="pencil"></i>编辑成果</a>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="panel detail-panel">
+            <div class="section-heading">
+                <span class="section-icon blue"><i data-lucide="clipboard-list"></i></span>
+                <div><h2>申报信息</h2><p>教师填报内容</p></div>
+            </div>
+            <dl class="detail-grid">
+                <div><dt>年度</dt><dd>{{ achievement.year }}</dd></div>
+                <div><dt>申报性质</dt><dd>{{ achievement.claim_nature }}</dd></div>
+                <div><dt>申报级别</dt><dd>{{ achievement.level or "不适用或待确认" }}</dd></div>
+                <div><dt>本人角色</dt><dd>{{ achievement.personal_role or "未填写" }}</dd></div>
+                <div><dt>申报积分</dt><dd class="score">{{ achievement.claimed_score }}</dd></div>
+                <div><dt>时间范围</dt><dd>{{ achievement.date_range or "未填写" }}</dd></div>
+                <div class="span-2"><dt>当前进展或价值说明</dt><dd>{{ achievement.current_stage or "未填写" }}</dd></div>
+                <div class="span-2"><dt>备注</dt><dd>{{ achievement.notes or "无" }}</dd></div>
+            </dl>
+        </section>
+
+        <section class="panel material-panel">
+            <div class="section-heading">
+                <span class="section-icon violet"><i data-lucide="paperclip"></i></span>
+                <div><h2>支撑材料</h2><p>系统根据已上传文件自动判断是否缺少材料，无需手动勾选。</p></div>
+            </div>
+            {% if request.query_params.get("uploaded") %}
+            <div class="material-upload-message success">
+                <i data-lucide="circle-check"></i>
+                {% if achievement.status == "可申报" %}
+                <span>已上传 {{ request.query_params.get("uploaded") }} 份材料，当前成果已满足基础申报条件。最终认定仍以线下审核为准。</span>
+                {% else %}
+                <span>已上传 {{ request.query_params.get("uploaded") }} 份材料。</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% if request.query_params.get("failed") and request.query_params.get("failed") != "0" %}
+            <div class="material-upload-message error">
+                <i data-lucide="triangle-alert"></i>
+                <span>{{ request.query_params.get("failed") }} 份材料上传失败：{{ request.query_params.get("errors") }}</span>
+            </div>
+            {% endif %}
+            {% if request.query_params.get("replace_error") %}
+            <div class="material-upload-message error">
+                <i data-lucide="triangle-alert"></i>
+                <span>替换失败：{{ request.query_params.get("replace_error") }}</span>
+            </div>
+            {% endif %}
+            {% if request.query_params.get("renamed") %}
+            <div class="material-upload-message success">
+                <i data-lucide="circle-check"></i>
+                <span>材料名称已更新。</span>
+            </div>
+            {% endif %}
+            {% if request.query_params.get("rename_error") %}
+            <div class="material-upload-message error">
+                <i data-lucide="triangle-alert"></i>
+                <span>重命名失败：{{ request.query_params.get("rename_error") }}</span>
+            </div>
+            {% endif %}
+            {% if achievement.materials %}
+            <div class="material-check">
+                <i data-lucide="circle-check"></i>
+                <span>系统已检测到 {{ achievement.materials|length }} 份支撑材料，当前材料状态为“已上传”。</span>
+            </div>
+            <div class="material-list">
+                {% for material in achievement.materials %}
+                <div class="material-item">
+                    <span class="file-icon"><i data-lucide="file-text"></i></span>
+                    <div class="material-copy"><strong>{{ material.display_name }}</strong><small>{{ material.original_filename }} · {{ material.file_size }} B</small></div>
+                    <span class="material-no">{{ material.material_no }}</span>
+                    <div class="material-actions">
+                        {% if material.file_ext|lower in preview_extensions %}
+                        <a class="icon-button" href="/materials/{{ material.id }}/preview" target="_blank" title="预览材料">
+                            <i data-lucide="eye"></i>
+                        </a>
+                        {% endif %}
+                        <a class="icon-button" href="/materials/{{ material.id }}/download" title="下载材料">
+                            <i data-lucide="download"></i>
+                        </a>
+                        <details class="replace-details rename-details">
+                            <summary class="icon-button" title="重命名材料"><i data-lucide="pencil-line"></i></summary>
+                            <form class="replace-popover rename-popover" method="post" action="/materials/{{ material.id }}/rename">
+                                <strong>修改材料名称</strong>
+                                <small>不改变原始文件和材料编号</small>
+                                <label><span>材料名称</span><input type="text" name="display_name" value="{{ material.display_name }}" required></label>
+                                <label><span>材料说明</span><input type="text" name="description" value="{{ material.description }}"></label>
+                                <button class="button secondary" type="submit"><i data-lucide="check"></i>保存名称</button>
+                            </form>
+                        </details>
+                        <details class="replace-details">
+                            <summary class="icon-button" title="替换文件"><i data-lucide="replace"></i></summary>
+                            <form class="replace-popover" method="post" action="/materials/{{ material.id }}/replace" enctype="multipart/form-data">
+                                <strong>替换当前文件</strong>
+                                <small>材料编号与名称保持不变</small>
+                                <input type="file" name="file" required>
+                                <button class="button secondary" type="submit"><i data-lucide="upload"></i>确认替换</button>
+                            </form>
+                        </details>
+                        <form method="post" action="/materials/{{ material.id }}/delete" onsubmit="return confirm('确认删除这份支撑材料吗？')">
+                            <button class="icon-button material-delete" type="submit" title="删除材料"><i data-lucide="trash-2"></i></button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="inline-empty"><i data-lucide="file-warning"></i><span>尚未上传支撑材料，当前状态将显示为“待完善”。</span></div>
+            {% endif %}
+
+            <form class="upload-form batch-upload-form" method="post" action="/materials/upload" enctype="multipart/form-data">
+                <input type="hidden" name="achievement_id" value="{{ achievement.id }}">
+                <label><span>材料说明</span><input type="text" name="description" placeholder="可选，同批文件共用"></label>
+                <label class="file-field"><span>选择文件</span><input type="file" name="file" multiple required></label>
+                <p class="upload-help"><i data-lucide="info"></i>单次最多上传 {{ max_batch_upload_files }} 个文件，每个文件不超过 {{ max_upload_mb }}MB，总大小不超过 {{ max_batch_upload_mb }}MB。材料名称将自动取文件名，支持 PDF、Word、Excel、图片和压缩包。</p>
+                <button class="button secondary" type="submit"><i data-lucide="upload"></i>上传材料</button>
+            </form>
+        </section>
+    </div>
+
+    <aside class="detail-side">
+        {% if personal_integration.user_enabled %}
+        {% set sync_status = feishu_sync_record.sync_status if feishu_sync_record else "pending" %}
+        <section class="feishu-sync-block" aria-labelledby="feishu-sync-heading">
+            <div class="feishu-sync-heading">
+                <span class="feishu-sync-icon"><i data-lucide="cloud"></i></span>
+                <div>
+                    <span id="feishu-sync-heading">飞书同步</span>
+                    <strong class="feishu-sync-status feishu-sync-status-{{ sync_status }}">
+                        {% if sync_status == "synced" %}已同步
+                        {% elif sync_status == "failed" %}同步失败
+                        {% elif sync_status == "conflict" %}数据冲突
+                        {% else %}待同步{% endif %}
+                    </strong>
+                </div>
+            </div>
+            {% if feishu_notice %}
+            <p class="feishu-sync-notice"><i data-lucide="info"></i><span>{{ feishu_notice }}</span></p>
+            {% endif %}
+            {% if not personal_integration.feishu_ready %}
+            <p class="feishu-sync-copy">服务器端飞书配置尚未配置完整，本地成果已安全保存，不会尝试联网。</p>
+            {% elif sync_status == "conflict" %}
+            <p class="feishu-sync-copy">请先在飞书中人工处理重复的成果平台 ID，再重新检查。</p>
+            {% endif %}
+            {% if feishu_sync_record and feishu_sync_record.last_error and sync_status != "synced" %}
+            <p class="feishu-sync-error">{{ feishu_sync_record.last_error | truncate(120, True, "…") }}</p>
+            {% endif %}
+            {% if feishu_sync_record and feishu_sync_record.last_synced_at %}
+            <p class="feishu-sync-time">最近同步：{{ feishu_sync_record.last_synced_at.strftime("%Y-%m-%d %H:%M") }}</p>
+            {% endif %}
+            {% if sync_status in ["pending", "failed", "conflict"] %}
+            <form method="post" action="/achievements/{{ achievement.id }}/feishu-sync">
+                <button class="button secondary feishu-sync-retry" type="submit">
+                    <i data-lucide="refresh-cw"></i>
+                    {% if sync_status == "conflict" %}重新检查{% else %}重试同步{% endif %}
+                </button>
+            </form>
+            {% endif %}
+        </section>
+        {% endif %}
+        <section class="panel rule-card">
+            <div class="section-heading">
+                <span class="section-icon green"><i data-lucide="scale"></i></span>
+                <div><h2>规则参考</h2><p>不替代线下审核</p></div>
+            </div>
+            <div class="rule-row"><span>对应规则</span><strong>{{ level_rule or "未设置明确分值" }}</strong></div>
+            <div class="rule-row"><span>赋分方式</span><strong>{{ assignment_mode }}</strong></div>
+            {% if rule and rule.remark %}<p class="rule-remark">{{ rule.remark }}</p>{% endif %}
+            <div class="review-note"><i data-lucide="info"></i><span>申报级别和积分为教师填写，最终认定结果以线下审核为准。</span></div>
+        </section>
+        <form method="post" action="/achievements/{{ achievement.id }}/delete" onsubmit="return confirm('确认删除这条成果及其全部材料吗？')">
+            <button class="danger-link" type="submit"><i data-lucide="trash-2"></i>删除成果</button>
+        </form>
+    </aside>
+</div>
+{% endblock %}

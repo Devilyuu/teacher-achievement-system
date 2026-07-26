@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}试用看板{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <p class="eyebrow">公网试用</p>
+        <h1>试用进度</h1>
+        <p class="muted">跟踪教师是否已经登录、填报、上传和导出，并集中处理试用反馈。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button secondary" href="/admin/users"><i data-lucide="users"></i>用户管理</a>
+        <a class="button primary" href="/admin/summary"><i data-lucide="chart-no-axes-combined"></i>年度汇总</a>
+    </div>
+</header>
+
+<section class="summary-stat-grid">
+    <article class="stat-item"><span class="stat-icon blue"><i data-lucide="users"></i></span><div><span>教师账号</span><strong data-metric="teacher-count">{{ metrics.teacher_count }}</strong><small>人</small></div></article>
+    <article class="stat-item"><span class="stat-icon green"><i data-lucide="log-in"></i></span><div><span>已登录</span><strong data-metric="logged-in-count">{{ metrics.logged_in_count }}</strong><small>人</small></div></article>
+    <article class="stat-item"><span class="stat-icon violet"><i data-lucide="key-round"></i></span><div><span>已改密码</span><strong data-metric="password-changed-count">{{ metrics.password_changed_count }}</strong><small>人</small></div></article>
+    <article class="stat-item"><span class="stat-icon blue"><i data-lucide="library-big"></i></span><div><span>已填成果</span><strong data-metric="achievement-user-count">{{ metrics.achievement_user_count }}</strong><small>人</small></div></article>
+    <article class="stat-item"><span class="stat-icon coral"><i data-lucide="paperclip"></i></span><div><span>已传材料</span><strong data-metric="material-user-count">{{ metrics.material_user_count }}</strong><small>人</small></div></article>
+    <article class="stat-item"><span class="stat-icon green"><i data-lucide="archive"></i></span><div><span>已导出</span><strong data-metric="exported-user-count">{{ metrics.exported_user_count }}</strong><small>人</small></div></article>
+    <article class="stat-item"><span class="stat-icon amber"><i data-lucide="message-square-warning"></i></span><div><span>反馈总数</span><strong data-metric="feedback-count">{{ metrics.feedback_count }}</strong><small>条</small></div></article>
+    <article class="stat-item"><span class="stat-icon amber"><i data-lucide="circle-alert"></i></span><div><span>待处理反馈</span><strong data-metric="open-feedback-count">{{ metrics.open_feedback_count }}</strong><small>条</small></div></article>
+</section>
+
+<section class="panel summary-table-panel">
+    <div class="panel-heading summary-panel-heading">
+        <div><h2>教师试用状态</h2><p>用于判断哪些老师还没开始，哪些老师已经走到上传或导出步骤。</p></div>
+        <span class="record-count">{{ teacher_rows|length }} 位教师</span>
+    </div>
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>教师</th>
+                    <th>部门</th>
+                    <th>登录</th>
+                    <th>密码</th>
+                    <th>成果</th>
+                    <th>材料</th>
+                    <th>导出</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in teacher_rows %}
+                <tr>
+                    <td><strong>{{ row.teacher.full_name }}</strong><small>{{ row.teacher.username }}</small></td>
+                    <td>{{ row.teacher.department or "未设置部门" }}</td>
+                    <td>{{ row.teacher.last_login_at.strftime("%Y-%m-%d %H:%M") if row.teacher.last_login_at else "未登录" }}</td>
+                    <td>{{ "已修改" if not row.teacher.must_change_password else "待修改" }}</td>
+                    <td>{{ row.achievement_count }}</td>
+                    <td>{{ row.material_count }}</td>
+                    <td>{{ row.export_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel summary-table-panel">
+    <div class="panel-heading summary-panel-heading">
+        <div><h2>试用反馈</h2><p>集中记录老师在公网试用中遇到的问题，先处理阻塞流程的问题。</p></div>
+        <span class="record-count">{{ feedback_items|length }} 条反馈</span>
+    </div>
+    {% if feedback_items %}
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>反馈人</th>
+                    <th>类型</th>
+                    <th>问题</th>
+                    <th>页面/成果</th>
+                    <th>状态</th>
+                    <th>处理</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in feedback_items %}
+                <tr>
+                    <td><strong>{{ item.user.full_name }}</strong><small>{{ item.user.department or "未设置部门" }}</small></td>
+                    <td>{{ item.issue_type }}</td>
+                    <td>
+                        <strong>{{ item.description }}</strong>
+                        <small>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</small>
+                        {% if item.admin_note %}<small>备注：{{ item.admin_note }}</small>{% endif %}
+                    </td>
+                    <td>
+                        <span>{{ item.current_page or "未填写页面" }}</span>
+                        <small>{{ item.related_title or "未关联成果" }}</small>
+                    </td>
+                    <td><span class="status status-{{ item.status }}">{{ item.status }}</span></td>
+                    <td>
+                        <form class="inline-form" method="post" action="/admin/feedback/{{ item.id }}/status">
+                            <select name="status">
+                                {% for feedback_status in feedback_statuses %}
+                                <option value="{{ feedback_status }}" {% if item.status == feedback_status %}selected{% endif %}>{{ feedback_status }}</option>
+                                {% endfor %}
+                            </select>
+                            <input name="admin_note" value="{{ item.admin_note }}" placeholder="处理备注">
+                            <button class="button ghost" type="submit">保存</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon"><i data-lucide="message-square"></i></span>
+        <h2>暂时没有试用反馈</h2>
+        <p>老师提交反馈后会出现在这里。</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

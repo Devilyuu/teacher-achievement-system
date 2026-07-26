@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "编辑绩效规则" if rule else "新增绩效规则" }}{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <a class="back-link" href="/admin/rules"><i data-lucide="arrow-left"></i>返回规则目录</a>
+        <p class="eyebrow">系统管理</p>
+        <h1>{{ "编辑绩效规则" if rule else "新增绩效规则" }}</h1>
+        <p class="muted">大类与小类共同确定一条规则，教师填报时只会看到已启用规则。</p>
+    </div>
+</header>
+
+<form method="post" action="{{ action }}" class="rule-form">
+    <section class="panel form-panel">
+        <div class="section-heading">
+            <span class="section-icon blue"><i data-lucide="tags"></i></span>
+            <div><h2>分类与责任方式</h2><p>明确成果归属以及由谁申报、分配分值</p></div>
+        </div>
+        <div class="form-grid">
+            <label><span>大类</span><input type="text" name="category" value="{{ rule.category if rule else '' }}" required></label>
+            <label><span>小类</span><input type="text" name="subcategory" value="{{ rule.subcategory if rule else '' }}" required></label>
+            <label>
+                <span>赋分方式</span>
+                <select name="assignment_mode" required>
+                    {% for key, mode in assignment_modes.items() %}
+                    <option value="{{ key }}" {% if assignment_mode_key == key %}selected{% endif %}>{{ mode[0] }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label><span>排序序号</span><input type="number" name="sort_order" min="0" value="{{ rule.sort_order if rule else 0 }}" required></label>
+        </div>
+    </section>
+
+    <section class="panel form-panel rule-score-panel">
+        <div class="section-heading">
+            <span class="section-icon green"><i data-lucide="list-checks"></i></span>
+            <div><h2>赋分依据</h2><p>没有对应级别时可以留空，最终认定仍以线下审核为准</p></div>
+        </div>
+        <div class="form-grid">
+            <label class="span-2"><span>基本规则</span><textarea name="base_rule">{{ rule.base_rule if rule else '' }}</textarea></label>
+            <label><span>国家级</span><textarea name="national_rule">{{ rule.national_rule if rule else '' }}</textarea></label>
+            <label><span>省级</span><textarea name="provincial_rule">{{ rule.provincial_rule if rule else '' }}</textarea></label>
+            <label><span>市级</span><textarea name="city_rule">{{ rule.city_rule if rule else '' }}</textarea></label>
+            <label><span>校级</span><textarea name="school_rule">{{ rule.school_rule if rule else '' }}</textarea></label>
+            <label><span>学院级</span><textarea name="college_rule">{{ rule.college_rule if rule else '' }}</textarea></label>
+            <label class="span-2"><span>备注</span><textarea name="remark">{{ rule.remark if rule else '' }}</textarea></label>
+        </div>
+        {% if rule %}
+        <div class="rule-history-note"><i data-lucide="info"></i>修改分类名称不会自动迁移教师已经填报的历史成果；如需保留原分类口径，建议停用旧规则后新增规则。</div>
+        {% endif %}
+        <div class="form-actions">
+            <a class="button secondary" href="/admin/rules">取消</a>
+            <button class="button primary" type="submit"><i data-lucide="save"></i>保存规则</button>
+        </div>
+    </section>
+</form>
+{% endblock %}

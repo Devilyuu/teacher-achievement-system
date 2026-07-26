@@ -6,11 +6,15 @@
 
 ## 当前阶段
 
-当前仓库处于需求梳理阶段，已完成第一版《项目需求说明书》。
+当前仓库已经进入 MVP 开发阶段，已完成基础的本机/局域网试用版功能。
 
 需求文档：
 
 - `docs/superpowers/specs/2026-06-03-teacher-achievement-system-requirements.md`
+
+实施计划：
+
+- `docs/superpowers/plans/2026-06-03-teacher-achievement-system-implementation.md`
 
 ## 第一版方向
 
@@ -24,4 +28,88 @@
 - 年度清单导出
 - 支撑材料 ZIP 打包
 - 管理员账号、规则和汇总管理
+
+## 账号管理
+
+管理员可在“用户管理”中：
+
+- 创建教师或管理员账号
+- 下载 Excel 模板并批量预检、导入账号
+- 停用、重新启用账号
+- 重置用户密码
+
+新建账号和被重置密码的账号在首次登录时必须修改密码。完成修改前，系统只允许访问改密页或退出登录。
+
+## 绩效规则来源
+
+系统已导入《浮动绩效积分统计.xlsx》附表 1 中的完整规则：
+
+- 9 个正式大类、78 条小类规则
+- 8 条蓝色团队项目，按“团队负责人申报并分配”处理
+- 2 条黄色项目，按“项目负责人统一赋分”处理
+- 其余 68 条按个人申报处理
+- 额外保留 1 条“其他有价值工作（自定义）”兜底规则
+
+原始表格保存在：
+
+```text
+docs/source/浮动绩效积分统计.xlsx
+```
+
+系统启动时会幂等同步规则目录，不会重复生成同一条规则。结构化规则数据位于：
+
+```text
+app/data/performance_rules.json
+```
+
+## 本地运行
+
+```powershell
+cd C:\Users\lenovo\Desktop\jixiao\.worktrees\mvp-implementation
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+.\run.ps1
+```
+
+如果 pip 因本机代理报错，可先执行：
+
+```powershell
+$env:NO_PROXY="*"
+$env:no_proxy="*"
+pip install -r requirements.txt
+```
+
+本机访问：
+
+```text
+http://127.0.0.1:8001
+```
+
+局域网访问：
+
+```powershell
+ipconfig
+```
+
+找到主机 IPv4 地址后，同一局域网内访问：
+
+```text
+http://主机IPv4:8001
+```
+
+默认管理员：
+
+```text
+账号：admin
+密码：admin123456
+```
+
+首次试用后请修改管理员密码。
+
+## 测试
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -v
+```
 

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}{{ year }} 年度导出确认{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">个人年度归档</p>
+        <h1>{{ year }} 年度导出确认</h1>
+        <p class="muted">生成前先核对本年度成果和支撑材料，确认后将下载最新年度材料包。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button secondary" href="/achievements?year={{ year }}">
+            <i data-lucide="arrow-left"></i>返回继续整理
+        </a>
+        <a class="button primary" href="/exports/{{ year }}/personal">
+            <i data-lucide="download"></i>{% if needs_attention %}继续生成并下载{% else %}确认整理并下载{% endif %}
+        </a>
+    </div>
+</header>
+
+<section class="stat-grid">
+    <article class="stat-item">
+        <span class="stat-icon blue"><i data-lucide="list-checks"></i></span>
+        <div><span>本年度成果</span><strong>{{ achievements|length }} 项成果</strong></div>
+    </article>
+    <article class="stat-item">
+        <span class="stat-icon green"><i data-lucide="circle-check"></i></span>
+        <div><span>基础条件</span><strong>{{ ready_count }} 项可导出</strong></div>
+    </article>
+    <article class="stat-item">
+        <span class="stat-icon amber"><i data-lucide="circle-alert"></i></span>
+        <div><span>仍需关注</span><strong>{{ needs_attention|length }} 项待完善</strong></div>
+    </article>
+    <article class="stat-item">
+        <span class="stat-icon violet"><i data-lucide="paperclip"></i></span>
+        <div><span>支撑材料</span><strong>{{ material_count }} 份材料</strong></div>
+    </article>
+</section>
+
+{% if needs_attention %}
+<section class="panel export-warning-panel">
+    <div class="review-note warning">
+        <i data-lucide="triangle-alert"></i>
+        <span>仍有 {{ needs_attention|length }} 项待完善成果，建议先补充材料或说明后再生成；如果确需先提交过程材料，可以继续生成，最终仍以线下审核为准。</span>
+    </div>
+</section>
+{% endif %}
+
+<section class="panel export-history-panel">
+    <div class="section-heading">
+        <span class="section-icon blue"><i data-lucide="clipboard-check"></i></span>
+        <div><h2>导出前提醒</h2><p>系统只做材料整理和基础自查，不替代线下审核。</p></div>
+    </div>
+    <div class="review-note">
+        <i data-lucide="info"></i>
+        <span>最终分值和级别认定仍以线下审核为准；每个年度仅保留最新生成版本，重新生成会覆盖该年度旧材料包。</span>
+    </div>
+</section>
+
+<section class="panel table-panel summary-table-panel">
+    <div class="user-table-heading">
+        <div class="section-heading">
+            <span class="section-icon green"><i data-lucide="archive"></i></span>
+            <div><h2>本次导出成果</h2><p>请先核对本年度会进入材料包的成果、状态和材料数量。</p></div>
+        </div>
+    </div>
+    {% if achievements %}
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>成果名称</th>
+                    <th>大类 / 小类</th>
+                    <th>材料</th>
+                    <th>状态</th>
+                    <th aria-label="操作"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for achievement in achievements %}
+                <tr>
+                    <td><a class="record-title" href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a></td>
+                    <td>{{ achievement.category }} / {{ achievement.subcategory }}</td>
+                    <td>{{ achievement.materials|length }} 份</td>
+                    <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
+                    <td><a class="button ghost" href="/achievements/{{ achievement.id }}">查看</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon"><i data-lucide="archive-x"></i></span>
+        <h2>本年度还没有成果</h2>
+        <p>先新增成果并上传支撑材料，再生成年度材料包。</p>
+    </div>
+    {% endif %}
+</section>
+
+<section class="panel table-panel summary-table-panel">
+    <div class="user-table-heading">
+        <div class="section-heading">
+            <span class="section-icon amber"><i data-lucide="list-todo"></i></span>
+            <div><h2>待完善成果</h2><p>可先补充信息或材料，也可以带着提醒生成材料包。</p></div>
+        </div>
+    </div>
+    {% if needs_attention %}
+    <div class="table-scroll">
+        <table>
+            <thead>
+                <tr>
+                    <th>成果名称</th>
+                    <th>大类 / 小类</th>
+                    <th>材料</th>
+                    <th>状态</th>
+                    <th aria-label="操作"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for achievement in needs_attention %}
+                <tr>
+                    <td><a class="record-title" href="/achievements/{{ achievement.id }}">{{ achievement.title }}</a></td>
+                    <td>{{ achievement.category }} / {{ achievement.subcategory }}</td>
+                    <td>{{ achievement.materials|length }} 份</td>
+                    <td><span class="status status-{{ achievement.status }}">{{ achievement.status }}</span></td>
+                    <td><a class="button ghost" href="/achievements/{{ achievement.id }}">查看</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon"><i data-lucide="circle-check"></i></span>
+        <h2>没有待完善成果</h2>
+        <p>当前年度成果已满足系统基础申报条件，仍请以线下审核结果为准。</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

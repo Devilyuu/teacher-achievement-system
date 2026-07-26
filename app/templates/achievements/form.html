@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}{% if achievement %}编辑成果{% else %}新增成果{% endif %}{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <a class="back-link" href="/achievements"><i data-lucide="arrow-left"></i>返回成果库</a>
+        <h1>{% if achievement %}编辑成果{% else %}新增成果{% endif %}</h1>
+        <p class="muted">先选择分类与等级，系统会给出对应的规则参考。</p>
+    </div>
+</header>
+
+{% if not achievement and personal_integration.user_enabled %}
+<section class="panel intelligent-entry-panel" id="intelligent-entry-panel">
+    <div class="intelligent-entry-heading">
+        <span class="section-icon violet"><i data-lucide="wand-sparkles"></i></span>
+        <div>
+            <h2>描述成果，自动填写</h2>
+            <p>输入或口述成果信息，系统整理后填入下方表单，由你确认后再保存。</p>
+        </div>
+        <span class="intelligent-entry-mode">
+            <i data-lucide="{% if personal_integration.ai_ready %}sparkles{% else %}list-checks{% endif %}"></i>
+            {% if personal_integration.ai_ready %}智能识别{% else %}规则识别{% endif %}
+        </span>
+    </div>
+    <div class="intelligent-entry-body">
+        <label for="achievement-description">成果描述</label>
+        <textarea id="achievement-description" maxlength="2000" rows="4" placeholder="例如：2025年指导学生参加江苏省职业技能大赛数字艺术赛项，获得二等奖，本人是指导教师。"></textarea>
+        <div class="intelligent-entry-actions">
+            <button class="button secondary" id="speech-input-button" type="button" title="使用语音输入">
+                <i data-lucide="mic"></i><span>语音输入</span>
+            </button>
+            <button class="button primary" id="parse-achievement-button" type="button">
+                <i data-lucide="wand-sparkles"></i><span>整理并填入</span>
+            </button>
+        </div>
+        <div class="intelligent-entry-feedback" id="intelligent-entry-feedback" hidden></div>
+    </div>
+</section>
+{% endif %}
+
+<form method="post" action="{{ action }}" class="achievement-form">
+    {% if achievement and readiness_reasons %}
+    <div class="readiness-inline">
+        <i data-lucide="circle-alert"></i>
+        <div>
+            <strong>当前待完善原因</strong>
+            <span>{{ readiness_reasons | join("；") }}。保存后系统会重新判断状态。</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <section class="panel form-panel">
+        <div class="section-heading">
+            <span class="section-icon blue"><i data-lucide="file-pen-line"></i></span>
+            <div><h2>成果信息</h2><p>填写工作或成果的基本情况</p></div>
+        </div>
+        <div class="form-grid">
+            <label>
+                <span>年度</span>
+                <select name="year" required>
+                    {% for year in available_years %}
+                    <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }} 年</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>申报性质</span>
+                <select name="claim_nature" required>
+                    {% for nature in claim_natures %}
+                    <option value="{{ nature }}" {% if achievement and achievement.claim_nature == nature %}selected{% endif %}>{{ nature }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>大类</span>
+                <select id="category" name="category" required></select>
+            </label>
+            <label>
+                <span>小类</span>
+                <select id="subcategory" name="subcategory" required></select>
+            </label>
+            <label class="span-2">
+                <span>成果或工作名称</span>
+                <input name="title" value="{{ achievement.title if achievement else '' }}" placeholder="例如：江苏省职业技能竞赛数字艺术赛项二等奖" required>
+            </label>
+            <label>
+                <span>时间范围</span>
+                <input name="date_range" value="{{ achievement.date_range if achievement else '' }}" placeholder="例如：2026年3月至5月">
+            </label>
+            <label>
+                <span>申报级别</span>
+                <select id="level" name="level">
+                    <option value="">不适用或待确认</option>
+                    {% for option in level_options %}
+                    <option value="{{ option.value }}" {% if achievement and achievement.level == option.value %}selected{% endif %}>{{ option.value }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>本人角色</span>
+                <input name="personal_role" value="{{ achievement.personal_role if achievement else '' }}" placeholder="例如：负责人、团队成员">
+            </label>
+            <label>
+                <span>基本分</span>
+                <input type="number" step="0.01" min="0" name="base_score" value="{{ achievement.base_score if achievement else 0 }}">
+            </label>
+            <label>
+                <span>绩效分</span>
+                <input type="number" step="0.01" min="0" name="performance_score" value="{{ achievement.performance_score if achievement else 0 }}">
+            </label>
+            <label>
+                <span>申报积分（合计）</span>
+                <input type="number" step="0.01" min="0" name="claimed_score" value="{{ achievement.claimed_score if achievement else 0 }}">
+            </label>
+            <label class="span-2">
+                <span>当前进展或价值说明</span>
+                <textarea name="current_stage" rows="4" placeholder="过程性工作请说明当前阶段、已完成内容及后续计划">{{ achievement.current_stage if achievement else '' }}</textarea>
+            </label>
+            <label class="span-2">
+                <span>备注</span>
+                <textarea name="notes" rows="3">{{ achievement.notes if achievement else '' }}</textarea>
+            </label>
+        </div>
+    </section>
+
+    <section class="panel guidance-panel">
+        <div class="section-heading">
+            <span class="section-icon green"><i data-lucide="book-open-check"></i></span>
+            <div><h2>规则参考</h2><p>随所选分类和级别自动更新</p></div>
+        </div>
+        <div class="guidance-grid">
+            <div><span>对应规则</span><strong id="rule-text">请选择大类、小类和级别</strong></div>
+            <div><span>赋分方式</span><strong id="assignment-text">个人申报</strong></div>
+            <div><span>基本分规则</span><strong id="base-rule-text">请选择大类和小类</strong></div>
+            <div><span>绩效分规则</span><strong id="performance-rule-text">请选择大类和小类</strong></div>
+            <div class="span-2"><span>补充说明</span><p id="remark-text">系统仅提供申报参考，级别和积分最终以线下审核认定为准。</p></div>
+        </div>
+    </section>
+
+    <div class="form-actions">
+        <a class="button ghost" href="/achievements">取消</a>
+        <button class="button primary" type="submit"><i data-lucide="save"></i>保存成果</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const rules = {{ rules | tojson }};
+    const selectedCategory = {{ (achievement.category if achievement else "") | tojson }};
+    const selectedSubcategory = {{ (achievement.subcategory if achievement else "") | tojson }};
+    const categorySelect = document.getElementById("category");
+    const subcategorySelect = document.getElementById("subcategory");
+    const levelSelect = document.getElementById("level");
+
+    function unique(values) {
+        return [...new Set(values)];
+    }
+
+    function setOptions(select, values, selectedValue) {
+        select.innerHTML = "";
+        values.forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            option.selected = value === selectedValue;
+            select.appendChild(option);
+        });
+    }
+
+    function updateSubcategories(preferred = "") {
+        const values = rules.filter((rule) => rule.category === categorySelect.value).map((rule) => rule.subcategory);
+        setOptions(subcategorySelect, values, values.includes(preferred) ? preferred : values[0]);
+        updateGuidance();
+    }
+
+    function assignmentMode(rule) {
+        if (!rule) return "线下审核认定";
+        if (rule.is_team) return "团队负责人申报并分配";
+        if (rule.is_department_assigned) return "项目负责人统一赋分";
+        return "个人申报";
+    }
+
+    function updateGuidance() {
+        const rule = rules.find((item) => item.category === categorySelect.value && item.subcategory === subcategorySelect.value);
+        const fields = {"国家级": "national_rule", "省级": "provincial_rule", "市级": "city_rule", "校级": "school_rule", "学院级": "college_rule"};
+        const baseRule = rule ? (rule.base_rule || "未设置基本分") : "请选择大类和小类";
+        const levelRule = rule ? (rule[fields[levelSelect.value]] || "该级别未设置绩效分") : "请选择大类和小类";
+        const performanceRules = rule
+            ? Object.entries(fields)
+                .map(([level, field]) => rule[field] ? `${level}：${rule[field]}` : "")
+                .filter(Boolean)
+                .join("；") || "未设置分级绩效分"
+            : "请选择大类和小类";
+        document.getElementById("rule-text").textContent = rule ? `基本分：${baseRule}；当前级别绩效分：${levelRule}` : "请选择大类、小类和级别";
+        document.getElementById("base-rule-text").textContent = baseRule;
+        document.getElementById("performance-rule-text").textContent = performanceRules;
+        document.getElementById("assignment-text").textContent = assignmentMode(rule);
+        document.getElementById("remark-text").textContent = (rule && rule.remark) || "系统仅提供申报参考，级别和积分最终以线下审核认定为准。";
+    }
+
+    const categories = unique(rules.map((rule) => rule.category));
+    setOptions(categorySelect, categories, categories.includes(selectedCategory) ? selectedCategory : categories[0]);
+    updateSubcategories(selectedSubcategory);
+    categorySelect.addEventListener("change", () => updateSubcategories());
+    subcategorySelect.addEventListener("change", updateGuidance);
+    levelSelect.addEventListener("change", updateGuidance);
+
+    const intelligentEntryPanel = document.getElementById("intelligent-entry-panel");
+    if (intelligentEntryPanel) {
+        const descriptionInput = document.getElementById("achievement-description");
+        const parseButton = document.getElementById("parse-achievement-button");
+        const speechButton = document.getElementById("speech-input-button");
+        const feedback = document.getElementById("intelligent-entry-feedback");
+        const fieldLabels = {
+            year: "年度",
+            title: "成果名称",
+            category: "大类",
+            subcategory: "小类",
+            claim_nature: "申报性质",
+            date_range: "时间范围",
+            level: "申报级别",
+            personal_role: "本人角色",
+            current_stage: "进展说明",
+            base_score: "基本分",
+            performance_score: "绩效分",
+            claimed_score: "申报积分",
+            notes: "备注"
+        };
+
+        function setFeedback(kind, message) {
+            feedback.hidden = false;
+            feedback.className = `intelligent-entry-feedback ${kind}`;
+            feedback.innerHTML = "";
+            const icon = document.createElement("i");
+            icon.setAttribute("data-lucide", kind === "error" ? "circle-alert" : "circle-check");
+            const text = document.createElement("span");
+            text.textContent = message;
+            feedback.append(icon, text);
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function setFormValue(name, value) {
+            const field = document.querySelector(`.achievement-form [name="${name}"]`);
+            if (field && value !== null && value !== undefined) {
+                field.value = value;
+            }
+        }
+
+        function applyDraft(draft) {
+            const yearSelect = document.querySelector('.achievement-form [name="year"]');
+            if (draft.year && yearSelect && ![...yearSelect.options].some((option) => Number(option.value) === draft.year)) {
+                const option = document.createElement("option");
+                option.value = draft.year;
+                option.textContent = `${draft.year} 年`;
+                yearSelect.appendChild(option);
+            }
+            setFormValue("year", draft.year || {{ selected_year }});
+            setFormValue("claim_nature", draft.claim_nature);
+            if (categories.includes(draft.category)) {
+                categorySelect.value = draft.category;
+                updateSubcategories(draft.subcategory);
+            }
+            setFormValue("title", draft.title);
+            setFormValue("date_range", draft.date_range);
+            setFormValue("level", draft.level);
+            setFormValue("personal_role", draft.personal_role);
+            setFormValue("base_score", draft.base_score);
+            setFormValue("performance_score", draft.performance_score);
+            setFormValue("claimed_score", draft.claimed_score);
+            setFormValue("current_stage", draft.current_stage);
+            setFormValue("notes", draft.notes);
+            updateGuidance();
+
+            const uncertain = (draft.uncertain_fields || [])
+                .filter((name) => fieldLabels[name])
+                .map((name) => fieldLabels[name]);
+            const suffix = uncertain.length
+                ? ` 请重点核对：${[...new Set(uncertain)].join("、")}。`
+                : " 请检查无误后保存。";
+            setFeedback("success", `已填入下方表单。${suffix}`);
+            document.querySelector(".form-panel").scrollIntoView({behavior: "smooth", block: "start"});
+        }
+
+        parseButton.addEventListener("click", async () => {
+            const description = descriptionInput.value.trim();
+            if (!description) {
+                setFeedback("error", "请先输入或口述成果内容。");
+                descriptionInput.focus();
+                return;
+            }
+            parseButton.disabled = true;
+            parseButton.querySelector("span").textContent = "正在整理";
+            try {
+                const body = new FormData();
+                body.append("description", description);
+                const response = await fetch("/achievements/intelligent-draft", {
+                    method: "POST",
+                    body
+                });
+                if (!response.ok) throw new Error("parse_failed");
+                const result = await response.json();
+                applyDraft(result.draft);
+            } catch (error) {
+                setFeedback("error", "暂时无法整理，请稍后重试或直接填写下方表单。");
+            } finally {
+                parseButton.disabled = false;
+                parseButton.querySelector("span").textContent = "整理并填入";
+            }
+        });
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            speechButton.hidden = true;
+        } else {
+            const recognition = new SpeechRecognition();
+            recognition.lang = "zh-CN";
+            recognition.interimResults = false;
+            recognition.continuous = false;
+            recognition.addEventListener("start", () => {
+                speechButton.classList.add("listening");
+                speechButton.querySelector("span").textContent = "正在聆听";
+            });
+            recognition.addEventListener("result", (event) => {
+                const transcript = event.results[0][0].transcript;
+                descriptionInput.value = [descriptionInput.value.trim(), transcript]
+                    .filter(Boolean)
+                    .join("，");
+            });
+            recognition.addEventListener("end", () => {
+                speechButton.classList.remove("listening");
+                speechButton.querySelector("span").textContent = "语音输入";
+            });
+            recognition.addEventListener("error", () => {
+                setFeedback("error", "未能识别语音，请检查麦克风权限后重试。");
+            });
+            speechButton.addEventListener("click", () => recognition.start());
+        }
+    }
+</script>
+{% endblock %}

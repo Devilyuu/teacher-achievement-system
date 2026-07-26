@@ -3,15 +3,21 @@ node_modules/
 .venv/
 venv/
 __pycache__/
+**/__pycache__/
+*.py[cod]
 
 # Environment files
 .env
 .env.local
 
 # Runtime data
-data/uploads/
-data/exports/
-data/backups/
+data/uploads/*
+data/exports/*
+data/backups/*
+data/database/*
+!data/uploads/.gitkeep
+!data/exports/.gitkeep
+!data/database/.gitkeep
 *.db
 *.sqlite
 *.sqlite3
@@ -23,6 +29,7 @@ out/
 
 # Logs
 *.log
+*.pid
 
 # OS/editor files
 .DS_Store

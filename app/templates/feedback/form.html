@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}试用反馈{% endblock %}
+
+{% block content %}
+<header class="page-header compact">
+    <div>
+        <p class="eyebrow">公网试用</p>
+        <h1>提交试用反馈</h1>
+        <p class="muted">遇到登录、填报、上传、导出或页面显示问题时，请在这里留下简要说明。</p>
+    </div>
+    <div class="header-actions">
+        <a class="button secondary" href="/"><i data-lucide="arrow-left"></i>返回首页</a>
+    </div>
+</header>
+
+{% if submitted %}
+<div class="page-message success"><i data-lucide="circle-check"></i>反馈已提交，管理员会在试用看板中处理。</div>
+{% endif %}
+
+<section class="panel form-panel">
+    <form method="post" action="/feedback">
+        <div class="form-grid">
+            <label>
+                <span>问题类型</span>
+                <select name="issue_type" required>
+                    {% for item in issue_types %}
+                    <option value="{{ item }}">{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                <span>当前页面</span>
+                <input name="current_page" placeholder="例如：/achievements/new 或 成果详情页">
+            </label>
+            <label class="span-2">
+                <span>相关成果标题</span>
+                <input name="related_title" placeholder="如果和某条成果有关，请填写成果标题">
+            </label>
+            <label class="span-2">
+                <span>问题描述</span>
+                <textarea name="description" rows="6" required placeholder="请说明你操作到哪一步、页面出现了什么问题、期望是什么。"></textarea>
+            </label>
+        </div>
+        <div class="form-actions">
+            <button class="button primary" type="submit"><i data-lucide="send"></i>提交反馈</button>
+        </div>
+    </form>
+</section>
+{% endblock %}
