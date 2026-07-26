@@ -373,6 +373,28 @@ def test_unlabelled_rank_list_is_not_inferred_from_award_order(real_rules):
     assert "performance_score" in draft.uncertain_fields
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "指导学生参加省级职业技能竞赛，未获得二等奖",
+        "指导学生参加省级职业技能竞赛，没有获得三等奖",
+    ],
+)
+def test_negated_award_rank_does_not_select_labelled_score(
+    description,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        description,
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.subcategory == "指导学生大赛（包括技能、双创）"
+    assert draft.performance_score == 0
+    assert "performance_score" in draft.uncertain_fields
+
+
 def test_draft_model_rejects_unknown_level():
     with pytest.raises(ValueError):
         AchievementDraft(
@@ -492,6 +514,58 @@ def test_draft_model_limits_uncertain_field_count():
         )
 
 
+@pytest.mark.parametrize(
+    "uncertain_fields",
+    [
+        "year",
+        ["a"],
+    ],
+)
+def test_draft_model_rejects_non_collection_or_unknown_uncertain_fields(
+    uncertain_fields,
+):
+    with pytest.raises(ValueError):
+        AchievementDraft(
+            year=2025,
+            title="测试成果",
+            category="教学",
+            subcategory="测试",
+            claim_nature=ClaimNature.result,
+            date_range="2025年",
+            level="",
+            personal_role="",
+            current_stage="",
+            base_score=2,
+            performance_score=3,
+            claimed_score=99,
+            notes="",
+            confidence=0.5,
+            uncertain_fields=uncertain_fields,
+        )
+
+
+def test_draft_model_accepts_allowed_uncertain_field_tuple():
+    draft = AchievementDraft(
+        year=2025,
+        title="测试成果",
+        category="教学",
+        subcategory="测试",
+        claim_nature=ClaimNature.result,
+        date_range="2025年",
+        level="",
+        personal_role="",
+        current_stage="",
+        base_score=0,
+        performance_score=0,
+        claimed_score=0,
+        notes="",
+        confidence=0.5,
+        uncertain_fields=("year", "ai_timeout"),
+    )
+
+    assert draft.uncertain_fields == ["year", "ai_timeout"]
+
+
 def test_unreasonable_score_in_lightweight_rule_is_not_emitted():
     rule = {
         "category": "教学",
@@ -596,6 +670,42 @@ def test_level_parser_ignores_negated_candidates(description, expected_level):
     )
 
     assert draft.level == expected_level
+
+
+@pytest.mark.parametrize(
+    ("description", "expected_level"),
+    [
+        (
+            "经校级选拔参加省级教学能力比赛并获得二等奖",
+            "省级",
+        ),
+        (
+            "参加省级教学能力比赛，经校级认定获得二等奖",
+            "校级",
+        ),
+        (
+            "经省级选拔参加校级教学能力比赛并获得二等奖",
+            "校级",
+        ),
+        (
+            "参加校级和省级教学比赛",
+            "",
+        ),
+    ],
+)
+def test_multiple_levels_use_final_result_context_or_remain_uncertain(
+    description,
+    expected_level,
+):
+    draft = parse_achievement_draft(
+        description,
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.level == expected_level
+    if not expected_level:
+        assert "level" in draft.uncertain_fields
 
 
 @pytest.mark.parametrize(
@@ -893,6 +1003,37 @@ def test_ai_network_error_has_a_specific_safe_reason(real_rules):
 
     assert "ai_network_error" in draft.uncertain_fields
     assert "ai_invalid_response" not in draft.uncertain_fields
+
+
+@pytest.mark.parametrize(
+    "uncertain_fields",
+    [
+        "year",
+        ["a"],
+    ],
+)
+def test_ai_invalid_uncertain_fields_force_safe_fallback(
+    uncertain_fields,
+    real_rules,
+):
+    def handler(request):
+        return _chat_response(
+            json.dumps(_ai_draft(uncertain_fields=uncertain_fields))
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    draft = parse_achievement_draft(
+        "2025年指导学生参加江苏省职业技能竞赛并获得二等奖",
+        real_rules,
+        integration_config=_config(
+            ai_ready=True,
+            ai_api_key="secret-key",
+        ),
+        client=client,
+    )
+
+    assert "ai_invalid_response" in draft.uncertain_fields
+    assert "a" not in draft.uncertain_fields
 
 
 @pytest.mark.parametrize(

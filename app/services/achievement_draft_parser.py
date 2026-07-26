@@ -36,6 +36,18 @@ PROCESS_STAGE_KEYWORDS = (
     "执行中",
     "建设中",
 )
+RESULT_CONTEXT_TERMS = (
+    "获得",
+    "获奖",
+    "立项",
+    "认定",
+    "批准",
+    "授予",
+    "结项",
+    "验收",
+    "比赛结果",
+    "竞赛结果",
+)
 ACHIEVEMENT_ENTITY_PATTERN = (
     r"(?:竞赛|大赛|比赛|赛项|项目|课题|成果奖|奖项|获奖)"
 )
@@ -79,6 +91,29 @@ MUNICIPALITIES = ("北京市", "天津市", "上海市", "重庆市")
 NEGATION_PATTERN = re.compile(
     r"(?:尚未|未|没有|不是|并非|不属于|不符合|非).{0,2}$"
 )
+UNCERTAIN_FIELD_NAMES = {
+    "year",
+    "title",
+    "category",
+    "subcategory",
+    "claim_nature",
+    "date_range",
+    "level",
+    "personal_role",
+    "current_stage",
+    "base_score",
+    "performance_score",
+    "claimed_score",
+    "notes",
+    "confidence",
+}
+AI_REASON_CODES = {
+    "ai_not_configured",
+    "ai_timeout",
+    "ai_network_error",
+    "ai_invalid_response",
+}
+ALLOWED_UNCERTAIN_FIELDS = UNCERTAIN_FIELD_NAMES | AI_REASON_CODES
 
 
 class AchievementDraft(BaseModel):
@@ -116,6 +151,17 @@ class AchievementDraft(BaseModel):
         if not isinstance(value, dict):
             return value
         normalized = dict(value)
+        uncertain_fields = normalized.get("uncertain_fields", [])
+        if not isinstance(uncertain_fields, (list, tuple)):
+            raise ValueError("uncertain_fields must be a list or tuple")
+        if any(
+            not isinstance(field_name, str)
+            or field_name not in ALLOWED_UNCERTAIN_FIELDS
+            for field_name in uncertain_fields
+        ):
+            raise ValueError("uncertain_fields contains an unknown field")
+        normalized["uncertain_fields"] = list(dict.fromkeys(uncertain_fields))
+
         scores = {}
         for field_name in ("base_score", "performance_score", "claimed_score"):
             score = float(normalized.get(field_name, 0))
@@ -126,9 +172,8 @@ class AchievementDraft(BaseModel):
         if not math.isfinite(expected_total) or expected_total > MAX_SCORE:
             raise ValueError("combined score is outside the safe score range")
         if not math.isclose(scores["claimed_score"], expected_total):
-            uncertain_fields = list(normalized.get("uncertain_fields", []))
             normalized["uncertain_fields"] = list(dict.fromkeys(
-                [*uncertain_fields, "claimed_score"]
+                [*normalized["uncertain_fields"], "claimed_score"]
             ))
         normalized.update(scores)
         normalized["claimed_score"] = expected_total
@@ -248,6 +293,32 @@ def _extract_year(description: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _select_level_from_result_context(
+    description: str,
+    candidates: Sequence[tuple[int, str]],
+) -> str:
+    if len(candidates) == 1:
+        return candidates[0][1]
+
+    result_positions = [
+        match.start()
+        for term in RESULT_CONTEXT_TERMS
+        for match in re.finditer(term, description)
+        if not _is_negated(description, match.start())
+    ]
+    if not result_positions:
+        return ""
+
+    final_result_position = max(result_positions)
+    ranked = sorted(
+        (abs(position - final_result_position), level)
+        for position, level in candidates
+    )
+    if len(ranked) > 1 and ranked[0][0] == ranked[1][0]:
+        return ""
+    return ranked[0][1]
+
+
 def _extract_level(description: str) -> str:
     explicit_candidates = []
     for level in ("国家级", "省级", "市级", "学院级", "校级"):
@@ -257,7 +328,10 @@ def _extract_level(description: str) -> str:
             if not _is_negated(description, match.start())
         )
     if explicit_candidates:
-        return min(explicit_candidates)[1]
+        return _select_level_from_result_context(
+            description,
+            explicit_candidates,
+        )
 
     for match in re.finditer(r"(?:全国|国家)", description):
         if (
@@ -395,19 +469,16 @@ def _score_from_rule_text(rule_text: str, description: str) -> float | None:
     if any(not _condition_is_met(condition, description) for condition in conditions):
         return None
 
-    award_rank = next(
-        (
-            rank
-            for label, rank in (
-                ("一等奖", "一"),
-                ("二等奖", "二"),
-                ("三等奖", "三"),
-                ("特等奖", "特"),
-            )
-            if label in description
-        ),
-        None,
-    )
+    award_rank = None
+    for label, rank in (
+        ("一等奖", "一"),
+        ("二等奖", "二"),
+        ("三等奖", "三"),
+        ("特等奖", "特"),
+    ):
+        if _has_affirmed_phrase(description, (label,)):
+            award_rank = rank
+            break
     if award_rank:
         match = re.search(
             rf"(?:国|省|市|校|院)?{award_rank}(?:等(?:奖)?)?\s*(\d+(?:\.\d+)?)",
