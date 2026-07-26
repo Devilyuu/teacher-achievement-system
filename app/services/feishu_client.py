@@ -9,6 +9,7 @@ from app import config
 
 DEFAULT_BASE_URL = "https://open.feishu.cn"
 DEFAULT_TIMEOUT = httpx.Timeout(connect=3.0, read=8.0, write=8.0, pool=3.0)
+MAX_SEARCH_PAGES = 50
 PERMISSION_CODES = {
     1254302,
     1254303,
@@ -121,17 +122,42 @@ class FeishuClient:
                 ],
             }
         }
-        response = self._authorized_request(
-            integration_config,
-            "POST",
-            self._records_url(integration_config) + "/search",
-            params={"page_size": 20},
-            json=payload,
-        )
-        data = response.get("data")
-        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
-            raise FeishuResponseError("Feishu search response has an invalid shape")
-        return tuple(self._record_from(item) for item in data["items"])
+        token = self._get_tenant_access_token(integration_config)
+        headers = {"Authorization": f"Bearer {token}"}
+        params: dict[str, int | str] = {"page_size": 20}
+        records: list[FeishuRecord] = []
+
+        for _ in range(MAX_SEARCH_PAGES):
+            response = self._request(
+                "POST",
+                self._records_url(integration_config) + "/search",
+                headers=headers,
+                params=params,
+                json=payload,
+            )
+            data = response.get("data")
+            if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+                raise FeishuResponseError(
+                    "Feishu search response has an invalid shape"
+                )
+            records.extend(self._record_from(item) for item in data["items"])
+
+            has_more = data.get("has_more", False)
+            if not isinstance(has_more, bool):
+                raise FeishuResponseError(
+                    "Feishu search pagination has an invalid shape"
+                )
+            if not has_more:
+                return tuple(records)
+
+            page_token = data.get("page_token")
+            if not isinstance(page_token, str) or not page_token:
+                raise FeishuResponseError(
+                    "Feishu search pagination is missing its page token"
+                )
+            params = {"page_size": 20, "page_token": page_token}
+
+        raise FeishuResponseError("Feishu search exceeded its page limit")
 
     def create_record(self, fields: dict[str, Any]) -> FeishuRecord:
         integration_config = self._configuration_snapshot()

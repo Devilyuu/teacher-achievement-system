@@ -161,6 +161,85 @@ def test_duplicate_search_results_raise_conflict_without_record_body(feishu_conf
     assert secret_record_value not in repr(caught.value)
 
 
+def test_duplicate_on_later_page_raises_conflict_and_sends_page_token(feishu_config):
+    from app.services.feishu_client import FeishuClient, FeishuConflictError
+
+    search_requests = []
+
+    def handler(request):
+        if request.url.path.endswith("/tenant_access_token/internal"):
+            return token_response()
+        search_requests.append(request)
+        if len(search_requests) == 1:
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "items": [{"record_id": "rec_1", "fields": {}}],
+                        "has_more": True,
+                        "page_token": "next-page-token",
+                    },
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "items": [{"record_id": "rec_2", "fields": {}}],
+                    "has_more": False,
+                },
+            },
+        )
+
+    client = FeishuClient(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(FeishuConflictError):
+        client.find_record_by_platform_id(42)
+
+    assert len(search_requests) == 2
+    assert "page_token" not in search_requests[0].url.params
+    assert search_requests[1].url.params["page_token"] == "next-page-token"
+    assert json.loads(search_requests[0].content) == json.loads(
+        search_requests[1].content
+    )
+
+
+def test_search_stops_at_maximum_page_count(monkeypatch, feishu_config):
+    from app.services import feishu_client
+
+    monkeypatch.setattr(feishu_client, "MAX_SEARCH_PAGES", 2, raising=False)
+    search_count = 0
+
+    def handler(request):
+        nonlocal search_count
+        if request.url.path.endswith("/tenant_access_token/internal"):
+            return token_response()
+        search_count += 1
+        if search_count > 2:
+            raise AssertionError("search requested more pages than the configured limit")
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "items": [],
+                    "has_more": True,
+                    "page_token": f"page-token-{search_count}",
+                },
+            },
+        )
+
+    client = feishu_client.FeishuClient(transport=httpx.MockTransport(handler))
+
+    with pytest.raises(feishu_client.FeishuResponseError) as caught:
+        client.find_record_by_platform_id(42)
+
+    assert "page limit" in str(caught.value).lower()
+    assert search_count == 2
+
+
 def test_create_posts_fields_and_returns_typed_record(feishu_config):
     from app.services.feishu_client import FeishuClient, FeishuRecord
 
