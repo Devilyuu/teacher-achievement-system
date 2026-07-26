@@ -121,9 +121,13 @@ AWARD_LABEL_RANKS = {
     "三等奖": "三",
 }
 AWARD_LABEL_PATTERN = "|".join(AWARD_LABEL_RANKS)
-AWARD_VERB_PATTERN = r"(?:获得|获评|获奖)"
+AWARD_VERB_PATTERN = r"(?:获得|获评|获奖|荣获|取得|斩获|获)"
 AWARD_NEGATION_PATTERN = r"(?:未能|尚未|没有|并未|未曾|不曾|未)"
 CLAUSE_PATTERN = re.compile(r"[^，,。；;！？!?\n]+")
+NEGATED_CITY_PATTERN = re.compile(
+    r"(?:尚未|未能|没有|并未|未曾|不曾|不是|并非|不属于|不符合|未|非)"
+    r"(?P<city>[\u4e00-\u9fff]{2,4}市)(?!级)"
+)
 
 
 class AchievementDraft(BaseModel):
@@ -303,6 +307,20 @@ def _extract_year(description: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _city_candidate_spans(description: str) -> list[tuple[int, int, str]]:
+    candidates = []
+    negated_city_ends = set()
+    for match in NEGATED_CITY_PATTERN.finditer(description):
+        start, end = match.span("city")
+        candidates.append((start, end, match.group("city")))
+        negated_city_ends.add(end)
+
+    for match in re.finditer(r"[\u4e00-\u9fff]{2,8}市(?!级)", description):
+        if match.end() not in negated_city_ends:
+            candidates.append((match.start(), match.end(), match.group(0)))
+    return candidates
+
+
 def _select_level_from_result_context(
     description: str,
     candidates: Sequence[tuple[int, str]],
@@ -371,17 +389,17 @@ def _extract_level(description: str) -> str:
                 candidates.append((start, "省级"))
             start = description.find(region, start + 1)
 
-    for match in re.finditer(r"[\u4e00-\u9fff]{2,8}市(?!级)", description):
-        if any(match.group(0).endswith(region) for region in MUNICIPALITIES):
+    for start, end, city_text in _city_candidate_spans(description):
+        if any(city_text.endswith(region) for region in MUNICIPALITIES):
             continue
         if (
-            not _is_negated(description, match.start())
+            not _is_negated(description, start)
             and re.search(
                 ACHIEVEMENT_ENTITY_PATTERN,
-                description[match.end():match.end() + 20],
+                description[end:end + 20],
             )
         ):
-            candidates.append((match.start(), "市级"))
+            candidates.append((start, "市级"))
     if not candidates:
         return ""
     return _select_level_from_result_context(description, candidates)
