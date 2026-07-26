@@ -121,13 +121,20 @@ AWARD_LABEL_RANKS = {
 }
 AWARD_LABEL_PATTERN = "|".join(AWARD_LABEL_RANKS)
 AWARD_EVENT_PATTERN = re.compile(
-    rf"(?P<verb>获得|获评|获奖|荣获|取得|斩获|获)"
+    rf"(?:"
+    rf"(?P<labelled_verb>获得|获评|获奖|荣获|取得|斩获|获)"
     rf"(?P<modifier>[^，,。；;！？!?\n]{{0,4}}?)"
     rf"(?P<label>{AWARD_LABEL_PATTERN})"
+    rf"|"
+    rf"(?P<generic_event>"
+    rf"获奖(?!条件|名单|结果|信息|情况|要求|标准|资格)"
+    rf"|获得(?:奖项|奖励)"
+    rf")"
+    rf")"
 )
 AWARD_EVENT_NEGATION_PATTERN = re.compile(
     r"(?:未能|尚未|没有|并未|未曾|不曾|未)"
-    r"[^，,。；;！？!?\n]{0,12}$"
+    r"(?:(?:最终|成功|正式|实际|真正|顺利|能)){0,2}$"
 )
 AWARD_MODIFIER_TOKENS = (
     "国家级",
@@ -158,10 +165,10 @@ NEGATED_CITY_PATTERN = re.compile(
 
 @dataclass(frozen=True)
 class _AwardEvent:
-    label: str
+    label: str | None
     affirmed: bool
     event_position: int
-    label_position: int
+    label_position: int | None
 
 
 class AchievementDraft(BaseModel):
@@ -535,20 +542,30 @@ def _award_events(text: str) -> list[_AwardEvent]:
     for clause_match in CLAUSE_PATTERN.finditer(text):
         clause = clause_match.group(0)
         clause_start = clause_match.start()
-        previous_label_end = 0
+        previous_event_end = 0
         for match in AWARD_EVENT_PATTERN.finditer(clause):
-            modifier = match.group("modifier")
-            allowed_tokens = (
-                BARE_AWARD_MODIFIER_TOKENS
-                if match.group("verb") == "获"
-                else AWARD_MODIFIER_TOKENS
-            )
-            if not _modifier_uses_only(modifier, allowed_tokens):
-                continue
+            labelled_verb = match.group("labelled_verb")
+            if labelled_verb:
+                modifier = match.group("modifier")
+                allowed_tokens = (
+                    BARE_AWARD_MODIFIER_TOKENS
+                    if labelled_verb == "获"
+                    else AWARD_MODIFIER_TOKENS
+                )
+                if not _modifier_uses_only(modifier, allowed_tokens):
+                    continue
+                event_group = "labelled_verb"
+            else:
+                event_group = "generic_event"
 
-            event_position = clause_start + match.start("verb")
-            label_position = clause_start + match.start("label")
-            event_prefix = clause[previous_label_end:match.start("verb")]
+            event_start = match.start(event_group)
+            event_position = clause_start + event_start
+            label_position = (
+                clause_start + match.start("label")
+                if match.group("label")
+                else None
+            )
+            event_prefix = clause[previous_event_end:event_start]
             events.append(
                 _AwardEvent(
                     label=match.group("label"),
@@ -560,7 +577,7 @@ def _award_events(text: str) -> list[_AwardEvent]:
                     label_position=label_position,
                 )
             )
-            previous_label_end = match.end("label")
+            previous_event_end = match.end()
     return events
 
 
@@ -584,7 +601,7 @@ def _last_award_event_rank(description: str) -> str | None:
     events = _award_events(description)
     if not events or not events[-1].affirmed:
         return None
-    return AWARD_LABEL_RANKS[events[-1].label]
+    return AWARD_LABEL_RANKS.get(events[-1].label)
 
 
 def _score_from_rule_text(rule_text: str, description: str) -> float | None:

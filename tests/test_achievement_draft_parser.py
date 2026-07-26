@@ -345,10 +345,38 @@ def test_award_condition_accepts_all_supported_award_events(award_event):
 
 
 @pytest.mark.parametrize(
+    "award_event",
+    [
+        "已获奖",
+        "确认获奖",
+        "获得奖项",
+        "确认获得奖励",
+    ],
+)
+def test_award_condition_accepts_generic_award_events(award_event):
+    rule = {
+        "category": "教学",
+        "subcategory": "测试项目",
+        "base_rule": "1/项",
+        "school_rule": "10/项（获奖）",
+        "is_active": True,
+    }
+
+    draft = parse_achievement_draft(
+        f"2025年校级测试项目{award_event}",
+        [rule],
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 10
+
+
+@pytest.mark.parametrize(
     "description",
     [
         "2025年校级测试项目未获奖",
         "2025年校级测试项目没有获奖",
+        "2025年校级测试项目尚未最终获奖",
         "2025年校级测试项目不符合获奖条件",
     ],
 )
@@ -510,6 +538,30 @@ def test_later_honor_event_overrides_earlier_negated_award(real_rules):
     assert "performance_score" not in draft.uncertain_fields
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "指导学生参加省级职业技能竞赛，没有担任负责人但获得二等奖",
+        "指导学生参加省级职业技能竞赛，未能进入决赛但获得二等奖",
+        "指导学生参加省级职业技能竞赛，没有担任负责人却获得二等奖",
+        "指导学生参加省级职业技能竞赛，未能进入决赛而获得二等奖",
+        "指导学生参加省级职业技能竞赛，没有担任负责人获得二等奖",
+    ],
+)
+def test_unrelated_negated_predicate_does_not_negate_award_event(
+    description,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        description,
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 8
+    assert "performance_score" not in draft.uncertain_fields
+
+
 def test_award_events_report_label_affirmation_and_source_positions():
     text = "未能获得二等奖，后最终荣获二等奖"
 
@@ -527,6 +579,44 @@ def test_award_events_report_label_affirmation_and_source_positions():
         ("二等奖", False, text.index("获得"), text.index("二等奖")),
         ("二等奖", True, text.index("荣获"), text.rindex("二等奖")),
     ]
+
+
+@pytest.mark.parametrize(
+    ("text", "event_text"),
+    [
+        ("已获奖", "获奖"),
+        ("确认获奖", "获奖"),
+        ("获得奖项", "获得奖项"),
+        ("确认获得奖励", "获得奖励"),
+    ],
+)
+def test_generic_award_events_have_no_rank_label(text, event_text):
+    events = draft_parser._award_events(text)
+
+    assert len(events) == 1
+    assert events[0].label is None
+    assert events[0].affirmed is True
+    assert events[0].event_position == text.index(event_text)
+    assert events[0].label_position is None
+
+
+def test_generic_award_event_does_not_select_ranked_score():
+    rule = {
+        "category": "教学",
+        "subcategory": "测试项目",
+        "base_rule": "1/项",
+        "provincial_rule": "省二8、省三5",
+        "is_active": True,
+    }
+
+    draft = parse_achievement_draft(
+        "2025年省级测试项目确认获奖",
+        [rule],
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 0
+    assert "performance_score" in draft.uncertain_fields
 
 
 @pytest.mark.parametrize(
@@ -887,6 +977,16 @@ def test_multiple_levels_use_final_result_context_or_remain_uncertain(
 def test_honor_event_anchors_multiple_level_disambiguation():
     draft = parse_achievement_draft(
         "校级选拔参加省级比赛并荣获二等奖",
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.level == "省级"
+
+
+def test_generic_award_event_anchors_multiple_level_disambiguation():
+    draft = parse_achievement_draft(
+        "校级选拔参加省级比赛并获奖",
         [],
         integration_config=_config(),
     )
