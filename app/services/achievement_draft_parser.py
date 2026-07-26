@@ -28,6 +28,80 @@ CUSTOM_RULE_PAIR = (
     "其他有价值工作（自定义）",
     "自定义工作事项",
 )
+SEMANTIC_RULE_ALIASES = {
+    ("教师发展", "教师综合性荣誉"): (
+        "年度考核优秀",
+        "教科研考核优秀",
+        "考核优秀记功",
+    ),
+    ("科研与社会服务工作", "纵向课题（教科研）"): (
+        "纵向课题",
+        "教科研课题",
+        "软科学研究课题",
+        "社科研究课题",
+        "社科课题",
+        "市社科",
+    ),
+    ("科研与社会服务工作", "普通期刊发表"): (
+        "发表论文",
+        "论文发表",
+        "论文收录",
+        "EI收录",
+        "SCI收录",
+        "CSSCI收录",
+    ),
+    (
+        "教学",
+        "教材编写出版(含双语专业、公开刊号的作品集合、专著)",
+    ): (
+        "编写教材",
+        "教材编写",
+        "出版教材",
+        "教材出版",
+        "教材建设",
+    ),
+    (
+        "科研与社会服务工作",
+        "实用新型、外观专利授权，软著登记",
+    ): (
+        "实用新型",
+        "外观专利",
+        "软件著作权",
+        "软著登记",
+    ),
+    (
+        "教学",
+        "教学项目（包括劳动教育、思政教育等案例）申报及获奖",
+    ): (
+        "教学典型案例",
+        "教学模式案例",
+        "课程典型案例",
+        "教学项目申报",
+    ),
+    ("教学", "教学成果奖申报及获奖"): (
+        "教学质量优秀",
+        "教学成果奖",
+    ),
+    ("科研与社会服务工作", "科研表彰"): (
+        "论文获奖",
+        "科研获奖",
+        "科研表彰",
+    ),
+    ("科研与社会服务工作", "社会培训服务工作"): (
+        "专题培训",
+        "开展培训",
+        "社会培训",
+    ),
+    ("师德师风及党建思政工作", "宣传工作"): (
+        "媒体报道",
+        "新闻报道",
+        "宣传报道",
+    ),
+    ("科研与社会服务工作", "横向课题及项目"): (
+        "横向课题",
+        "横向项目",
+    ),
+}
 PROCESS_STAGE_KEYWORDS = (
     "申报中",
     "正在申报",
@@ -290,6 +364,51 @@ def _semantic_rule_score(description: str, rule: Any) -> int:
         and normalized_main_phrase in normalized_description
     ):
         return 100 + len(normalized_main_phrase)
+
+    rule_pair = (
+        str(_value(rule, "category")),
+        subcategory,
+    )
+    normalized_aliases = (
+        _normalized_match_text(alias)
+        for alias in SEMANTIC_RULE_ALIASES.get(rule_pair, ())
+    )
+    matched_alias_lengths = [
+        len(alias)
+        for alias in normalized_aliases
+        if alias and alias.casefold() in normalized_description.casefold()
+    ]
+    if matched_alias_lengths:
+        return 190 + max(matched_alias_lengths)
+
+    if rule_pair == (
+        "教学",
+        "教材编写出版(含双语专业、公开刊号的作品集合、专著)",
+    ) and "教材" in description and any(
+        word in description for word in ("编写", "出版", "建设")
+    ):
+        return 195
+
+    if rule_pair == (
+        "科研与社会服务工作",
+        "科研表彰",
+    ) and "论文" in description and any(
+        label in description for label in AWARD_LABEL_RANKS
+    ) and any(
+        verb in description for verb in ("获得", "获评", "获奖", "荣获", "获")
+    ):
+        return 195
+
+    if (
+        rule_pair[0] == "教师发展"
+        and subcategory.startswith("教师参加其他比赛")
+        and "指导学生" not in description
+        and "参加" in description
+        and any(
+        word in description for word in ("竞赛", "大赛", "比赛", "赛项")
+        )
+    ):
+        return 185
 
     if (
         "指导学生大赛" in subcategory

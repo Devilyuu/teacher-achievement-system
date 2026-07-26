@@ -142,6 +142,80 @@ def test_real_rules_use_uncertain_custom_fallback_for_weak_skill_words(real_rule
     assert draft.confidence < 0.5
 
 
+@pytest.mark.parametrize(
+    ("description", "expected_pair"),
+    [
+        (
+            "2026年获得年度考核优秀",
+            ("教师发展", "教师综合性荣誉"),
+        ),
+        (
+            "申报2026年度江苏省软科学研究课题一项，目前等待立项",
+            ("科研与社会服务工作", "纵向课题（教科研）"),
+        ),
+        (
+            "2026年以第一作者发表EI收录论文一篇",
+            ("科研与社会服务工作", "普通期刊发表"),
+        ),
+        (
+            "2026年出版人工智能通识教育教材一部",
+            ("教学", "教材编写出版(含双语专业、公开刊号的作品集合、专著)"),
+        ),
+        (
+            "2026年取得软件著作权登记一项",
+            ("科研与社会服务工作", "实用新型、外观专利授权，软著登记"),
+        ),
+        (
+            "申报2026年AI+课程教学典型案例",
+            ("教学", "教学项目（包括劳动教育、思政教育等案例）申报及获奖"),
+        ),
+        (
+            "2025—2026学年第一学期教学质量优秀",
+            ("教学", "教学成果奖申报及获奖"),
+        ),
+        (
+            "论文获常州市创新创业大赛三等奖",
+            ("科研与社会服务工作", "科研表彰"),
+        ),
+        (
+            "参加江苏省数字艺术设计赛项获三等奖",
+            (
+                "教师发展",
+                "教师参加其他比赛\n（学院鼓励的 且备案的比赛）",
+            ),
+        ),
+        (
+            "开展人工智能时代数字能力提升专题培训",
+            ("科研与社会服务工作", "社会培训服务工作"),
+        ),
+        (
+            "媒体报道探索人工智能育人新路径",
+            ("师德师风及党建思政工作", "宣传工作"),
+        ),
+        (
+            "2026年申请发明专利一项",
+            ("科研与社会服务工作", "发明专利"),
+        ),
+        (
+            "完成企业横向课题一项",
+            ("科研与社会服务工作", "横向课题及项目"),
+        ),
+    ],
+)
+def test_real_rules_recognize_common_natural_language_categories(
+    real_rules,
+    description,
+    expected_pair,
+):
+    draft = parse_achievement_draft(
+        description,
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert (draft.category, draft.subcategory) == expected_pair
+
+
 def test_deterministic_parser_marks_missing_year_and_process_stage():
     rules = [
         {

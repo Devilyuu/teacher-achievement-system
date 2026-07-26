@@ -349,6 +349,62 @@ def test_search_returns_none_when_no_record_matches(feishu_config):
     assert client.find_record_by_platform_id("missing") is None
 
 
+def test_list_records_reads_every_page_for_a_view(feishu_config):
+    from app.services.feishu_client import FeishuClient, FeishuRecord
+
+    record_requests = []
+
+    def handler(request):
+        if request.url.path.endswith("/tenant_access_token/internal"):
+            return token_response()
+        record_requests.append(request)
+        if len(record_requests) == 1:
+            return httpx.Response(
+                200,
+                json={
+                    "code": 0,
+                    "data": {
+                        "items": [
+                            {
+                                "record_id": "rec_1",
+                                "fields": {"成果名称": "第一项成果"},
+                            }
+                        ],
+                        "has_more": True,
+                        "page_token": "next-page",
+                    },
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "code": 0,
+                "data": {
+                    "items": [
+                        {
+                            "record_id": "rec_2",
+                            "fields": {"成果名称": "第二项成果"},
+                        }
+                    ],
+                    "has_more": False,
+                },
+            },
+        )
+
+    client = FeishuClient(transport=httpx.MockTransport(handler))
+
+    records = client.list_records(view_id="vew_2026")
+
+    assert records == (
+        FeishuRecord(record_id="rec_1", fields={"成果名称": "第一项成果"}),
+        FeishuRecord(record_id="rec_2", fields={"成果名称": "第二项成果"}),
+    )
+    assert record_requests[0].method == "GET"
+    assert record_requests[0].url.params["view_id"] == "vew_2026"
+    assert "page_token" not in record_requests[0].url.params
+    assert record_requests[1].url.params["page_token"] == "next-page"
+
+
 def test_duplicate_search_results_raise_conflict_without_record_body(feishu_config):
     from app.services.feishu_client import FeishuClient, FeishuConflictError
 

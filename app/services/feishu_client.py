@@ -171,6 +171,48 @@ class FeishuClient:
 
         raise FeishuResponseError("Feishu search exceeded its page limit")
 
+    def list_records(
+        self,
+        *,
+        view_id: str | None = None,
+    ) -> tuple[FeishuRecord, ...]:
+        integration_config = self._configuration_snapshot()
+        params: dict[str, int | str] = {"page_size": 100}
+        if view_id:
+            params["view_id"] = view_id
+        records: list[FeishuRecord] = []
+
+        for _ in range(MAX_SEARCH_PAGES):
+            response = self._authorized_request(
+                integration_config,
+                "GET",
+                self._records_url(integration_config),
+                params=params,
+            )
+            data = response.get("data")
+            if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+                raise FeishuResponseError(
+                    "Feishu list response has an invalid shape"
+                )
+            records.extend(self._record_from(item) for item in data["items"])
+
+            has_more = data.get("has_more", False)
+            if not isinstance(has_more, bool):
+                raise FeishuResponseError(
+                    "Feishu list pagination has an invalid shape"
+                )
+            if not has_more:
+                return tuple(records)
+
+            page_token = data.get("page_token")
+            if not isinstance(page_token, str) or not page_token:
+                raise FeishuResponseError(
+                    "Feishu list pagination is missing its page token"
+                )
+            params["page_token"] = page_token
+
+        raise FeishuResponseError("Feishu list exceeded its page limit")
+
     def create_record(
         self,
         fields: dict[str, Any],
