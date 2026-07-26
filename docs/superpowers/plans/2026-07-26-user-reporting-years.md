@@ -27,12 +27,12 @@
 
 ### Task 3: Personal Integration Account
 
-- [ ] Update production configuration to `FEISHU_SYNC_USERNAME=1867`.
+- [x] Update production configuration to `FEISHU_SYNC_USERNAME=1867`.
 - [x] Verify account `1867` sees the personal feature gate and other users do not.
 
 ### Task 4: Verification and Deployment
 
 - [x] Run the full automated test suite.
-- [ ] Back up production data.
-- [ ] Deploy and restart the service.
-- [ ] Verify the 2026 default and year management using the production UI.
+- [x] Back up production data.
+- [x] Deploy and restart the service.
+- [x] Verify the 2026 default and year management using the production UI.

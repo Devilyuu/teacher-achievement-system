@@ -380,7 +380,7 @@ Expected: all tests pass.
 
 Add the confirmed self-built-app credentials and integration settings to `/etc/teacher-achievement-system.env`. Never commit or print secret values.
 
-- [ ] **Step 4: Back up and deploy**
+- [x] **Step 4: Back up and deploy**
 
 Run the existing production backup first, deploy the tracked source, restart `teacher-achievement.service`, and verify both service and Nginx remain active.
 
