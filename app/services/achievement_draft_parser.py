@@ -399,6 +399,14 @@ def _semantic_rule_score(description: str, rule: Any) -> int:
     ):
         return 195
 
+    if rule_pair == (
+        "科研与社会服务工作",
+        "普通期刊发表",
+    ) and "论文" in description and any(
+        word in description for word in ("发表", "刊发", "收录")
+    ):
+        return 195
+
     if (
         rule_pair[0] == "教师发展"
         and subcategory.startswith("教师参加其他比赛")

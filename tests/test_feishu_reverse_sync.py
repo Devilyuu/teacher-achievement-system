@@ -171,6 +171,8 @@ def test_import_records_dry_run_reports_without_writing(app, real_rules):
 
     assert result.created == 1
     assert result.skipped == 0
+    assert result.items[0].category == "科研与社会服务工作"
+    assert result.items[0].subcategory == "普通期刊发表"
     assert db.scalars(select(Achievement)).all() == []
     assert client.updated == []
     db.close()

@@ -68,6 +68,8 @@ def main() -> int:
                             "record_id": item.record_id,
                             "title": item.title,
                             "action": item.action,
+                            "category": item.category,
+                            "subcategory": item.subcategory,
                             "achievement_id": item.achievement_id,
                             "reason": item.reason,
                         }

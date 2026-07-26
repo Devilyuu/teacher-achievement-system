@@ -59,6 +59,8 @@ class ReverseSyncItem:
     record_id: str
     title: str
     action: str
+    category: str = ""
+    subcategory: str = ""
     achievement_id: int | None = None
     reason: str = ""
 
@@ -321,6 +323,8 @@ def import_records(
                         record_id=draft.record_id,
                         title=draft.title,
                         action="failed",
+                        category=draft.category,
+                        subcategory=draft.subcategory,
                         achievement_id=linked_record.achievement_id,
                         reason="成果已保存，但成果平台ID写回飞书失败",
                     )
@@ -331,6 +335,8 @@ def import_records(
                     record_id=draft.record_id,
                     title=draft.title,
                     action="skipped",
+                    category=draft.category,
+                    subcategory=draft.subcategory,
                     reason="飞书记录已经同步",
                 )
             )
@@ -350,6 +356,8 @@ def import_records(
                     record_id=draft.record_id,
                     title=draft.title,
                     action="failed",
+                    category=draft.category,
+                    subcategory=draft.subcategory,
                     reason="成果平台ID不属于当前用户或当前年度",
                 )
             )
@@ -371,6 +379,8 @@ def import_records(
                         record_id=draft.record_id,
                         title=draft.title,
                         action="failed",
+                        category=draft.category,
+                        subcategory=draft.subcategory,
                         achievement_id=duplicate.id,
                         reason="重复成果已识别，但成果平台ID写回飞书失败",
                     )
@@ -381,6 +391,8 @@ def import_records(
                     record_id=draft.record_id,
                     title=draft.title,
                     action="skipped",
+                    category=draft.category,
+                    subcategory=draft.subcategory,
                     achievement_id=duplicate.id,
                     reason="与网站已有成果重复",
                 )
@@ -393,6 +405,8 @@ def import_records(
                     record_id=draft.record_id,
                     title=draft.title,
                     action="created",
+                    category=draft.category,
+                    subcategory=draft.subcategory,
                     reason="模拟新增",
                 )
             )
@@ -441,6 +455,8 @@ def import_records(
                     record_id=draft.record_id,
                     title=draft.title,
                     action="failed",
+                    category=draft.category,
+                    subcategory=draft.subcategory,
                     achievement_id=achievement.id,
                     reason="成果已保存，但成果平台ID写回飞书失败",
                 )
@@ -451,6 +467,8 @@ def import_records(
                 record_id=draft.record_id,
                 title=draft.title,
                 action="created",
+                category=draft.category,
+                subcategory=draft.subcategory,
                 achievement_id=achievement.id,
             )
         )
