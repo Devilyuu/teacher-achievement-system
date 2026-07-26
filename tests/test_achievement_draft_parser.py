@@ -7,6 +7,7 @@ import pytest
 
 from app import config
 from app.models import ClaimNature, PerformanceRule
+from app.services import achievement_draft_parser as draft_parser
 from app.services.achievement_draft_parser import (
     AchievementDraft,
     parse_achievement_draft,
@@ -316,7 +317,16 @@ def test_conditional_rule_score_is_used_when_condition_is_explicit(real_rules):
     assert draft.performance_score == 10
 
 
-def test_award_condition_accepts_an_explicit_special_prize():
+@pytest.mark.parametrize(
+    "award_event",
+    [
+        "荣获特等奖",
+        "获特等奖",
+        "取得特等奖",
+        "斩获特等奖",
+    ],
+)
+def test_award_condition_accepts_all_supported_award_events(award_event):
     rule = {
         "category": "教学",
         "subcategory": "测试项目",
@@ -326,7 +336,7 @@ def test_award_condition_accepts_an_explicit_special_prize():
     }
 
     draft = parse_achievement_draft(
-        "2025年校级测试项目获得特等奖",
+        f"2025年校级测试项目{award_event}",
         [rule],
         integration_config=_config(),
     )
@@ -498,6 +508,67 @@ def test_later_honor_event_overrides_earlier_negated_award(real_rules):
 
     assert draft.performance_score == 8
     assert "performance_score" not in draft.uncertain_fields
+
+
+def test_award_events_report_label_affirmation_and_source_positions():
+    text = "未能获得二等奖，后最终荣获二等奖"
+
+    events = draft_parser._award_events(text)
+
+    assert [
+        (
+            event.label,
+            event.affirmed,
+            event.event_position,
+            event.label_position,
+        )
+        for event in events
+    ] == [
+        ("二等奖", False, text.index("获得"), text.index("二等奖")),
+        ("二等奖", True, text.index("荣获"), text.rindex("二等奖")),
+    ]
+
+
+@pytest.mark.parametrize(
+    "award_event",
+    [
+        "获二等奖",
+        "获省级二等奖",
+        "获了二等奖",
+    ],
+)
+def test_bare_award_verb_only_accepts_controlled_connectors(
+    award_event,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        f"指导学生参加省级职业技能竞赛，{award_event}",
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 8
+
+
+@pytest.mark.parametrize(
+    "non_award_event",
+    [
+        "获取二等奖名单",
+        "获悉二等奖结果",
+    ],
+)
+def test_bare_award_verb_does_not_match_unrelated_words(
+    non_award_event,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        f"指导学生参加省级职业技能竞赛，{non_award_event}",
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 0
+    assert "performance_score" in draft.uncertain_fields
 
 
 def test_draft_model_rejects_unknown_level():
@@ -811,6 +882,16 @@ def test_multiple_levels_use_final_result_context_or_remain_uncertain(
     assert draft.level == expected_level
     if not expected_level:
         assert "level" in draft.uncertain_fields
+
+
+def test_honor_event_anchors_multiple_level_disambiguation():
+    draft = parse_achievement_draft(
+        "校级选拔参加省级比赛并荣获二等奖",
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.level == "省级"
 
 
 @pytest.mark.parametrize(

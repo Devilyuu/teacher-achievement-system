@@ -1,6 +1,7 @@
 import json
 import math
 import re
+from dataclasses import dataclass
 from typing import Annotated, Any, Sequence
 
 import httpx
@@ -37,8 +38,6 @@ PROCESS_STAGE_KEYWORDS = (
     "建设中",
 )
 RESULT_CONTEXT_TERMS = (
-    "获得",
-    "获奖",
     "立项",
     "认定",
     "批准",
@@ -121,13 +120,48 @@ AWARD_LABEL_RANKS = {
     "三等奖": "三",
 }
 AWARD_LABEL_PATTERN = "|".join(AWARD_LABEL_RANKS)
-AWARD_VERB_PATTERN = r"(?:获得|获评|获奖|荣获|取得|斩获|获)"
-AWARD_NEGATION_PATTERN = r"(?:未能|尚未|没有|并未|未曾|不曾|未)"
+AWARD_EVENT_PATTERN = re.compile(
+    rf"(?P<verb>获得|获评|获奖|荣获|取得|斩获|获)"
+    rf"(?P<modifier>[^，,。；;！？!?\n]{{0,4}}?)"
+    rf"(?P<label>{AWARD_LABEL_PATTERN})"
+)
+AWARD_EVENT_NEGATION_PATTERN = re.compile(
+    r"(?:未能|尚未|没有|并未|未曾|不曾|未)"
+    r"[^，,。；;！？!?\n]{0,12}$"
+)
+AWARD_MODIFIER_TOKENS = (
+    "国家级",
+    "学院级",
+    "等级为",
+    "省级",
+    "市级",
+    "校级",
+    "最终",
+    "成功",
+    "评为",
+    "了",
+)
+BARE_AWARD_MODIFIER_TOKENS = (
+    "国家级",
+    "学院级",
+    "省级",
+    "市级",
+    "校级",
+    "了",
+)
 CLAUSE_PATTERN = re.compile(r"[^，,。；;！？!?\n]+")
 NEGATED_CITY_PATTERN = re.compile(
     r"(?:尚未|未能|没有|并未|未曾|不曾|不是|并非|不属于|不符合|未|非)"
     r"(?P<city>[\u4e00-\u9fff]{2,4}市)(?!级)"
 )
+
+
+@dataclass(frozen=True)
+class _AwardEvent:
+    label: str
+    affirmed: bool
+    event_position: int
+    label_position: int
 
 
 class AchievementDraft(BaseModel):
@@ -337,6 +371,9 @@ def _select_level_from_result_context(
         for match in re.finditer(term, description)
         if not _is_negated(description, match.start())
     ]
+    award_events = _award_events(description)
+    if award_events and award_events[-1].affirmed:
+        result_positions.append(award_events[-1].event_position)
     if not result_positions:
         return ""
 
@@ -477,15 +514,60 @@ def _has_affirmed_phrase(description: str, phrases: Sequence[str]) -> bool:
     return False
 
 
+def _modifier_uses_only(
+    modifier: str,
+    allowed_tokens: Sequence[str],
+) -> bool:
+    remainder = modifier
+    while remainder:
+        token = next(
+            (token for token in allowed_tokens if remainder.startswith(token)),
+            None,
+        )
+        if token is None:
+            return False
+        remainder = remainder[len(token):]
+    return True
+
+
+def _award_events(text: str) -> list[_AwardEvent]:
+    events: list[_AwardEvent] = []
+    for clause_match in CLAUSE_PATTERN.finditer(text):
+        clause = clause_match.group(0)
+        clause_start = clause_match.start()
+        previous_label_end = 0
+        for match in AWARD_EVENT_PATTERN.finditer(clause):
+            modifier = match.group("modifier")
+            allowed_tokens = (
+                BARE_AWARD_MODIFIER_TOKENS
+                if match.group("verb") == "获"
+                else AWARD_MODIFIER_TOKENS
+            )
+            if not _modifier_uses_only(modifier, allowed_tokens):
+                continue
+
+            event_position = clause_start + match.start("verb")
+            label_position = clause_start + match.start("label")
+            event_prefix = clause[previous_label_end:match.start("verb")]
+            events.append(
+                _AwardEvent(
+                    label=match.group("label"),
+                    affirmed=(
+                        AWARD_EVENT_NEGATION_PATTERN.search(event_prefix)
+                        is None
+                    ),
+                    event_position=event_position,
+                    label_position=label_position,
+                )
+            )
+            previous_label_end = match.end("label")
+    return events
+
+
 def _condition_is_met(condition: str, description: str) -> bool:
     if "获奖" in condition:
-        award_is_affirmed = _has_affirmed_phrase(description, ("获奖",))
-        if not award_is_affirmed:
-            award_is_affirmed = any(
-                not _is_negated(description, match.start())
-                for match in re.finditer(r"获得.{0,12}奖", description)
-            )
-        if not award_is_affirmed:
+        award_events = _award_events(description)
+        if not award_events or not award_events[-1].affirmed:
             return False
     requirements = (
         ("验收通过", ("验收通过", "通过验收", "验收合格")),
@@ -499,36 +581,10 @@ def _condition_is_met(condition: str, description: str) -> bool:
 
 
 def _last_award_event_rank(description: str) -> str | None:
-    events: list[tuple[int, str | None]] = []
-    positive_pattern = re.compile(
-        rf"{AWARD_VERB_PATTERN}[^，,。；;！？!?\n]{{0,12}}?"
-        rf"(?P<label>{AWARD_LABEL_PATTERN})"
-    )
-    negative_pattern = re.compile(
-        rf"{AWARD_NEGATION_PATTERN}[^，,。；;！？!?\n]{{0,12}}?"
-        rf"{AWARD_VERB_PATTERN}[^，,。；;！？!?\n]{{0,12}}?"
-        rf"(?P<label>{AWARD_LABEL_PATTERN})"
-    )
-
-    for clause_match in CLAUSE_PATTERN.finditer(description):
-        clause = clause_match.group(0)
-        clause_start = clause_match.start()
-        negated_label_positions = {
-            clause_start + match.start("label")
-            for match in negative_pattern.finditer(clause)
-        }
-        for match in positive_pattern.finditer(clause):
-            label_position = clause_start + match.start("label")
-            rank = (
-                None
-                if label_position in negated_label_positions
-                else AWARD_LABEL_RANKS[match.group("label")]
-            )
-            events.append((label_position, rank))
-
-    if not events:
+    events = _award_events(description)
+    if not events or not events[-1].affirmed:
         return None
-    return max(events, key=lambda event: event[0])[1]
+    return AWARD_LABEL_RANKS[events[-1].label]
 
 
 def _score_from_rule_text(rule_text: str, description: str) -> float | None:
