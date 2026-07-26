@@ -87,6 +87,8 @@ def apply_schema_updates() -> None:
                     payload_hash VARCHAR(64) NOT NULL DEFAULT '',
                     sync_claim_token VARCHAR(64),
                     create_client_token VARCHAR(36),
+                    create_client_token_payload_hash VARCHAR(64),
+                    create_payload_json TEXT,
                     created_at DATETIME NOT NULL,
                     updated_at DATETIME NOT NULL,
                     FOREIGN KEY(achievement_id)
@@ -122,6 +124,20 @@ def apply_schema_updates() -> None:
                 text(
                     "ALTER TABLE feishu_sync_records "
                     "ADD COLUMN create_client_token VARCHAR(36)"
+                )
+            )
+        if "create_client_token_payload_hash" not in sync_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE feishu_sync_records "
+                    "ADD COLUMN create_client_token_payload_hash VARCHAR(64)"
+                )
+            )
+        if "create_payload_json" not in sync_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE feishu_sync_records "
+                    "ADD COLUMN create_payload_json TEXT"
                 )
             )
         connection.execute(

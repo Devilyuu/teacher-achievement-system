@@ -19,6 +19,8 @@ EXPECTED_SYNC_COLUMNS = {
     "payload_hash",
     "sync_claim_token",
     "create_client_token",
+    "create_client_token_payload_hash",
+    "create_payload_json",
     "created_at",
     "updated_at",
 }
@@ -59,6 +61,8 @@ def test_feishu_sync_record_has_required_columns_and_unique_foreign_key():
     assert table.c.last_synced_at.nullable
     assert table.c.sync_claim_token.nullable
     assert table.c.create_client_token.nullable
+    assert table.c.create_client_token_payload_hash.nullable
+    assert table.c.create_payload_json.nullable
     assert {
         foreign_key.target_fullname
         for foreign_key in table.c.achievement_id.foreign_keys
@@ -303,13 +307,16 @@ def test_apply_schema_updates_adds_claim_token_to_existing_sync_table(
         existing_row = connection.execute(
             text(
                 "SELECT achievement_id, sync_claim_token, create_client_token "
+                ", create_client_token_payload_hash, create_payload_json "
                 "FROM feishu_sync_records WHERE id = 1"
             )
         ).one()
 
     assert columns["sync_claim_token"]["nullable"] is True
     assert columns["create_client_token"]["nullable"] is True
-    assert existing_row == (1, None, None)
+    assert columns["create_client_token_payload_hash"]["nullable"] is True
+    assert columns["create_payload_json"]["nullable"] is True
+    assert existing_row == (1, None, None, None, None)
 
     engine.dispose()
 

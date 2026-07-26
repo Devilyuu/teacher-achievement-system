@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import Any, Protocol
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from sqlalchemy import and_, func, not_, or_, select, update
+from sqlalchemy import and_, case, not_, or_, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -55,14 +55,32 @@ class SyncResult:
     error: str = ""
 
 
-def _stable_payload_hash(fields: dict[str, Any]) -> str:
-    serialized = json.dumps(
+@dataclass(frozen=True)
+class _CreateIntent:
+    client_token: str
+    fields: dict[str, Any]
+    matches_current: bool
+
+
+class _InvalidCreateIntent(ValueError):
+    pass
+
+
+def _canonical_payload_json(fields: dict[str, Any]) -> str:
+    return json.dumps(
         fields,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     )
+
+
+def _payload_json_hash(serialized: str) -> str:
     return sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _stable_payload_hash(fields: dict[str, Any]) -> str:
+    return _payload_json_hash(_canonical_payload_json(fields))
 
 
 def _safe_feishu_error(error: FeishuError) -> str:
@@ -249,8 +267,11 @@ def _prepare_create(
     *,
     achievement_id: int,
     claim_token: str,
-) -> str | None:
+    current_payload_json: str,
+    current_payload_hash: str,
+) -> _CreateIntent | None:
     generated_client_token = str(uuid4())
+    token_is_missing = FeishuSyncRecord.create_client_token.is_(None)
     prepared = db.execute(
         update(FeishuSyncRecord)
         .where(
@@ -259,9 +280,17 @@ def _prepare_create(
             FeishuSyncRecord.sync_claim_token == claim_token,
         )
         .values(
-            create_client_token=func.coalesce(
-                FeishuSyncRecord.create_client_token,
-                generated_client_token,
+            create_client_token=case(
+                (token_is_missing, generated_client_token),
+                else_=FeishuSyncRecord.create_client_token,
+            ),
+            create_client_token_payload_hash=case(
+                (token_is_missing, current_payload_hash),
+                else_=FeishuSyncRecord.create_client_token_payload_hash,
+            ),
+            create_payload_json=case(
+                (token_is_missing, current_payload_json),
+                else_=FeishuSyncRecord.create_payload_json,
             ),
             updated_at=datetime.utcnow(),
         )
@@ -270,18 +299,54 @@ def _prepare_create(
     if prepared.rowcount != 1:
         db.rollback()
         return None
-    client_token = db.scalar(
-        select(FeishuSyncRecord.create_client_token).where(
+    stored_intent = db.execute(
+        select(
+            FeishuSyncRecord.create_client_token,
+            FeishuSyncRecord.create_client_token_payload_hash,
+            FeishuSyncRecord.create_payload_json,
+        ).where(
             FeishuSyncRecord.achievement_id == achievement_id,
             FeishuSyncRecord.sync_status == "pending",
             FeishuSyncRecord.sync_claim_token == claim_token,
         )
-    )
-    if client_token is None:
+    ).one_or_none()
+    if stored_intent is None:
         db.rollback()
         return None
+    client_token, stored_payload_hash, stored_payload_json = stored_intent
     _commit_sync_state(db)
-    return client_token
+
+    if not all(
+        isinstance(value, str) and value
+        for value in (
+            client_token,
+            stored_payload_hash,
+            stored_payload_json,
+        )
+    ):
+        raise _InvalidCreateIntent
+    try:
+        if UUID(client_token).version != 4:
+            raise _InvalidCreateIntent
+        stored_fields = json.loads(stored_payload_json)
+    except (TypeError, ValueError):
+        raise _InvalidCreateIntent from None
+    if not isinstance(stored_fields, dict):
+        raise _InvalidCreateIntent
+    canonical_stored_json = _canonical_payload_json(stored_fields)
+    if (
+        canonical_stored_json != stored_payload_json
+        or _payload_json_hash(canonical_stored_json) != stored_payload_hash
+    ):
+        raise _InvalidCreateIntent
+    return _CreateIntent(
+        client_token=client_token,
+        fields=stored_fields,
+        matches_current=(
+            stored_payload_hash == current_payload_hash
+            and stored_payload_json == current_payload_json
+        ),
+    )
 
 
 def sync_achievement(
@@ -291,6 +356,8 @@ def sync_achievement(
 ) -> SyncResult:
     achievement_id = achievement.id
     create_fields = build_create_fields(achievement)
+    create_payload_json = _canonical_payload_json(create_fields)
+    create_payload_hash = _payload_json_hash(create_payload_json)
     update_fields = build_update_fields(achievement)
     payload_hash = _stable_payload_hash(update_fields)
     claim_token, existing_result = _claim_pending_lease(
@@ -331,17 +398,30 @@ def sync_achievement(
                 update_fields,
             )
         else:
-            create_client_token = _prepare_create(
+            create_intent = _prepare_create(
                 db,
                 achievement_id=achievement_id,
                 claim_token=claim_token,
+                current_payload_json=create_payload_json,
+                current_payload_hash=create_payload_hash,
             )
-            if create_client_token is None:
+            if create_intent is None:
                 return _busy_result()
             remote_record = active_client.create_record(
-                create_fields,
-                client_token=create_client_token,
+                create_intent.fields,
+                client_token=create_intent.client_token,
             )
+            if not create_intent.matches_current:
+                if not _renew_claim(
+                    db,
+                    achievement_id=achievement_id,
+                    claim_token=claim_token,
+                ):
+                    return _busy_result()
+                remote_record = active_client.update_record(
+                    remote_record.record_id,
+                    update_fields,
+                )
 
         if not _finish_claim(
             db,
@@ -353,10 +433,26 @@ def sync_achievement(
                 "last_synced_at": datetime.utcnow(),
                 "last_error": "",
                 "payload_hash": payload_hash,
+                "create_client_token": None,
+                "create_client_token_payload_hash": None,
+                "create_payload_json": None,
             },
         ):
             return _busy_result()
         return SyncResult(status="synced", record_id=remote_record.record_id)
+    except _InvalidCreateIntent:
+        safe_error = "飞书创建幂等数据损坏，请联系管理员"
+        if not _finish_claim(
+            db,
+            achievement_id=achievement_id,
+            claim_token=claim_token,
+            values={
+                "sync_status": "failed",
+                "last_error": safe_error,
+            },
+        ):
+            return _busy_result()
+        return SyncResult(status="failed", error=safe_error)
     except FeishuError as error:
         safe_error = _safe_feishu_error(error)
         result_status = (

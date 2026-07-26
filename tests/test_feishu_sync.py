@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from threading import Barrier, Event, Thread
 from uuid import UUID, uuid4
@@ -86,8 +87,10 @@ class DelayedVisibilityIdempotentClient:
         self.platform_id = None
         self.searches = []
         self.create_tokens = []
+        self.create_fields = []
         self.persisted_tokens = []
         self.remote_records = {}
+        self.updates = []
         self.lose_first_create_response = True
 
     def search_records_by_platform_id(self, platform_id):
@@ -99,12 +102,15 @@ class DelayedVisibilityIdempotentClient:
     def create_record(self, fields, *, client_token):
         assert self.db.in_transaction() is False
         self.create_tokens.append(client_token)
+        self.create_fields.append(dict(fields))
         observer_db = SessionLocal()
         try:
-            persisted_token = observer_db.query(
-                models.FeishuSyncRecord.create_client_token
-            ).filter_by(achievement_id=self.platform_id).scalar()
-            self.persisted_tokens.append(persisted_token)
+            persisted_intent = observer_db.query(
+                models.FeishuSyncRecord.create_client_token,
+                models.FeishuSyncRecord.create_client_token_payload_hash,
+                models.FeishuSyncRecord.create_payload_json,
+            ).filter_by(achievement_id=self.platform_id).one()
+            self.persisted_tokens.append(tuple(persisted_intent))
         finally:
             observer_db.close()
 
@@ -121,7 +127,14 @@ class DelayedVisibilityIdempotentClient:
         return remote_record
 
     def update_record(self, record_id, fields):
-        raise AssertionError("temporarily invisible create must retry idempotently")
+        assert self.db.in_transaction() is False
+        self.updates.append((record_id, dict(fields)))
+        updated_record = FeishuRecord(record_id=record_id, fields=dict(fields))
+        for client_token, remote_record in self.remote_records.items():
+            if remote_record.record_id == record_id:
+                self.remote_records[client_token] = updated_record
+                break
+        return updated_record
 
 
 def create_achievement(db, *, title="New Feishu achievement"):
@@ -171,6 +184,9 @@ def test_new_achievement_creates_feishu_record_and_persists_synced_state(app):
         assert sync_record.last_synced_at is not None
         assert sync_record.last_error == ""
         assert len(sync_record.payload_hash) == 64
+        assert sync_record.create_client_token is None
+        assert sync_record.create_client_token_payload_hash is None
+        assert sync_record.create_payload_json is None
         assert db.get(models.Achievement, achievement.id) is not None
     finally:
         db.close()
@@ -665,21 +681,80 @@ def test_ambiguous_create_reuses_persisted_client_token_while_search_is_invisibl
             achievement_id=achievement.id
         ).one()
         first_token = failed_record.create_client_token
+        first_create_hash = failed_record.create_client_token_payload_hash
+        first_create_json = failed_record.create_payload_json
         assert first_result.status == "failed"
         assert first_token is not None
         assert UUID(first_token).version == 4
-        assert client.persisted_tokens == [first_token]
+        assert first_create_hash is not None
+        assert first_create_json is not None
+        assert json.loads(first_create_json) == client.create_fields[0]
+        assert client.persisted_tokens == [
+            (first_token, first_create_hash, first_create_json)
+        ]
+
+        achievement.title = "Changed achievement B"
+        db.commit()
 
         second_result = sync_achievement(db, achievement, client=client)
 
         db.refresh(failed_record)
         assert second_result.status == "synced"
         assert second_result.record_id == "rec-idempotent"
-        assert failed_record.create_client_token == first_token
+        assert failed_record.create_client_token is None
+        assert failed_record.create_client_token_payload_hash is None
+        assert failed_record.create_payload_json is None
         assert client.searches == [achievement.id, achievement.id]
         assert client.create_tokens == [first_token, first_token]
-        assert client.persisted_tokens == [first_token, first_token]
+        assert client.create_fields == [
+            json.loads(first_create_json),
+            json.loads(first_create_json),
+        ]
+        assert client.persisted_tokens == [
+            (first_token, first_create_hash, first_create_json),
+            (first_token, first_create_hash, first_create_json),
+        ]
+        assert client.updates == [
+            ("rec-idempotent", build_update_fields(achievement))
+        ]
         assert len(client.remote_records) == 1
+    finally:
+        db.close()
+
+
+def test_corrupt_stored_create_payload_fails_safely_without_remote_mutation(app):
+    from app.services.feishu_sync import sync_achievement
+
+    db = SessionLocal()
+    try:
+        achievement = create_achievement(db)
+        client_token = str(uuid4())
+        db.add(
+            models.FeishuSyncRecord(
+                achievement_id=achievement.id,
+                sync_status="failed",
+                create_client_token=client_token,
+                create_client_token_payload_hash="0" * 64,
+                create_payload_json="{not-valid-json",
+            )
+        )
+        db.commit()
+        client = FakeFeishuClient(db=db)
+
+        result = sync_achievement(db, achievement, client=client)
+
+        sync_record = db.query(models.FeishuSyncRecord).filter_by(
+            achievement_id=achievement.id
+        ).one()
+        assert result.status == "failed"
+        assert result.error == "飞书创建幂等数据损坏，请联系管理员"
+        assert client.searches == [achievement.id]
+        assert client.creates == []
+        assert client.updates == []
+        assert sync_record.sync_status == "failed"
+        assert sync_record.create_client_token == client_token
+        assert sync_record.create_client_token_payload_hash == "0" * 64
+        assert sync_record.create_payload_json == "{not-valid-json"
     finally:
         db.close()
 
