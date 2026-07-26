@@ -74,3 +74,38 @@ def apply_schema_updates() -> None:
                 "ON trial_feedback (user_id)"
             )
         )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS feishu_sync_records (
+                    id INTEGER NOT NULL PRIMARY KEY,
+                    achievement_id INTEGER NOT NULL,
+                    feishu_record_id VARCHAR(255),
+                    sync_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                    last_synced_at DATETIME,
+                    last_error TEXT NOT NULL DEFAULT '',
+                    payload_hash VARCHAR(64) NOT NULL DEFAULT '',
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY(achievement_id)
+                        REFERENCES achievements (id) ON DELETE CASCADE,
+                    CONSTRAINT ck_feishu_sync_records_status
+                        CHECK (
+                            sync_status IN (
+                                'pending',
+                                'synced',
+                                'failed',
+                                'conflict'
+                            )
+                        )
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "ix_feishu_sync_records_achievement_id "
+                "ON feishu_sync_records (achievement_id)"
+            )
+        )

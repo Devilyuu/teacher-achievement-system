@@ -3,6 +3,7 @@ from enum import Enum
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -99,6 +100,13 @@ class Achievement(Base):
         back_populates="achievement",
         cascade="all, delete-orphan",
     )
+    feishu_sync_record = relationship(
+        "FeishuSyncRecord",
+        back_populates="achievement",
+        cascade="all, delete-orphan",
+        single_parent=True,
+        uselist=False,
+    )
 
 
 class Material(Base):
@@ -116,6 +124,45 @@ class Material(Base):
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     achievement = relationship("Achievement", back_populates="materials")
+
+
+class FeishuSyncRecord(Base):
+    __tablename__ = "feishu_sync_records"
+    __table_args__ = (
+        CheckConstraint(
+            "sync_status IN ('pending', 'synced', 'failed', 'conflict')",
+            name="ck_feishu_sync_records_status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    achievement_id: Mapped[int] = mapped_column(
+        ForeignKey("achievements.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
+    feishu_record_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    sync_status: Mapped[str] = mapped_column(String(20), default="pending")
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    payload_hash: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    achievement = relationship(
+        "Achievement",
+        back_populates="feishu_sync_record",
+    )
 
 
 class AnnualSubmission(Base):
