@@ -114,6 +114,16 @@ AI_REASON_CODES = {
     "ai_invalid_response",
 }
 ALLOWED_UNCERTAIN_FIELDS = UNCERTAIN_FIELD_NAMES | AI_REASON_CODES
+AWARD_LABEL_RANKS = {
+    "特等奖": "特",
+    "一等奖": "一",
+    "二等奖": "二",
+    "三等奖": "三",
+}
+AWARD_LABEL_PATTERN = "|".join(AWARD_LABEL_RANKS)
+AWARD_VERB_PATTERN = r"(?:获得|获评|获奖)"
+AWARD_NEGATION_PATTERN = r"(?:未能|尚未|没有|并未|未曾|不曾|未)"
+CLAUSE_PATTERN = re.compile(r"[^，,。；;！？!?\n]+")
 
 
 class AchievementDraft(BaseModel):
@@ -297,8 +307,11 @@ def _select_level_from_result_context(
     description: str,
     candidates: Sequence[tuple[int, str]],
 ) -> str:
-    if len(candidates) == 1:
-        return candidates[0][1]
+    positions_by_level: dict[str, list[int]] = {}
+    for position, level in candidates:
+        positions_by_level.setdefault(level, []).append(position)
+    if len(positions_by_level) == 1:
+        return next(iter(positions_by_level))
 
     result_positions = [
         match.start()
@@ -311,8 +324,14 @@ def _select_level_from_result_context(
 
     final_result_position = max(result_positions)
     ranked = sorted(
-        (abs(position - final_result_position), level)
-        for position, level in candidates
+        (
+            min(
+                abs(position - final_result_position)
+                for position in positions
+            ),
+            level,
+        )
+        for level, positions in positions_by_level.items()
     )
     if len(ranked) > 1 and ranked[0][0] == ranked[1][0]:
         return ""
@@ -320,17 +339,12 @@ def _select_level_from_result_context(
 
 
 def _extract_level(description: str) -> str:
-    explicit_candidates = []
+    candidates: list[tuple[int, str]] = []
     for level in ("国家级", "省级", "市级", "学院级", "校级"):
-        explicit_candidates.extend(
+        candidates.extend(
             (match.start(), level)
             for match in re.finditer(level, description)
             if not _is_negated(description, match.start())
-        )
-    if explicit_candidates:
-        return _select_level_from_result_context(
-            description,
-            explicit_candidates,
         )
 
     for match in re.finditer(r"(?:全国|国家)", description):
@@ -341,7 +355,7 @@ def _extract_level(description: str) -> str:
                 description[match.end():match.end() + 20],
             )
         ):
-            return "国家级"
+            candidates.append((match.start(), "国家级"))
 
     for region in PROVINCE_LEVEL_REGIONS:
         start = description.find(region)
@@ -354,10 +368,10 @@ def _extract_level(description: str) -> str:
                     description[end:end + 20],
                 )
             ):
-                return "省级"
+                candidates.append((start, "省级"))
             start = description.find(region, start + 1)
 
-    for match in re.finditer(r"[\u4e00-\u9fff]{2,8}市", description):
+    for match in re.finditer(r"[\u4e00-\u9fff]{2,8}市(?!级)", description):
         if any(match.group(0).endswith(region) for region in MUNICIPALITIES):
             continue
         if (
@@ -367,8 +381,10 @@ def _extract_level(description: str) -> str:
                 description[match.end():match.end() + 20],
             )
         ):
-            return "市级"
-    return ""
+            candidates.append((match.start(), "市级"))
+    if not candidates:
+        return ""
+    return _select_level_from_result_context(description, candidates)
 
 
 def _extract_role(description: str) -> str:
@@ -464,21 +480,45 @@ def _condition_is_met(condition: str, description: str) -> bool:
     return True
 
 
+def _last_award_event_rank(description: str) -> str | None:
+    events: list[tuple[int, str | None]] = []
+    positive_pattern = re.compile(
+        rf"{AWARD_VERB_PATTERN}[^，,。；;！？!?\n]{{0,12}}?"
+        rf"(?P<label>{AWARD_LABEL_PATTERN})"
+    )
+    negative_pattern = re.compile(
+        rf"{AWARD_NEGATION_PATTERN}[^，,。；;！？!?\n]{{0,12}}?"
+        rf"{AWARD_VERB_PATTERN}[^，,。；;！？!?\n]{{0,12}}?"
+        rf"(?P<label>{AWARD_LABEL_PATTERN})"
+    )
+
+    for clause_match in CLAUSE_PATTERN.finditer(description):
+        clause = clause_match.group(0)
+        clause_start = clause_match.start()
+        negated_label_positions = {
+            clause_start + match.start("label")
+            for match in negative_pattern.finditer(clause)
+        }
+        for match in positive_pattern.finditer(clause):
+            label_position = clause_start + match.start("label")
+            rank = (
+                None
+                if label_position in negated_label_positions
+                else AWARD_LABEL_RANKS[match.group("label")]
+            )
+            events.append((label_position, rank))
+
+    if not events:
+        return None
+    return max(events, key=lambda event: event[0])[1]
+
+
 def _score_from_rule_text(rule_text: str, description: str) -> float | None:
     conditions = re.findall(r"[（(]([^）)]*)[）)]", rule_text)
     if any(not _condition_is_met(condition, description) for condition in conditions):
         return None
 
-    award_rank = None
-    for label, rank in (
-        ("一等奖", "一"),
-        ("二等奖", "二"),
-        ("三等奖", "三"),
-        ("特等奖", "特"),
-    ):
-        if _has_affirmed_phrase(description, (label,)):
-            award_rank = rank
-            break
+    award_rank = _last_award_event_rank(description)
     if award_rank:
         match = re.search(
             rf"(?:国|省|市|校|院)?{award_rank}(?:等(?:奖)?)?\s*(\d+(?:\.\d+)?)",

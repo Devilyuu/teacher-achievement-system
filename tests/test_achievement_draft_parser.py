@@ -395,6 +395,48 @@ def test_negated_award_rank_does_not_select_labelled_score(
     assert "performance_score" in draft.uncertain_fields
 
 
+@pytest.mark.parametrize(
+    "description",
+    [
+        "指导学生参加省级职业技能竞赛，未能获得二等奖",
+        "指导学生参加省级职业技能竞赛，尚未最终获得三等奖",
+    ],
+)
+def test_award_rank_uses_full_clause_to_detect_negated_event(
+    description,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        description,
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 0
+    assert "performance_score" in draft.uncertain_fields
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "指导学生参加省级职业技能竞赛，未能获得二等奖，后最终获得二等奖",
+        "指导学生参加省级职业技能竞赛，未能获得二等奖后最终获得二等奖",
+    ],
+)
+def test_later_affirmed_award_event_overrides_earlier_negated_event(
+    description,
+    real_rules,
+):
+    draft = parse_achievement_draft(
+        description,
+        real_rules,
+        integration_config=_config(),
+    )
+
+    assert draft.performance_score == 8
+    assert "performance_score" not in draft.uncertain_fields
+
+
 def test_draft_model_rejects_unknown_level():
     with pytest.raises(ValueError):
         AchievementDraft(
@@ -765,6 +807,42 @@ def test_ordinary_city_remains_city_level():
     )
 
     assert draft.level == "市级"
+
+
+@pytest.mark.parametrize(
+    ("description", "expected_level"),
+    [
+        (
+            "经江苏省选拔参加常州市教学能力比赛并获得二等奖",
+            "市级",
+        ),
+        (
+            "经常州市选拔参加江苏省教学能力比赛并获得二等奖",
+            "省级",
+        ),
+        (
+            "经常州市选拔参加北京市教学能力比赛并获得二等奖",
+            "省级",
+        ),
+        (
+            "江苏省与常州市联合举办教学比赛",
+            "",
+        ),
+    ],
+)
+def test_administrative_levels_share_result_context_disambiguation(
+    description,
+    expected_level,
+):
+    draft = parse_achievement_draft(
+        description,
+        [],
+        integration_config=_config(),
+    )
+
+    assert draft.level == expected_level
+    if not expected_level:
+        assert "level" in draft.uncertain_fields
 
 
 @pytest.mark.parametrize(
