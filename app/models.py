@@ -145,13 +145,25 @@ class FeishuSyncRecord(Base):
         String(255),
         nullable=True,
     )
-    sync_status: Mapped[str] = mapped_column(String(20), default="pending")
+    sync_status: Mapped[str] = mapped_column(
+        String(20),
+        default="pending",
+        server_default="pending",
+    )
     last_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
     )
-    last_error: Mapped[str] = mapped_column(Text, default="")
-    payload_hash: Mapped[str] = mapped_column(String(64), default="")
+    last_error: Mapped[str] = mapped_column(
+        Text,
+        default="",
+        server_default="",
+    )
+    payload_hash: Mapped[str] = mapped_column(
+        String(64),
+        default="",
+        server_default="",
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,

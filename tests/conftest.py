@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import close_all_sessions
 
 from app import database
-from app.database import SessionLocal
+from app.database import SessionLocal, configure_sqlite_engine
 
 
 @pytest.fixture
@@ -14,9 +14,11 @@ def app(tmp_path: Path, monkeypatch):
     user_import_dir = tmp_path / "imports" / "users"
     database_path.parent.mkdir(parents=True)
 
-    test_engine = create_engine(
-        f"sqlite:///{database_path}",
-        connect_args={"check_same_thread": False},
+    test_engine = configure_sqlite_engine(
+        create_engine(
+            f"sqlite:///{database_path}",
+            connect_args={"check_same_thread": False},
+        )
     )
     SessionLocal.configure(bind=test_engine)
     monkeypatch.setattr(database, "engine", test_engine)

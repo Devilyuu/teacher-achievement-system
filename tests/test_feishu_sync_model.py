@@ -83,6 +83,47 @@ def test_one_achievement_cannot_have_two_sync_records(app):
         db.close()
 
 
+def test_sync_record_rejects_unknown_achievement_id(app):
+    sync_record_type = _sync_record_type()
+    db = SessionLocal()
+    try:
+        db.add(sync_record_type(achievement_id=999_999))
+
+        with pytest.raises(IntegrityError):
+            db.commit()
+    finally:
+        db.rollback()
+        db.close()
+
+
+def test_raw_sql_achievement_delete_cascades_to_sync_record(app):
+    sync_record_type = _sync_record_type()
+    db = SessionLocal()
+    try:
+        achievement = _create_achievement(db)
+        sync_record = sync_record_type(achievement_id=achievement.id)
+        db.add(sync_record)
+        db.commit()
+        sync_record_id = sync_record.id
+
+        db.execute(
+            text("DELETE FROM achievements WHERE id = :achievement_id"),
+            {"achievement_id": achievement.id},
+        )
+        db.commit()
+
+        remaining = db.scalar(
+            text(
+                "SELECT COUNT(*) FROM feishu_sync_records "
+                "WHERE id = :sync_record_id"
+            ),
+            {"sync_record_id": sync_record_id},
+        )
+        assert remaining == 0
+    finally:
+        db.close()
+
+
 def test_sync_status_accepts_only_supported_values(app):
     sync_record_type = _sync_record_type()
     db = SessionLocal()
@@ -196,24 +237,83 @@ def test_apply_schema_updates_is_idempotent_and_preserves_existing_data(
     engine.dispose()
 
 
-def test_feishu_sync_record_timestamp_fields_accept_datetime_values(app):
+def test_create_all_and_schema_updates_use_matching_server_defaults(
+    monkeypatch,
+):
+    create_all_engine = create_engine("sqlite:///:memory:")
+    upgrade_engine = create_engine("sqlite:///:memory:")
+    try:
+        Base.metadata.create_all(create_all_engine)
+        with upgrade_engine.begin() as connection:
+            connection.execute(
+                text("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY)")
+            )
+            connection.execute(
+                text("CREATE TABLE achievements (id INTEGER NOT NULL PRIMARY KEY)")
+            )
+
+        monkeypatch.setattr(schema_updates, "engine", upgrade_engine)
+        schema_updates.apply_schema_updates()
+
+        create_all_defaults = {
+            column["name"]: column["default"]
+            for column in inspect(create_all_engine).get_columns(
+                "feishu_sync_records"
+            )
+            if column["name"] in EXPECTED_SYNC_COLUMNS
+        }
+        upgrade_defaults = {
+            column["name"]: column["default"]
+            for column in inspect(upgrade_engine).get_columns(
+                "feishu_sync_records"
+            )
+            if column["name"] in EXPECTED_SYNC_COLUMNS
+        }
+
+        assert create_all_defaults == upgrade_defaults
+        assert create_all_defaults["sync_status"] == "'pending'"
+        assert create_all_defaults["last_error"] == "''"
+        assert create_all_defaults["payload_hash"] == "''"
+    finally:
+        create_all_engine.dispose()
+        upgrade_engine.dispose()
+
+
+def test_feishu_sync_record_populates_timestamps_by_default(app):
     sync_record_type = _sync_record_type()
     db = SessionLocal()
-    timestamp = datetime.utcnow()
     try:
+        before_create = datetime.utcnow()
         achievement = _create_achievement(db)
-        record = sync_record_type(
-            achievement_id=achievement.id,
-            last_synced_at=timestamp,
-            created_at=timestamp,
-            updated_at=timestamp,
-        )
+        record = sync_record_type(achievement_id=achievement.id)
         db.add(record)
         db.commit()
         db.refresh(record)
+        after_create = datetime.utcnow()
 
-        assert record.last_synced_at == timestamp
-        assert record.created_at == timestamp
-        assert record.updated_at == timestamp
+        assert before_create <= record.created_at <= after_create
+        assert before_create <= record.updated_at <= after_create
+        assert record.last_synced_at is None
+    finally:
+        db.close()
+
+
+def test_feishu_sync_record_updates_timestamp_when_record_changes(app):
+    sync_record_type = _sync_record_type()
+    db = SessionLocal()
+    try:
+        achievement = _create_achievement(db)
+        record = sync_record_type(achievement_id=achievement.id)
+        db.add(record)
+        db.commit()
+        created_at = record.created_at
+        previous_updated_at = record.updated_at
+
+        record.last_error = "Temporary Feishu failure"
+        db.commit()
+        db.refresh(record)
+
+        assert record.created_at == created_at
+        assert record.updated_at > previous_updated_at
     finally:
         db.close()
