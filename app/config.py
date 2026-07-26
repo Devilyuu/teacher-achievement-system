@@ -12,6 +12,20 @@ SECRET_KEY = os.environ.get(
     "TEACHER_ACHIEVEMENT_SECRET_KEY",
     "change-this-local-dev-secret",
 )
+FEISHU_SYNC_USERNAME = os.environ.get("FEISHU_SYNC_USERNAME", "")
+FEISHU_APP_ID = os.environ.get("FEISHU_APP_ID", "")
+FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
+FEISHU_BASE_TOKEN = os.environ.get("FEISHU_BASE_TOKEN", "")
+FEISHU_TABLE_ID = os.environ.get("FEISHU_TABLE_ID", "")
+ACHIEVEMENT_AI_API_KEY = os.environ.get("ACHIEVEMENT_AI_API_KEY", "")
+ACHIEVEMENT_AI_BASE_URL = os.environ.get(
+    "ACHIEVEMENT_AI_BASE_URL",
+    "https://api.deepseek.com",
+)
+ACHIEVEMENT_AI_MODEL = os.environ.get(
+    "ACHIEVEMENT_AI_MODEL",
+    "deepseek-chat",
+)
 MAX_UPLOAD_MB = 50
 MAX_BATCH_UPLOAD_FILES = 10
 MAX_BATCH_UPLOAD_MB = MAX_UPLOAD_MB * MAX_BATCH_UPLOAD_FILES
