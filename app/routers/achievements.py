@@ -16,6 +16,7 @@ from app.models import (
     Achievement,
     AchievementStatus,
     ClaimNature,
+    FeishuSyncRecord,
     PerformanceRule,
     User,
 )
@@ -23,7 +24,10 @@ from app.security import get_current_user
 from app.services.achievement_readiness import missing_reasons
 from app.services.achievement_search import AchievementFilters, search_achievements
 from app.services.achievement_status import calculate_status
+from app.services.feishu_client import FeishuError
+from app.services.feishu_sync import SyncResult, sync_achievement
 from app.services.material_preview import PREVIEW_EXTENSIONS
+from app.services.personal_integration import integration_status
 from app.services.performance_rule_guidance import (
     LEVEL_OPTIONS,
     assignment_mode,
@@ -38,6 +42,14 @@ from app.services.reporting_year import (
 
 router = APIRouter(prefix="/achievements", tags=["achievements"])
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
+
+FEISHU_NOTICES = {
+    "not-ready": "飞书同步尚未配置完整，请联系管理员补充服务器端配置。",
+    "sync-complete": "飞书同步已完成。",
+    "sync-pending": "同步任务正在处理中，请稍后再查看。",
+    "sync-failed": "飞书同步未完成，本地成果不受影响，可稍后重试。",
+    "sync-conflict": "飞书中存在重复记录，请先人工处理后再重试。",
+}
 
 
 def _active_rules(db: Session) -> list[PerformanceRule]:
@@ -105,6 +117,21 @@ def _achievement_for_user(db: Session, achievement_id: int, user: User) -> Achie
             detail="Achievement not found",
         )
     return achievement
+
+
+def _sync_after_local_commit(
+    db: Session,
+    achievement: Achievement,
+    user: User,
+) -> SyncResult | None:
+    personal_status = integration_status(user.username)
+    if not (personal_status.user_enabled and personal_status.feishu_ready):
+        return None
+    try:
+        return sync_achievement(db, achievement)
+    except FeishuError:
+        db.rollback()
+        return SyncResult(status="failed")
 
 
 def _form_context(
@@ -284,8 +311,46 @@ def create_achievement(
     )
     db.add(achievement)
     db.commit()
+    _sync_after_local_commit(db, achievement, user)
     return RedirectResponse(
         f"/achievements/{achievement.id}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/{achievement_id}/feishu-sync")
+def retry_feishu_sync(
+    achievement_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    achievement = _achievement_for_user(db, achievement_id, user)
+    personal_status = integration_status(user.username)
+    if not personal_status.user_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Feishu sync is not available for this user",
+        )
+    if not personal_status.feishu_ready:
+        return RedirectResponse(
+            f"/achievements/{achievement.id}?feishu=not-ready",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    try:
+        result = sync_achievement(db, achievement)
+    except FeishuError:
+        db.rollback()
+        notice = "sync-failed"
+    else:
+        notice = {
+            "synced": "sync-complete",
+            "pending": "sync-pending",
+            "failed": "sync-failed",
+            "conflict": "sync-conflict",
+        }.get(result.status, "sync-failed")
+    return RedirectResponse(
+        f"/achievements/{achievement.id}?feishu={notice}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -299,6 +364,14 @@ def achievement_detail(
 ):
     achievement = _achievement_for_user(db, achievement_id, user)
     rule = find_rule(db, achievement.category, achievement.subcategory)
+    personal_status = integration_status(user.username)
+    sync_record = None
+    if personal_status.user_enabled:
+        sync_record = (
+            db.query(FeishuSyncRecord)
+            .filter(FeishuSyncRecord.achievement_id == achievement.id)
+            .first()
+        )
     return templates.TemplateResponse(
         request,
         "achievements/detail.html",
@@ -313,6 +386,11 @@ def achievement_detail(
             "max_batch_upload_mb": MAX_BATCH_UPLOAD_MB,
             "preview_extensions": PREVIEW_EXTENSIONS,
             "readiness_reasons": missing_reasons(achievement),
+            "personal_integration": personal_status,
+            "feishu_sync_record": sync_record,
+            "feishu_notice": FEISHU_NOTICES.get(
+                request.query_params.get("feishu", "")
+            ),
         },
     )
 
@@ -375,7 +453,11 @@ def update_achievement(
         notes,
     )
     db.commit()
-    return RedirectResponse(f"/achievements/{achievement.id}", status_code=status.HTTP_303_SEE_OTHER)
+    _sync_after_local_commit(db, achievement, user)
+    return RedirectResponse(
+        f"/achievements/{achievement.id}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/{achievement_id}/delete")

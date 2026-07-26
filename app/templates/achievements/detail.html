@@ -154,6 +154,45 @@
     </div>
 
     <aside class="detail-side">
+        {% if personal_integration.user_enabled %}
+        {% set sync_status = feishu_sync_record.sync_status if feishu_sync_record else "pending" %}
+        <section class="feishu-sync-block" aria-labelledby="feishu-sync-heading">
+            <div class="feishu-sync-heading">
+                <span class="feishu-sync-icon"><i data-lucide="cloud"></i></span>
+                <div>
+                    <span id="feishu-sync-heading">飞书同步</span>
+                    <strong class="feishu-sync-status feishu-sync-status-{{ sync_status }}">
+                        {% if sync_status == "synced" %}已同步
+                        {% elif sync_status == "failed" %}同步失败
+                        {% elif sync_status == "conflict" %}数据冲突
+                        {% else %}待同步{% endif %}
+                    </strong>
+                </div>
+            </div>
+            {% if feishu_notice %}
+            <p class="feishu-sync-notice"><i data-lucide="info"></i><span>{{ feishu_notice }}</span></p>
+            {% endif %}
+            {% if not personal_integration.feishu_ready %}
+            <p class="feishu-sync-copy">服务器端飞书配置尚未配置完整，本地成果已安全保存，不会尝试联网。</p>
+            {% elif sync_status == "conflict" %}
+            <p class="feishu-sync-copy">请先在飞书中人工处理重复的成果平台 ID，再重新检查。</p>
+            {% endif %}
+            {% if feishu_sync_record and feishu_sync_record.last_error and sync_status != "synced" %}
+            <p class="feishu-sync-error">{{ feishu_sync_record.last_error | truncate(120, True, "…") }}</p>
+            {% endif %}
+            {% if feishu_sync_record and feishu_sync_record.last_synced_at %}
+            <p class="feishu-sync-time">最近同步：{{ feishu_sync_record.last_synced_at.strftime("%Y-%m-%d %H:%M") }}</p>
+            {% endif %}
+            {% if sync_status in ["pending", "failed", "conflict"] %}
+            <form method="post" action="/achievements/{{ achievement.id }}/feishu-sync">
+                <button class="button secondary feishu-sync-retry" type="submit">
+                    <i data-lucide="refresh-cw"></i>
+                    {% if sync_status == "conflict" %}重新检查{% else %}重试同步{% endif %}
+                </button>
+            </form>
+            {% endif %}
+        </section>
+        {% endif %}
         <section class="panel rule-card">
             <div class="section-heading">
                 <span class="section-icon green"><i data-lucide="scale"></i></span>
